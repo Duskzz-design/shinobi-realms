@@ -84,8 +84,8 @@ export async function raidOp(admin: any, uid: string, body: any, seed: () => num
     if (!isMember(r)) throw new Error('You are not in this team.');
     if (r.status !== 'active') throw new Error('This fight is over.');
     if (body.op === 'raid_timeout') {
-      if (Date.now() < new Date(r.deadline).getTime() + 1500) return r;
-      if (body.seq && body.seq !== r.seq) return r;
+      if (r.state.engine.status !== 'over' && Date.now() < new Date(r.deadline).getTime() + 1500) return r;
+      if (r.state.engine.status !== 'over' && body.seq && body.seq !== r.seq) return r;
       return act(r, null, true);
     }
     return act(r, body.action || {}, false);
@@ -94,6 +94,12 @@ export async function raidOp(admin: any, uid: string, body: any, seed: () => num
 
   async function act(r: any, a: any, timeout: boolean) {
     const s = r.state.engine; s.seed = seed();
+    if (s.status === 'over') {
+      // Fight already decided but rewards were never handed out: settle it now.
+      const { data, error } = await admin.rpc('raid_finish', { p_raid: r.id, p_win: s.winner === 'A' });
+      if (error) throw new Error(error.message);
+      return { ...r, status: 'over', winner: s.winner, rewards: data };
+    }
     const misses = { ...r.misses };
     const myUnit = Object.values(s.units).find((u: any) => u.uid === uid) as any;
     let events: any[] = [];
