@@ -323,3 +323,4 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .elbox .elc { width: fit-content; }
 @media (max-width: 760px) { .hexb .b-top { font-size: 14px; gap: 6px; } .hexb .b-top .rnd { font-size: 11px; } }
 .elrow { margin: 3px 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.hx-bar { padding-bottom: max(56px, env(safe-area-inset-bottom)); } /* keep buttons clear of the host's corner badge */
