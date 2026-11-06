@@ -7,7 +7,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const clone = (x) => JSON.parse(JSON.stringify(x));
-const GRADE_COL = { D: '#3a8a4a', C: '#2f7fc4', B: '#9a5ad0', A: '#e8742c', S: '#c43c32', X: '#b8860b' };
+const GRADE_COL = { D: '#3a8a4a', C: '#2f7fc4', B: '#9a5ad0', A: '#e8742c', S: '#c43c32', X: '#b8860b', L: '#2a9d8f' };
 const RANKS = G.RANKS;
 export const STYLE_INFO = {
   ninjutsu: { label: 'Ninjutsu', color: '#e8742c', icon: '🔥' }, genjutsu: { label: 'Genjutsu', color: '#9a5ad0', icon: '🌀' },
@@ -31,7 +31,7 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
     my: 'a', state: S0, exam: S0.exam,
     head: `<span class="grade" style="background:${GRADE_COL[S0.mission.grade]}">${S0.exam ? '★' : S0.mission.grade}</span><b>${esc(S0.mission.name)}</b>${S0.exam ? `<span class="rnd">Round ${S0.exam.round}/${S0.exam.rounds}</span>` : ''}`,
     act: (a) => net.battleAct(battle.id, a),
-    intro: S0.exam && S0.exam.round === 1 ? `<b>${esc(S0.mission.name)}.</b> Move with blue hexes, use rocks as cover, and strike from range. Good luck!` : null,
+    intro: S0.lesson ? `<b>${esc(S0.mission.name)}.</b> ${esc(S0.mission.description || '')}` : S0.exam && S0.exam.round === 1 ? `<b>${esc(S0.mission.name)}.</b> Move with blue hexes, use rocks as cover, and strike from range. Good luck!` : null,
     result: (res, finish) => missionResult(root, char, res, S0, battle, onEnd, finish),
     fled: () => onEnd({ status: 'fled' }),
   });
@@ -333,7 +333,11 @@ function missionResult(root, char, res, S0, battle, onEnd, finish) {
     const ups = Object.entries(r.jutsu_up || {}).map(([id, lv]) => `<p class="lvl">📜 ${esc(G.MOVES[id]?.name || id)} reached level ${lv}!</p>`).join('');
     const blood = r.bloodline_test ? (r.bloodline ? `<div class="blood"><div class="bico">${G.BLOODLINES[r.bloodline].icon}</div><h4>Bloodline awakened: ${esc(G.BLOODLINES[r.bloodline].label)}!</h4><p>${esc(G.BLOODLINES[r.bloodline].desc)} Only 1 in 100 ninja are born with this. You can now use its secret techniques in battle.</p></div>`
       : `<div class="blood none"><h4>🧬 Bloodline test</h4><p>The Academy tested your blood: no bloodline awakened. Only 1 in 100 carry one. Most legends were made by training and clever tactics.</p></div>`) : '';
-    if (exam && won && r.next) body = `<h3 class="win">Round ${r.exam_round} cleared!</h3>${ups}<p>Catch your breath: you recover 30% of your HP, stamina and chakra before the next round.</p>
+    if (r.lesson) body = `<h3 class="${won ? 'win' : 'lose'}">${won ? 'Lesson complete!' : 'Sparring lost'}</h3>
+      ${won ? (r.first ? `<p class="big">+${r.xp} XP &nbsp; +${r.ryo} ryo</p><p>First time clear! Replay any lesson as often as you like for practice.</p>${r.leveled ? `<p class="lvl">⬆ Level up! You are now level ${r.level}.</p>` : ''}` : '<p>Well sparred! Rewards are only given the first time, but every spar trains your jutsu.</p>')
+        : '<p>No penalty in the Academy. Read the lesson tip, change your plan and try again.</p>'}${ups}
+      <div class="row"><button class="btn ghost" data-t>Train</button><button class="btn primary" data-back>Back to village</button></div>`;
+    else if (exam && won && r.next) body = `<h3 class="win">Round ${r.exam_round} cleared!</h3>${ups}<p>Catch your breath: you recover 30% of your HP, stamina and chakra before the next round.</p>
       <div class="row"><button class="btn primary" data-next>Next round ▶</button></div>`;
     else if (exam && won && r.promoted) body = `<div class="promo">★</div><h3 class="win">You are now a ${esc(r.promoted)}!</h3>${blood}
       <p class="lvl">New level cap, higher stat caps, and ${esc(r.promoted)} jutsu unlocked.<br>+${r.ryo} ryo and your energy is full.</p>${ups}

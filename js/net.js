@@ -256,3 +256,17 @@ export async function arenaChampions() {
   if (OFFLINE) { const o = await import('./offline.js'); return o.mockChampions(); }
   const { data, error } = await sb.rpc('arena_champions'); if (error) throw rpcErr(error); return data || {};
 }
+// ---------- academy sparring lessons ----------
+export async function getLessons() {
+  if (OFFLINE) { const o = await import('./offline.js'); return o.LESSONS; }
+  const { data, error } = await sb.from('missions').select('id,name,description,min_level,enemy_name,enemy_level,enemy_look,xp,ryo,sort').eq('kind', 'lesson').order('sort');
+  if (error) throw rpcErr(error); return data;
+}
+export async function startLesson(id) {
+  if (OFFLINE) { const o = await import('./offline.js'); const c = mockChar(); mockBattle = o.mockStartLesson(c, id); return clone(mockBattle); }
+  return battleCall({ op: 'lesson', lesson: id });
+}
+export async function claimArenaReward() {
+  if (OFFLINE) return new URLSearchParams(location.search).has('bonus') ? { place: 1, rank: 'Genin', ryo: 300, mult: 1.5 } : null;
+  const { data, error } = await sb.rpc('claim_arena_reward'); if (error) return null; return data;
+}

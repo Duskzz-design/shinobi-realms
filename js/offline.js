@@ -58,8 +58,8 @@ export function enrich(c) {
   const energy = Math.min(100, c.energy + Math.floor((Date.now() - c.energy_at) / 9000));
   c.jutsu = c.jutsu || {};
   for (const k in c.jutsu) c.jutsu[k].next = jnext(c.jutsu[k].level, k);
-  const bonus = new URLSearchParams(location.search).has('bonus') ? { place: 1, mult: 2 } : null;
-  return { ...c, energy, energy_max: 100, energy_regen_sec: bonus ? 4.5 : 9, arena_bonus: bonus, hp_max: 80 + c.level * 10 + c.strength * 4 + c.willpower,
+  const bonus = new URLSearchParams(location.search).has('bonus') ? { place: 1, mult: 1.5 } : null;
+  return { ...c, energy, energy_max: 100, energy_regen_sec: bonus ? 6 : 9, arena_bonus: bonus, hp_max: 80 + c.level * 10 + c.strength * 4 + c.willpower,
     stamina_max: 40 + c.level * 3 + c.strength * 2 + c.agility * 2, chakra_max: 40 + c.level * 3 + c.intelligence * 2 + c.willpower * 2,
     stat_cap: SCAP[ri], level_cap: LCAP[ri], rank_index: ri, train_energy: 10, train_prog: c.train_prog || {},
     point_cost: { strength: pointCost(c.strength), agility: pointCost(c.agility), intelligence: pointCost(c.intelligence), willpower: pointCost(c.willpower) } };
@@ -128,7 +128,11 @@ function finish(c, b, win) {
   const st = b.state, m = b.m, ups = {};
   for (const [k, n] of Object.entries(st.used)) if (G.MOVES[k] && G.MOVES[k].style !== 'none') { const g = gain(c, k, 3 * Math.min(n, 40)); if (g.up) ups[k] = g.level; }
   let r;
-  if (win && st.exam) {
+  if (m.kind === 'lesson') {
+    c.lessons_done = c.lessons_done || []; const first = win && !c.lessons_done.includes(m.id), before = c.level, cap = LCAP[RANKS.indexOf(c.rank)];
+    if (first) { c.lessons_done.push(m.id); c.xp += m.xp; c.ryo += m.ryo; while (c.level < cap && c.xp >= c.level * 100) { c.xp -= c.level * 100; c.level++; } }
+    r = { lesson: true, first, xp: first ? m.xp : 0, ryo: first ? m.ryo : 0, level: c.level, leveled: c.level - before };
+  } else if (win && st.exam) {
     if (st.exam.round < st.exam.rounds) r = { exam_round: st.exam.round, exam_rounds: st.exam.rounds, next: true };
     else {
       const ryo = { Genin: 200, Chunin: 600, Jonin: 1500 }[st.exam.to]; let bl = null;
@@ -219,4 +223,25 @@ export function mockBoard(period, rank, c) {
 }
 export function mockChampions() {
   return { Genin: { name: 'Mika', village: 'tide', look: fakeLook(1), points: 345, level: 12 }, Chunin: { name: 'Kaito', village: 'dune', look: fakeLook(3), points: 1210, level: 27 } };
+}
+
+// ---------- offline sparring lessons (mirror of the server) ----------
+const LL = (id, name, description, min_level, enemy_name, enemy_level, atk, look, xp, ryo, el, moves, ranged) => ({ id, name, description, min_level, enemy_name, enemy_level, atk, enemy_look: look, xp, ryo, el, moves, ranged });
+export const LESSONS = [
+  LL('l1', 'Lesson 1 · Footwork', 'Blue hexes show where you can move, 1 AP per step. Palm Strike needs you right next to your foe; Kunai reaches 3 hexes. Press End turn when you are done.', 1, 'Hana', 1, 5, { hairStyle: 4, hair: 2, skin: 1, outfit: 3, band: 0, bandSpot: 0 }, 30, 20, null, ['palm', 'kunai', 'guard', 'focus'], false),
+  LL('l2', 'Lesson 2 · Chakra Natures', 'Kenji\'s element is weak to yours. Use your element jutsu for "Super effective" hits, and tap him to check his element.', 1, 'Kenji', 1, 5, { hairStyle: 0, hair: 5, skin: 2, outfit: 6, band: 1, bandSpot: 1 }, 30, 20, 'weak', ['palm', 'kunai', 'ELEM', 'focus'], false),
+  LL('l3', 'Lesson 3 · Cover', 'Rin fights from range. Rocks block thrown and cast attacks: step behind one, then close the gap.', 2, 'Rin', 2, 6, { hairStyle: 2, hair: 7, skin: 0, outfit: 1, band: 2, bandSpot: 0 }, 40, 30, null, ['kunai', 'mist', 'focus', 'guard'], true),
+  LL('l4', 'Lesson 4 · Buffs and Debuffs', 'Daichi confuses foes with Mist Veil and braces with Guard. Watch the status icons, use Focus when low, and strike when his armour is down.', 2, 'Daichi', 2, 5, { hairStyle: 1, hair: 1, skin: 4, outfit: 5, band: 0, bandSpot: 2 }, 50, 40, 'random', ['palm', 'kunai', 'mist', 'ELEM', 'focus', 'guard'], false),
+  LL('l5', 'Lesson 5 · Graduation Spar', 'Aya\'s element beats yours, just like a tough Arena rival. Win with range, cover and smart use of AP.', 3, 'Aya', 3, 5, { hairStyle: 3, hair: 4, skin: 1, outfit: 0, band: 1, bandSpot: 0 }, 80, 80, 'strong', ['palm', 'kunai', 'mist', 'ELEM', 'focus', 'guard'], false),
+];
+export function mockStartLesson(c, id) {
+  const L = LESSONS.find((x) => x.id === id), x = enrich(c), E5 = G.ELEMENTS, i = E5.indexOf(x.element);
+  if (c.level < L.min_level) throw new Error(`You need to be level ${L.min_level} for this lesson.`);
+  const el = L.el === 'weak' ? E5[(i + 1) % 5] : L.el === 'strong' ? E5[(i + 4) % 5] : L.el === 'random' ? E5[(Math.random() * 5) | 0] : null;
+  const elemMove = el ? Object.keys(G.MOVES).find((k) => G.MOVES[k].element === el && G.MOVES[k].tier === 0) : null;
+  const st = { php: x.hp_max, pmax: x.hp_max, pst: x.stamina_max, pstmax: x.stamina_max, pch: x.chakra_max, pchmax: x.chakra_max,
+    foe: { kit: 'student', atk: L.atk, level: L.enemy_level, element: el, moves: L.moves.map((m) => (m === 'ELEM' ? elemMove : m)), ranged: L.ranged },
+    enemy: { name: L.enemy_name, kind: 'ninja', level: L.enemy_level, look: L.enemy_look, element: el },
+    mission: { id: L.id, name: L.name, grade: 'L', xp: L.xp, ryo: L.ryo, description: L.description }, lesson: true };
+  return hexInit(c, { id: 'b' + Date.now(), status: 'active', state: st, m: { ...L, kind: 'lesson' } });
 }

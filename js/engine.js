@@ -11,8 +11,8 @@ export const ELEMENT_INFO = {
 export function elementMult(att, def) {
   if (!att || !def) return 1;
   const i = ELEMENTS.indexOf(att), j = ELEMENTS.indexOf(def);
-  if ((i + 1) % 5 === j) return 1.5;
-  if ((j + 1) % 5 === i) return 0.7;
+  if ((i + 1) % 5 === j) return 1.25;
+  if ((j + 1) % 5 === i) return 0.8;
   return 1;
 }
 export const STATUS = {
@@ -373,6 +373,13 @@ export function playerSpec(c, jl, pools) {
 // st: battle state with foe {hp,atk,def,kit,element,level} and enemy {name,kind,look}
 export function enemySpec(st) {
   const f = st.foe, e = st.enemy;
+  // academy sparring partners fight exactly like players (same techniques and rules)
+  if (f.kit === 'student') {
+    const v = f.atk, c = { name: e.name, rank: 'Academy Student', level: f.level || 1, strength: v, agility: v, intelligence: v, willpower: v, element: f.element, appearance: e.look };
+    const sp = playerSpec(c, {}, poolsOf(c));
+    if (f.moves && f.moves.length) sp.moves = f.moves.filter((m) => MOVES[m]);
+    return { ...sp, ai: f.ranged ? 'ranged' : 'melee' };
+  }
   return { name: e.name, look: e.look, kind: e.kind, level: f.level || e.level, npc: true, hpmax: f.hp, atk: f.atk, def: f.def, element: f.element || null,
     moves: KITS[f.kit] || KITS.ninja, ai: f.kit === 'ranged' ? 'ranged' : 'melee' };
 }

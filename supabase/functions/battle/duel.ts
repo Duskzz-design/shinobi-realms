@@ -32,9 +32,11 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
   if (body.op === 'duel_challenge') {
     const target = String(body.target || '');
     if (target === uid) throw new Error('You cannot duel yourself.');
-    const { data: cs } = await admin.from('characters').select('user_id,name').in('user_id', [uid, target]);
+    const { data: cs } = await admin.from('characters').select('user_id,name,rank').in('user_id', [uid, target]);
     const me = (cs || []).find((c: any) => c.user_id === uid), them = (cs || []).find((c: any) => c.user_id === target);
     if (!me || !them) throw new Error('That ninja could not be found.');
+    if (me.rank === 'Academy Student') throw new Error('Academy students cannot duel. Graduate to Genin first, and practise in the Academy sparring lessons.');
+    if (them.rank === 'Academy Student') throw new Error(`${them.name} is still an Academy student and cannot duel yet.`);
     await tidy(uid); await tidy(target);
     if (await busy(uid)) throw new Error('You are already in a duel.');
     if (await busy(target)) throw new Error(`${them.name} is busy in another duel.`);

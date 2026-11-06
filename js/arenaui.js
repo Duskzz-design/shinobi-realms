@@ -5,7 +5,7 @@ import { ninjaSprite, VILLAGES } from './sprites.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 const RANKS = ['Genin', 'Chunin', 'Jonin'];
-export const BONUS = [[1, 1, '×2'], [2, 3, '×1.75'], [4, 10, '×1.5']];
+export const BONUS = [[1, 1, '×1.5', 300], [2, 3, '×1.25', 200], [4, 10, '×1.1', 100]];
 export const bonusFor = (place) => (place == null ? null : (BONUS.find(([a, b]) => place >= a && place <= b) || [])[2] || null);
 const medal = (p) => (p === 1 ? '🥇' : p === 2 ? '🥈' : p === 3 ? '🥉' : p);
 const left = (iso) => { const s = Math.max(0, (new Date(iso) - Date.now()) / 1000); const d = Math.floor(s / 86400), hh = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60); return d ? `${d}d ${hh}h` : hh ? `${hh}h ${m}m` : `${m}m`; };
@@ -21,10 +21,11 @@ export function openArena(root, char) {
 
   function bonusBox() {
     const b = char.arena_bonus;
-    const mine = b ? `<div class="ar-mybonus">⚡ <b>Your energy refills ${b.mult >= 2 ? 'twice as fast' : `${b.mult}× faster`}</b> today: you placed #${b.place} yesterday!</div>` : '';
-    return `${mine}<div class="ar-bonus"><b>Daily reward:</b> finish in your rank's <b>top 10</b> today and your energy refills faster all day tomorrow.
-      <div class="ar-tiers">${BONUS.map(([a, b2, m]) => `<span>${a === b2 ? `#${a}` : `#${a}–${b2}`} <b>${m}</b></span>`).join('')}</div>
-      <small>Ranked by Arena points won in duels today (losses count against you). Resets at midnight, UK time.</small></div>`;
+    const mine = b ? `<div class="ar-mybonus">⚡ <b>Your energy refills ${b.mult}× faster</b> today: you placed #${b.place} yesterday!</div>` : '';
+    const acad = char.rank === 'Academy Student' ? `<div class="ar-mybonus acad">🎓 <b>Academy students can't enter the Arena.</b> Practise in the sparring lessons at the Academy, then pass the Genin exam to compete.</div>` : '';
+    return `${acad}${mine}<div class="ar-bonus"><b>Daily rewards:</b> finish in your rank's <b>top 10</b> today to win ryo and faster energy all day tomorrow.
+      <div class="ar-tiers">${BONUS.map(([a, b2, m, ryo]) => `<span>${a === b2 ? `#${a}` : `#${a}–${b2}`} <b>${m} ⚡ · ${ryo} 💰</b></span>`).join('')}</div>
+      <small>Ryo shown for Genin; Chunin win double, Jonin four times as much. Ranked by Arena points won in duels today (losses count against you). Resets at midnight, UK time.</small></div>`;
   }
   async function load() {
     loading = true; render();
@@ -50,7 +51,7 @@ export function openArena(root, char) {
       <div class="ttabs">${tabs.map(([k, l]) => `<button data-p="${k}" class="${k === period ? 'on' : ''}">${l}</button>`).join('')}</div>
       <div class="ar-ranks">${RANKS.map((r) => `<button data-r="${r}" class="${r === rank ? 'on' : ''}">${r}</button>`).join('')}</div>
       ${ends}${me}<div class="ar-list">${list}</div>
-      <p class="sub ar-how">⚔️ To duel, tap another ninja in the village and choose <b>Challenge</b>. Academy students can duel for practice; boards start at Genin.</p>`;
+      <p class="sub ar-how">⚔️ To duel, tap another Genin or higher in the village and choose <b>Challenge</b>.</p>`;
     body.querySelectorAll('[data-p]').forEach((b) => (b.onclick = () => { period = b.dataset.p; load(); }));
     body.querySelectorAll('[data-r]').forEach((b) => (b.onclick = () => { rank = b.dataset.r; load(); }));
     body.querySelectorAll('canvas[data-look]').forEach((cv) => { const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; try { c.drawImage(ninjaSprite(JSON.parse(cv.dataset.look), 0, 0), 0, 0); } catch {} });

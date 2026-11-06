@@ -349,3 +349,4 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .ar-cut { text-align: center; font-size: 12px; color: var(--ink2); border-top: 2px dashed #c9a86a; padding-top: 3px; margin-top: 4px; }
 .ar-me { text-align: center; font-size: 15px; margin: 4px 0; } .ar-how { text-align: center; margin-top: 8px; } .ar-empty { text-align: center; padding: 16px 0; }
 .ebonus { display: block; color: var(--green); font-weight: 700; margin-top: 3px; }
+.ar-mybonus.acad { background: #e6eefc; box-shadow: 0 0 0 3px #2f7fc4; }

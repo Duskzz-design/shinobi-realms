@@ -202,8 +202,9 @@ export async function enterWorld(app, char, hooks) {
     root.querySelector('#ptsBadge').hidden = !(char.energy + Math.floor((Date.now() - (char._loadedAt || Date.now())) / 1000 / (char.energy_regen_sec || 9)) >= (char.energy_max || 100));
     me.level = char.level; me.rank = char.rank;
   }
-  if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char, exam: () => startExam(), hall: () => openExamHall(root, char, startExam), click: (x, y) => { const sp = spotAt(x, y); sp ? goTo(sp.x, sp.y, sp) : goTo(x, y); }, me };
+  if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char, exam: () => startExam(), hall: () => openExamHall(root, char, startExam, startLesson), lesson: (id) => startLesson(id), click: (x, y) => { const sp = spotAt(x, y); sp ? goTo(sp.x, sp.y, sp) : goTo(x, y); }, me };
   function startExam() { startBattle(null, () => net.startExam()); }
+  function startLesson(id) { startBattle(null, () => net.startLesson(id)); }
   const duels = setupDuels(root, char, {
     canStart: () => !root.querySelector('.ov.battle'),
     stopWalking: () => { path = []; dest = null; closeModal(); root.querySelectorAll('.ov').forEach((o) => o.remove()); },
@@ -214,6 +215,11 @@ export async function enterWorld(app, char, hooks) {
     },
   });
   if (net.isOffline()) window.__duels = duels;
+  net.claimArenaReward().then(async (r) => {
+    if (!r) return;
+    try { Object.assign(char, await net.loadCharacter(), { _loadedAt: Date.now() }); refreshPlate(); } catch {}
+    showModal(`<div class="dp-ico">🏆</div><h3>Arena reward!</h3><p>You finished <b>#${r.place}</b> on yesterday's ${esc(r.rank)} board.</p><p class="big">+${r.ryo} ryo</p><p>Your energy refills <b>${r.mult}× faster</b> all day today.</p>`);
+  });
   function startBattle(mid, starter = null) {
     path = []; dest = null;
     runBattle(root, char, mid, async (r) => {
@@ -246,10 +252,10 @@ export async function enterWorld(app, char, hooks) {
   }
   function playerCard(m) {
     const vv = VILLAGES[m.village] || v;
-    showModal(`<div class="pcard"><canvas width="64" height="80"></canvas><div><h3>${esc(m.name)}</h3><p style="color:${vv.dark}"><b>${vv.name}</b></p><p>${esc(m.rank || 'Academy Student')} · Level ${m.level || 1}</p></div></div><button class="btn primary" data-duel>⚔️ Challenge to a duel</button>`, (el) => {
+    showModal(`<div class="pcard"><canvas width="64" height="80"></canvas><div><h3>${esc(m.name)}</h3><p style="color:${vv.dark}"><b>${vv.name}</b></p><p>${esc(m.rank || 'Academy Student')} · Level ${m.level || 1}</p></div></div>${char.rank === 'Academy Student' ? '<p class="soon">Academy students can\'t duel. Practise in the sparring lessons at the Academy, then graduate.</p>' : (m.rank || 'Academy Student') === 'Academy Student' ? '<p class="soon">Academy students can\'t be challenged.</p>' : '<button class="btn primary" data-duel>⚔️ Challenge to a duel</button>'}`, (el) => {
       const c = el.querySelector('canvas').getContext('2d'); c.imageSmoothingEnabled = false;
       c.drawImage(ninjaSprite(m.look || {}, 0, 0), 0, 0, 18, 26, 5, 2, 54, 78);
-      el.querySelector('[data-duel]').onclick = () => { closeModal(); duels.challenge(m); };
+      const db = el.querySelector('[data-duel]'); if (db) db.onclick = () => { closeModal(); duels.challenge(m); };
     });
   }
   const SPOT_TEXT = {
@@ -261,7 +267,7 @@ export async function enterWorld(app, char, hooks) {
     const s = target || nearSpot(); if (!s) return;
     path = []; dest = null; pendingSpot = null;
     if (s.id === 'missions') { openMissionBoard(root, char, startBattle); return; }
-    if (s.id === 'academy') { openExamHall(root, char, startExam); return; }
+    if (s.id === 'academy') { openExamHall(root, char, startExam, startLesson); return; }
     if (s.id === 'arena') { openArena(root, char); return; }
     const [title, text] = SPOT_TEXT[s.id] || [s.name, ''];
     showModal(`<h3>${title}</h3><p>${text}</p>`);

@@ -36,8 +36,8 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const rpc = async (fn: string, args: any) => { const { data, error } = await user.rpc(fn, args); if (error) throw new Error(error.message); return data; };
 
-    if (body.op === 'start' || body.op === 'exam' || body.op === 'continue') {
-      const r = body.op === 'start' ? await rpc('start_mission', { p_mission: body.mission }) : body.op === 'exam' ? await rpc('start_exam', {}) : await rpc('exam_continue', { p_battle: body.battle });
+    if (body.op === 'start' || body.op === 'exam' || body.op === 'continue' || body.op === 'lesson') {
+      const r = body.op === 'start' ? await rpc('start_mission', { p_mission: body.mission }) : body.op === 'lesson' ? await rpc('start_lesson', { p_lesson: body.lesson }) : body.op === 'exam' ? await rpc('start_exam', {}) : await rpc('exam_continue', { p_battle: body.battle });
       const b = await initEngine(r.id, u.id);
       return out(view(b, []));
     }

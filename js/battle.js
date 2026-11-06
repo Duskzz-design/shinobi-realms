@@ -20,7 +20,7 @@ export const STYLES = {
 };
 const RANKS = ['Academy Student', 'Genin', 'Chunin', 'Jonin'];
 const TIER = ['Academy', 'Genin', 'Chunin', 'Jonin'];
-const GRADE_COL = { D: '#3a8a4a', C: '#2f7fc4', B: '#9a5ad0', A: '#e8742c', S: '#c43c32', X: '#b8860b' };
+const GRADE_COL = { D: '#3a8a4a', C: '#2f7fc4', B: '#9a5ad0', A: '#e8742c', S: '#c43c32', X: '#b8860b', L: '#2a9d8f' };
 const cost = (m) => [m.stamina ? `💪${m.stamina}` : '', m.chakra ? `💧${m.chakra}` : ''].filter(Boolean).join(' ') || 'Free';
 
 function overlay(root, cls, html) {
@@ -49,23 +49,40 @@ export async function openMissionBoard(root, char, onPick) {
 }
 
 // ---------- academy: rank exams ----------
-export async function openExamHall(root, char, onStart) {
-  const el = overlay(root, 'board-wrap', `<div class="scroll board"><h3>Academy · Rank Exams</h3><div class="mlist"><div class="spinner"></div></div><button class="btn ghost" data-x>Close</button></div>`);
+export async function openExamHall(root, char, onStart, onLesson = null, startTab = null) {
+  const el = overlay(root, 'board-wrap', `<div class="scroll board"><h3>Academy</h3><div class="ttabs"><button data-tab="lessons">🥋 Sparring lessons</button><button data-tab="exam">📜 Rank exam</button></div><div class="mlist"><div class="spinner"></div></div><button class="btn ghost" data-x>Close</button></div>`);
   el.querySelector('[data-x]').onclick = () => el.remove();
   el.addEventListener('click', (e) => { if (e.target === el) el.remove(); });
-  let info;
-  try { info = await net.examInfo(); } catch (e) { el.querySelector('.mlist').innerHTML = `<p>${esc(e.message)}</p>`; return; }
+  const done = char.lessons_done || [];
+  let tab = startTab || (char.rank === 'Academy Student' && done.length < 5 ? 'lessons' : 'exam');
   const box = el.querySelector('.mlist');
-  if (!info.next_rank) { box.innerHTML = `<p class="sub" style="text-align:center">You are a Jonin, the highest rank. Sensei Hiro bows to you.</p>`; return; }
-  const ready = info.ready, wait = info.wait_seconds;
-  box.innerHTML = `
-    <p class="sub" style="text-align:center">Sensei Hiro: "Pass the <b>${esc(info.next_rank)} Exam</b> to raise your level and stat limits and unlock ${esc(info.next_rank)} jutsu."</p>
-    <div class="exreq ${ready ? 'ok' : ''}">${ready ? '✅' : '🔒'} Reach level <b>${info.needed_level}</b> <span>(you are level ${info.level})</span></div>
-    ${info.rounds.map((r, i) => `<div class="mcard"><span class="grade" style="background:${GRADE_COL.X}">${i + 1}</span><span class="mtxt"><b>${esc(r.name)}</b><small>${esc(r.description)}</small><em>Opponent: ${esc(r.enemy)} (Lv ${r.enemy_level})</em></span></div>`).join('')}
-    <p class="sub" style="text-align:center">Rounds are back to back. Between rounds you recover 30% of your HP, stamina and chakra. If you fail, rest 5 minutes and try again.</p>
-    <button class="btn primary big" data-go ${ready && !wait ? '' : 'disabled'}>${!ready ? `Reach level ${info.needed_level} first` : wait ? `Resting… ${Math.ceil(wait / 60)} min` : `Begin the ${esc(info.next_rank)} Exam`}</button>`;
-  const go = box.querySelector('[data-go]');
-  go.onclick = () => { el.remove(); onStart(); };
+  const show = async () => {
+    el.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
+    box.innerHTML = '<div class="spinner"></div>';
+    if (tab === 'lessons') {
+      let ls; try { ls = await net.getLessons(); } catch (e) { box.innerHTML = `<p>${esc(e.message)}</p>`; return; }
+      box.innerHTML = `<p class="sub" style="text-align:center">Sensei Hiro: "Spar with your classmates. They fight exactly like Arena ninja, so this is your practice before you can duel as a Genin."</p>` +
+        ls.map((l, i) => { const lock = char.level < l.min_level, ok = done.includes(l.id);
+          return `<button class="mcard ${lock ? 'locked' : ''}" data-l="${l.id}" ${lock ? 'disabled' : ''}><span class="grade" style="background:${ok ? GRADE_COL.D : GRADE_COL.L}">${ok ? '✓' : i + 1}</span>
+          <span class="mtxt"><b>${esc(l.name)}</b><small>${esc(l.description)}</small><em>${lock ? `🔒 Needs level ${l.min_level}` : `Partner: ${esc(l.enemy_name)} (Lv ${l.enemy_level}) · ${ok ? 'Cleared · practice anytime' : `First clear: +${l.xp} XP · +${l.ryo} ryo`}`}</em></span></button>`; }).join('') +
+        `<p class="sub" style="text-align:center">No ryo is lost in the Academy. Clear all five, pass the Genin exam, then test yourself in the Arena.</p>`;
+      box.querySelectorAll('[data-l]:not(:disabled)').forEach((b) => (b.onclick = () => { el.remove(); onLesson && onLesson(b.dataset.l); }));
+      return;
+    }
+    let info;
+    try { info = await net.examInfo(); } catch (e) { box.innerHTML = `<p>${esc(e.message)}</p>`; return; }
+    if (!info.next_rank) { box.innerHTML = `<p class="sub" style="text-align:center">You are a Jonin, the highest rank. Sensei Hiro bows to you.</p>`; return; }
+    const ready = info.ready, wait = info.wait_seconds;
+    box.innerHTML = `
+      <p class="sub" style="text-align:center">Sensei Hiro: "Pass the <b>${esc(info.next_rank)} Exam</b> to raise your level and stat limits and unlock ${esc(info.next_rank)} jutsu."</p>
+      <div class="exreq ${ready ? 'ok' : ''}">${ready ? '✅' : '🔒'} Reach level <b>${info.needed_level}</b> <span>(you are level ${info.level})</span></div>
+      ${info.rounds.map((r, i) => `<div class="mcard"><span class="grade" style="background:${GRADE_COL.X}">${i + 1}</span><span class="mtxt"><b>${esc(r.name)}</b><small>${esc(r.description)}</small><em>Opponent: ${esc(r.enemy)} (Lv ${r.enemy_level})</em></span></div>`).join('')}
+      <p class="sub" style="text-align:center">Rounds are back to back. Between rounds you recover 30% of your HP, stamina and chakra. If you fail, rest 5 minutes and try again.</p>
+      <button class="btn primary big" data-go ${ready && !wait ? '' : 'disabled'}>${!ready ? `Reach level ${info.needed_level} first` : wait ? `Resting… ${Math.ceil(wait / 60)} min` : `Begin the ${esc(info.next_rank)} Exam`}</button>`;
+    box.querySelector('[data-go]').onclick = () => { el.remove(); onStart(); };
+  };
+  el.querySelectorAll('[data-tab]').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; show(); }));
+  show();
 }
 
 // ---------- training ----------
