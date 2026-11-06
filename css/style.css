@@ -274,3 +274,5 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .gbar.sta i { background: #e8a42c; }
 .mv .jl { font-family: var(--title); font-size: 8px; color: var(--wood); vertical-align: middle; }
 .toast.ok { box-shadow: 0 0 0 4px var(--green), 0 0 0 8px var(--ink); }
+.tbtns { display: flex; flex-direction: column; gap: 2px; flex: none; }
+.tbtns .btn { margin: 4px; min-width: 64px; }

@@ -161,15 +161,15 @@ export async function battleAct(battleId, move) {
   if (error) throw rpcErr(error);
   return data;
 }
-export async function trainStat(stat) {
-  if (OFFLINE) { const o = await import('./offline.js'); const c = mockChar(); const r = o.trainStat(c, stat); saveMock(c); return r; }
-  const { data, error } = await sb.rpc('train_stat', { p_stat: stat });
+export async function trainStat(stat, times = 1) {
+  if (OFFLINE) { const o = await import('./offline.js'); const c = mockChar(); const r = o.trainStat(c, stat, times); saveMock(c); return r; }
+  const { data, error } = await sb.rpc('train_stat', { p_stat: stat, p_times: times });
   if (error) throw rpcErr(error);
   return data;
 }
-export async function trainJutsu(move) {
-  if (OFFLINE) { const o = await import('./offline.js'); const c = mockChar(); const r = o.trainJutsu(c, move); saveMock(c); return r; }
-  const { data, error } = await sb.rpc('train_jutsu', { p_move: move });
+export async function trainJutsu(move, times = 1) {
+  if (OFFLINE) { const o = await import('./offline.js'); const c = mockChar(); const r = o.trainJutsu(c, move, times); saveMock(c); return r; }
+  const { data, error } = await sb.rpc('train_jutsu', { p_move: move, p_times: times });
   if (error) throw rpcErr(error);
   return data;
 }

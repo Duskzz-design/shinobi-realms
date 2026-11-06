@@ -57,21 +57,26 @@ export async function openTraining(root, getChar, setChar, startTab = 'stats') {
   const energyNow = () => { const c = getChar(); return Math.min(c.energy_max || 100, c.energy + Math.floor((Date.now() - (c._loadedAt || Date.now())) / 1000 / (c.energy_regen_sec || 9))); };
   function render() {
     const c = getChar(), need = c.level * 100, v = VILLAGES[c.village], e = energyNow();
+    const per = c.stat_point_cost || 560, prog = c.train_prog || {};
     const statRows = Object.entries(STATS).map(([k, s]) => {
-      const atCap = c[k] >= c.stat_cap, tc = (c.train_cost || {})[k] || 10;
+      const atCap = c[k] >= c.stat_cap, p = prog[k] || 0;
       return `<div class="tst"><div class="tic" style="background:${s.color}">${s.icon}</div>
         <div class="tinfo"><b>${s.label} <span>${c[k]}</span><em>/ ${c.stat_cap}</em></b><small>${s.blurb}</small>
-        <div class="mini"><i style="width:${Math.min(100, 100 * c[k] / c.stat_cap)}%;background:${s.color}"></i></div></div>
-        <button class="btn small primary" data-s="${k}" ${atCap || e < tc || busy ? 'disabled' : ''}>${atCap ? 'Capped' : `Train<br><small>⚡${tc}</small>`}</button></div>`;
+        <div class="mini" title="Progress to next point"><i style="width:${atCap ? 100 : Math.min(100, 100 * p / per)}%;background:${s.color}"></i></div>
+        <small class="nx">${atCap ? 'At your rank cap' : `Next point: ${p} / ${per} energy`}</small></div>
+        <div class="tbtns"><button class="btn small primary" data-s="${k}" data-n="1" ${atCap || e < 10 || busy ? 'disabled' : ''}>${atCap ? 'Capped' : 'Train<br><small>⚡10</small>'}</button>
+        ${atCap ? '' : `<button class="btn small ghost" data-s="${k}" data-n="99" ${e < 10 || busy ? 'disabled' : ''}>Max<br><small>⚡${Math.floor(e / 10) * 10}</small></button>`}</div></div>`;
     }).join('');
     const moves = cat ? cat.moves.filter((m) => m.style !== 'none') : [];
     const jutsuRows = Object.entries(STYLES).map(([sk, st]) => `<h4 style="color:${st.color}">${st.icon} ${st.label} <small>uses ${STATS[st.main].short} + ${STATS[st.sec].short}</small></h4>` +
       moves.filter((m) => m.style === sk).map((m) => {
-        const locked = m.tier > c.rank_index, j = (c.jutsu || {})[m.id] || { level: 1, xp: 0, next: 5 }, maxed = j.level >= 10;
+        const locked = m.tier > c.rank_index, j = (c.jutsu || {})[m.id] || { level: 1, xp: 0, next: 50 }, maxed = j.level >= 10;
         return `<div class="tst jt ${locked ? 'locked' : ''}"><div class="tinfo"><b>${locked ? '🔒 ' : ''}${esc(m.name)} ${locked ? '' : `<span>Lv ${j.level}</span>`}</b>
           <small>${TIER[m.tier]} jutsu · Power ${m.power} · ${cost(m)}${m.effect && m.effect !== 'focus' ? ' · ' + (m.effect === 'confuse' ? 'Confuse' : 'Stun') : ''}</small>
-          ${locked ? `<small class="nx">Unlocks at ${RANKS[m.tier]} rank</small>` : `<div class="mini"><i style="width:${maxed ? 100 : 100 * j.xp / j.next}%;background:${st.color}"></i></div>`}</div>
-          ${locked ? '' : `<button class="btn small primary" data-j="${m.id}" ${maxed || e < 10 || busy ? 'disabled' : ''}>${maxed ? 'Mastered' : 'Train<br><small>⚡10</small>'}</button>`}</div>`;
+          ${locked ? `<small class="nx">Unlocks at ${RANKS[m.tier]} rank</small>` : `<div class="mini"><i style="width:${maxed ? 100 : 100 * j.xp / j.next}%;background:${st.color}"></i></div>
+          <small class="nx">${maxed ? 'Mastered' : `${j.xp} / ${j.next} XP to level ${j.level + 1}`}</small>`}</div>
+          ${locked ? '' : `<div class="tbtns"><button class="btn small primary" data-j="${m.id}" data-n="1" ${maxed || e < 10 || busy ? 'disabled' : ''}>${maxed ? 'Mastered' : 'Train<br><small>⚡10</small>'}</button>
+          ${maxed ? '' : `<button class="btn small ghost" data-j="${m.id}" data-n="99" ${e < 10 || busy ? 'disabled' : ''}>Max<br><small>⚡${Math.floor(e / 10) * 10}</small></button>`}</div>`}</div>`;
       }).join('')).join('');
     el.querySelector('.board').innerHTML = `
       <h3>${esc(c.name)}</h3>
@@ -86,14 +91,14 @@ export async function openTraining(root, getChar, setChar, startTab = 'stats') {
       <button class="btn ghost" data-x>Close</button>`;
     el.querySelector('[data-x]').onclick = close;
     el.querySelectorAll('[data-tab]').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; render(); }));
-    el.querySelectorAll('[data-s]').forEach((b) => (b.onclick = () => doTrain(() => net.trainStat(b.dataset.s), `${STATS[b.dataset.s].label} +1`)));
-    el.querySelectorAll('[data-j]').forEach((b) => (b.onclick = () => doTrain(() => net.trainJutsu(b.dataset.j), null)));
+    el.querySelectorAll('[data-s]').forEach((b) => (b.onclick = () => doTrain(() => net.trainStat(b.dataset.s, +b.dataset.n), (r) => r.gained ? `${STATS[b.dataset.s].label} +${r.gained}!` : 'Training progress saved.')));
+    el.querySelectorAll('[data-j]').forEach((b) => (b.onclick = () => doTrain(() => net.trainJutsu(b.dataset.j, +b.dataset.n), (r) => r.trained && r.trained.up ? `Jutsu level up! Now level ${r.trained.level}.` : 'Jutsu experience gained.')));
   }
   async function doTrain(fn, msg) {
     if (busy) return; busy = true; render();
     try {
       const r = await fn(); r._loadedAt = Date.now(); setChar(r);
-      const t = r.trained; toast(msg || (t && t.up ? `Jutsu level up! Now level ${t.level}.` : 'Training complete. +2 jutsu XP'), 'ok');
+      toast(msg(r), 'ok');
     } catch (e) { toast(e.message); }
     busy = false; render();
   }
