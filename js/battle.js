@@ -57,9 +57,9 @@ export async function openTraining(root, getChar, setChar, startTab = 'stats') {
   const energyNow = () => { const c = getChar(); return Math.min(c.energy_max || 100, c.energy + Math.floor((Date.now() - (c._loadedAt || Date.now())) / 1000 / (c.energy_regen_sec || 9))); };
   function render() {
     const c = getChar(), need = c.level * 100, v = VILLAGES[c.village], e = energyNow();
-    const per = c.stat_point_cost || 560, prog = c.train_prog || {};
+    const prog = c.train_prog || {};
     const statRows = Object.entries(STATS).map(([k, s]) => {
-      const atCap = c[k] >= c.stat_cap, p = prog[k] || 0;
+      const atCap = c[k] >= c.stat_cap, p = prog[k] || 0, per = (c.point_cost || {})[k] || 40;
       return `<div class="tst"><div class="tic" style="background:${s.color}">${s.icon}</div>
         <div class="tinfo"><b>${s.label} <span>${c[k]}</span><em>/ ${c.stat_cap}</em></b><small>${s.blurb}</small>
         <div class="mini" title="Progress to next point"><i style="width:${atCap ? 100 : Math.min(100, 100 * p / per)}%;background:${s.color}"></i></div>

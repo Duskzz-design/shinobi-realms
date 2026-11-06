@@ -22,33 +22,36 @@ export const MOVES = [
 const Q = (id, grade, name, description, min_level, min_rank, enemy_name, enemy_kind, enemy_level, enemy_hp, enemy_atk, enemy_def, enemy_look, xp, ryo, sort) =>
   ({ id, grade, name, description, min_level, min_rank, enemy_name, enemy_kind, enemy_level, enemy_hp, enemy_atk, enemy_def, enemy_look, xp, ryo, sort });
 export const MISSIONS = [
-  Q('d1', 'D', 'Lost Cat Rescue', 'A noble\'s cat climbed into the old watchtower. Something else is up there too.', 1, 0, 'Feral Tom', 'beast_cat', 1, 65, 8, 1, { tint: '#c8892f' }, 35, 30, 1),
-  Q('d2', 'D', 'Farm Field Pests', 'A giant boar is wrecking the rice fields outside the gate.', 1, 0, 'Field Boar', 'beast_boar', 2, 95, 10, 2, { tint: '#7a4a2a' }, 45, 40, 2),
-  Q('d3', 'D', 'Escort the Merchant', 'Bandits have been robbing carts on the forest road.', 2, 0, 'Road Bandit', 'ninja', 3, 120, 12, 3, { hairStyle: 1, hair: 1, skin: 2, outfit: 6, band: 1, bandSpot: 3 }, 60, 55, 3),
-  Q('d4', 'D', 'Night Watch', 'Something has been howling near the village walls at night.', 3, 0, 'Shadow Wolf', 'beast_wolf', 4, 145, 14, 4, { tint: '#4a4a5a' }, 75, 60, 4),
-  Q('c1', 'C', 'Smugglers\' Cove', 'Smugglers are hiding stolen scrolls in a sea cave.', 5, 1, 'Smuggler Chief', 'ninja', 6, 210, 17, 6, { hairStyle: 0, hair: 4, skin: 3, outfit: 4, band: 2, bandSpot: 1 }, 120, 110, 10),
-  Q('c3', 'C', 'The Swamp Serpent', 'A huge snake is blocking the trade river.', 9, 1, 'Swamp Serpent', 'beast_snake', 10, 320, 23, 10, { tint: '#3a8a4a' }, 200, 170, 12),
+  Q('d1', 'D', 'Lost Cat Rescue', 'A noble\'s cat climbed into the old watchtower. Something else is up there too.', 1, 0, 'Feral Tom', 'beast_cat', 1, 95, 23, 1, { tint: '#c8892f' }, 35, 30, 1),
+  Q('d2', 'D', 'Farm Field Pests', 'A giant boar is wrecking the rice fields outside the gate.', 1, 0, 'Field Boar', 'beast_boar', 2, 127, 23, 2, { tint: '#7a4a2a' }, 45, 40, 2),
+  Q('d3', 'D', 'Escort the Merchant', 'Bandits have been robbing carts on the forest road.', 2, 0, 'Road Bandit', 'ninja', 3, 177, 24, 3, { hairStyle: 1, hair: 1, skin: 2, outfit: 6, band: 1, bandSpot: 3 }, 60, 55, 3),
+  Q('d4', 'D', 'Night Watch', 'Something has been howling near the village walls at night.', 3, 0, 'Shadow Wolf', 'beast_wolf', 4, 225, 26, 4, { tint: '#4a4a5a' }, 75, 60, 4),
+  Q('c1', 'C', 'Smugglers\' Cove', 'Smugglers are hiding stolen scrolls in a sea cave.', 5, 1, 'Smuggler Chief', 'ninja', 6, 260, 35, 6, { hairStyle: 0, hair: 4, skin: 3, outfit: 4, band: 2, bandSpot: 1 }, 120, 110, 10),
+  Q('c3', 'C', 'The Swamp Serpent', 'A huge snake is blocking the trade river.', 9, 1, 'Swamp Serpent', 'beast_snake', 10, 420, 48, 10, { tint: '#3a8a4a' }, 200, 170, 12),
 ];
 const RANKS = ['Academy Student', 'Genin', 'Chunin', 'Jonin'];
 const LCAP = [5, 15, 30, 60], SCAP = [20, 50, 100, 200];
 const R = Math.random;
-const jnext = (lv) => (3 + lv * 2) * 10;
-const PER = [560, 280, 170, 85];
+const TM = [0.4, 1, 1.5, 2.5];
+const tierOf = (id) => (MOVES.find((m) => m.id === id) || { tier: 0 }).tier;
+const jnext = (lv, id) => Math.round((3 + lv * 2) * 10 * TM[tierOf(id)]);
+export const pointCost = (v) => v < 10 ? 40 : v < 15 ? 120 : v < 20 ? 200 : v < 50 ? 200 + 5 * (v - 20) : v < 100 ? 350 + 2 * (v - 50) : 450 + (v - 100);
 
 export function enrich(c) {
   const ri = Math.max(0, RANKS.indexOf(c.rank));
   c.energy_at = c.energy_at || Date.now();
   const energy = Math.min(100, c.energy + Math.floor((Date.now() - c.energy_at) / 9000));
   c.jutsu = c.jutsu || {};
-  for (const k in c.jutsu) c.jutsu[k].next = jnext(c.jutsu[k].level);
+  for (const k in c.jutsu) c.jutsu[k].next = jnext(c.jutsu[k].level, k);
   return { ...c, energy, energy_max: 100, energy_regen_sec: 9, hp_max: 80 + c.level * 10 + c.strength * 4 + c.willpower,
     stamina_max: 40 + c.level * 3 + c.strength * 2 + c.agility * 2, chakra_max: 40 + c.level * 3 + c.intelligence * 2 + c.willpower * 2,
-    stat_cap: SCAP[ri], level_cap: LCAP[ri], rank_index: ri, stat_point_cost: PER[ri], train_energy: 10, train_prog: c.train_prog || {} };
+    stat_cap: SCAP[ri], level_cap: LCAP[ri], rank_index: ri, train_energy: 10, train_prog: c.train_prog || {},
+    point_cost: { strength: pointCost(c.strength), agility: pointCost(c.agility), intelligence: pointCost(c.intelligence), willpower: pointCost(c.willpower) } };
 }
 function gain(c, id, n) {
   const j = c.jutsu[id] || (c.jutsu[id] = { level: 1, xp: 0 }); let up = 0;
   if (j.level >= 10) return { level: 10, up: 0 };
-  j.xp += n; while (j.level < 10 && j.xp >= jnext(j.level)) { j.xp -= jnext(j.level); j.level++; up++; }
+  j.xp += n; while (j.level < 10 && j.xp >= jnext(j.level, id)) { j.xp -= jnext(j.level, id); j.level++; up++; }
   return { level: j.level, up };
 }
 function takeEnergy(c, times) { const e = enrich(c).energy, n = Math.min(Math.max(1, times), Math.floor(e / 10)); if (n < 1) throw new Error('Not enough energy. It refills over time.'); c.energy = e - n * 10; c.energy_at = Date.now(); return n; }
@@ -56,7 +59,7 @@ export function trainStat(c, s, times = 1) {
   const x = enrich(c); if (c[s] >= x.stat_cap) throw new Error('That stat is at the cap for your rank. Rank up to train further.');
   const e = x.energy, n = Math.min(Math.max(1, times), Math.floor(e / 10)); if (n < 1) throw new Error('Not enough energy. It refills over time.');
   c.train_prog = c.train_prog || {}; let prog = c.train_prog[s] || 0, gained = 0, used = 0;
-  for (let i = 0; i < n && c[s] < x.stat_cap; i++) { prog += 10; used++; if (prog >= x.stat_point_cost) { prog -= x.stat_point_cost; c[s]++; gained++; } }
+  for (let i = 0; i < n && c[s] < x.stat_cap; i++) { prog += 10; used++; if (prog >= pointCost(c[s])) { prog -= pointCost(c[s]); c[s]++; gained++; } }
   if (c[s] >= x.stat_cap) prog = 0;
   c.train_prog[s] = prog; c.energy = e - used * 10; c.energy_at = Date.now();
   return { ...enrich(c), gained };
