@@ -25,6 +25,12 @@ export function onAuth(cb) {
   if (OFFLINE) return;
   sb.auth.onAuthStateChange((_e, s) => cb(s ? s.user : null));
 }
+// hidden tester entrance (?tester): a guest account with no password
+export async function signInGuest() {
+  const { data, error } = await sb.auth.signInAnonymously();
+  if (error) throw error;
+  return data.user;
+}
 export async function signInGoogle() {
   if (OFFLINE) { sessionStorage.setItem('mockUser', JSON.stringify({ id: 'u' + Math.random().toString(36).slice(2, 8), email: 'tester@example.com' })); location.reload(); return; }
   const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });

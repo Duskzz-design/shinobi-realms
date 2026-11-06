@@ -54,6 +54,7 @@ function titleScreen() {
     <div class="scroll title-card">
       <button class="btn google" id="g"><span class="gicon"></span>Sign in with Google</button>
       <p class="fine">Free to play. Your ninja is saved to your Google account.</p>
+      ${new URLSearchParams(location.search).has('tester') ? '<button class="btn ghost small" id="guest">Tester: play as guest</button>' : ''}
     </div>
     <div class="credits">Season 1 · Early Access</div>
   </div>`);
@@ -61,6 +62,8 @@ function titleScreen() {
     e.currentTarget.disabled = true; e.currentTarget.lastChild.textContent = 'Opening Google…';
     try { await net.signInGoogle(); } catch (err) { toast(friendly(err)); e.currentTarget.disabled = false; e.currentTarget.lastChild.textContent = 'Sign in with Google'; }
   };
+  const gb = el.querySelector('#guest');
+  if (gb) gb.onclick = async () => { gb.disabled = true; try { await net.signInGuest(); location.reload(); } catch (err) { toast(friendly(err)); gb.disabled = false; } };
   show(el);
 }
 
