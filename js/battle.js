@@ -58,11 +58,11 @@ export async function openTraining(root, getChar, setChar, startTab = 'stats') {
   function render() {
     const c = getChar(), need = c.level * 100, v = VILLAGES[c.village], e = energyNow();
     const statRows = Object.entries(STATS).map(([k, s]) => {
-      const atCap = c[k] >= c.stat_cap;
+      const atCap = c[k] >= c.stat_cap, tc = (c.train_cost || {})[k] || 10;
       return `<div class="tst"><div class="tic" style="background:${s.color}">${s.icon}</div>
         <div class="tinfo"><b>${s.label} <span>${c[k]}</span><em>/ ${c.stat_cap}</em></b><small>${s.blurb}</small>
         <div class="mini"><i style="width:${Math.min(100, 100 * c[k] / c.stat_cap)}%;background:${s.color}"></i></div></div>
-        <button class="btn small primary" data-s="${k}" ${atCap || e < 10 || busy ? 'disabled' : ''}>${atCap ? 'Capped' : 'Train<br><small>⚡10</small>'}</button></div>`;
+        <button class="btn small primary" data-s="${k}" ${atCap || e < tc || busy ? 'disabled' : ''}>${atCap ? 'Capped' : `Train<br><small>⚡${tc}</small>`}</button></div>`;
     }).join('');
     const moves = cat ? cat.moves.filter((m) => m.style !== 'none') : [];
     const jutsuRows = Object.entries(STYLES).map(([sk, st]) => `<h4 style="color:${st.color}">${st.icon} ${st.label} <small>uses ${STATS[st.main].short} + ${STATS[st.sec].short}</small></h4>` +

@@ -33,6 +33,7 @@ const RANKS = ['Academy Student', 'Genin', 'Chunin', 'Jonin'];
 const LCAP = [5, 15, 30, 60], SCAP = [20, 50, 100, 200];
 const R = Math.random;
 const jnext = (lv) => 3 + lv * 2;
+export const trainCost = (v) => 10 + Math.floor(v * 0.45);
 
 export function enrich(c) {
   const ri = Math.max(0, RANKS.indexOf(c.rank));
@@ -42,7 +43,8 @@ export function enrich(c) {
   for (const k in c.jutsu) c.jutsu[k].next = jnext(c.jutsu[k].level);
   return { ...c, energy, energy_max: 100, energy_regen_sec: 9, hp_max: 80 + c.level * 10 + c.strength * 4 + c.willpower,
     stamina_max: 40 + c.level * 3 + c.strength * 2 + c.agility * 2, chakra_max: 40 + c.level * 3 + c.intelligence * 2 + c.willpower * 2,
-    stat_cap: SCAP[ri], level_cap: LCAP[ri], rank_index: ri };
+    stat_cap: SCAP[ri], level_cap: LCAP[ri], rank_index: ri,
+    train_cost: { strength: trainCost(c.strength), agility: trainCost(c.agility), intelligence: trainCost(c.intelligence), willpower: trainCost(c.willpower) } };
 }
 function gain(c, id, n) {
   const j = c.jutsu[id] || (c.jutsu[id] = { level: 1, xp: 0 }); let up = 0;
@@ -50,8 +52,8 @@ function gain(c, id, n) {
   j.xp += n; while (j.level < 10 && j.xp >= jnext(j.level)) { j.xp -= jnext(j.level); j.level++; up++; }
   return { level: j.level, up };
 }
-function spend(c) { const e = enrich(c).energy; if (e < 10) throw new Error('Not enough energy. It refills over time.'); c.energy = e - 10; c.energy_at = Date.now(); }
-export function trainStat(c, s) { const x = enrich(c); if (c[s] >= x.stat_cap) throw new Error('That stat is at the cap for your rank. Rank up to train further.'); spend(c); c[s]++; return enrich(c); }
+function spend(c, cost = 10) { const e = enrich(c).energy; if (e < cost) throw new Error(`Not enough energy (needs ${cost}). It refills over time.`); c.energy = e - cost; c.energy_at = Date.now(); }
+export function trainStat(c, s) { const x = enrich(c); if (c[s] >= x.stat_cap) throw new Error('That stat is at the cap for your rank. Rank up to train further.'); spend(c, trainCost(c[s])); c[s]++; return enrich(c); }
 export function trainJutsu(c, id) { const mv = MOVES.find((m) => m.id === id); if (mv.tier > enrich(c).rank_index) throw new Error('Your rank is too low to learn that jutsu.'); spend(c); const g = gain(c, id, 2); return { ...enrich(c), trained: g }; }
 
 export function mockStart(c, mid) {
