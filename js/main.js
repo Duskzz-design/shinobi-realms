@@ -174,7 +174,8 @@ function creatorScreen(existing) {
 function profileScreen(c, fresh = false) {
   const v = VILLAGES[c.village];
   const xpNeed = c.level * 100;
-  const styles = [['Ninjutsu', c.ninjutsu, '#e8742c'], ['Genjutsu', c.genjutsu, '#9a5ad0'], ['Taijutsu', c.taijutsu, '#d84a3a'], ['Bukijutsu', c.bukijutsu, '#7a8a9a']];
+  const styles = [['Strength', c.strength, '#d84a3a'], ['Agility', c.agility, '#3a8a4a'], ['Intelligence', c.intelligence, '#2f7fc4'], ['Willpower', c.willpower, '#9a5ad0']];
+  const cap = c.stat_cap || 20;
   const el = h(`
   <div class="screen profile">
     <header class="bar"><h2>${fresh ? 'Welcome, ninja!' : 'Your Ninja'}</h2><button class="btn ghost small" id="out">Sign out</button></header>
@@ -189,7 +190,7 @@ function profileScreen(c, fresh = false) {
           <small>${c.xp} / ${xpNeed} XP · 💰 ${c.ryo} ryo</small>
         </div>
       </div>
-      <div class="styles">${styles.map(([n, val, col]) => `<div class="st"><span>${n}</span><div class="pips">${Array.from({ length: 10 }, (_, i) => `<i style="${i < val ? 'background:' + col : ''}"></i>`).join('')}</div><b>${val}</b></div>`).join('')}</div>
+      <div class="styles">${styles.map(([n, val, col]) => `<div class="st"><span>${n}</span><div class="pips">${Array.from({ length: 10 }, (_, i) => `<i style="${i < Math.round(10 * val / cap) ? 'background:' + col : ''}"></i>`).join('')}</div><b>${val}</b></div>`).join('')}</div>
       <div class="actions">
         <button class="btn primary big" id="enter">Enter ${v.short} Village</button>
         <button class="btn ghost small" id="edit">Change look</button>

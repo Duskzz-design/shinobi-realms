@@ -19,6 +19,8 @@ export async function enterWorld(app, char, hooks) {
   const others = new Map(); // id -> {meta, x,y, tx,ty, dir, moving, anim, last}
   const bubbles = new Map(); // id -> {text, until}
   const v = VILLAGES[char.village];
+  char._loadedAt = char._loadedAt || Date.now();
+  setInterval(() => { try { refreshPlate(); } catch {} }, 10000);
 
   // ---------- DOM ----------
   const root = h(`
@@ -31,7 +33,7 @@ export async function enterWorld(app, char, hooks) {
       </div>
       <div class="hud-right">
         <div class="online" title="Ninja in this village right now">👥 <span id="count">1</span> here</div>
-        <button class="btn small primary train-btn" id="trainBtn">⭐ Ninja<i id="ptsBadge" hidden></i></button>
+        <button class="btn small primary train-btn" id="trainBtn">⭐ Train<i id="ptsBadge" hidden></i></button>
         <button class="btn small ghost" id="menuBtn">☰ Menu</button>
       </div>
     </div>
@@ -160,14 +162,14 @@ export async function enterWorld(app, char, hooks) {
   function train() { openTraining(root, () => char, (c) => { Object.assign(char, c); refreshPlate(); }); }
   function refreshPlate() {
     root.querySelector('#plateSub').textContent = `Lv ${char.level} · ${char.rank}`;
-    root.querySelector('#ptsBadge').hidden = !char.stat_points;
+    root.querySelector('#ptsBadge').hidden = !(char.energy + Math.floor((Date.now() - (char._loadedAt || Date.now())) / 9000) >= (char.energy_max || 100));
     me.level = char.level; me.rank = char.rank;
   }
   if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char };
   function startBattle(mid) {
     keys.clear();
     runBattle(root, char, mid, async (r) => {
-      try { Object.assign(char, await net.loadCharacter()); } catch {}
+      try { Object.assign(char, await net.loadCharacter(), { _loadedAt: Date.now() }); } catch {}
       refreshPlate(); room?.track(meta());
       if (r && r.status === 'won' && r.result && r.result.leveled) room?.send('chat', { id: me.id, name: me.name, village: me.village, text: `reached level ${char.level}! 🎉`, ch: 'village' });
       if (r && r.train) train();

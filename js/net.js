@@ -37,8 +37,8 @@ export async function signOut() {
 
 // ---------- character ----------
 export async function loadCharacter() {
-  if (OFFLINE) { const c = sessionStorage.getItem('mockChar'); return c ? JSON.parse(c) : null; }
-  const { data, error } = await sb.from('characters').select('*').maybeSingle();
+  if (OFFLINE) { const c = sessionStorage.getItem('mockChar'); if (!c) return null; const o = await import('./offline.js'); return o.enrich(JSON.parse(c)); }
+  const { data, error } = await sb.rpc('get_me');
   if (error) throw error;
   return data;
 }
@@ -50,15 +50,15 @@ export async function nameAvailable(name) {
 }
 export async function createCharacter({ name, village, appearance }) {
   if (OFFLINE) {
-    const c = { user_id: JSON.parse(sessionStorage.getItem('mockUser')).id, name, village, appearance, level: 1, xp: 0, rank: 'Academy Student', stat_points: 0, ninjutsu: 1, genjutsu: 1, taijutsu: 1, bukijutsu: 1, ryo: 100 };
-    sessionStorage.setItem('mockChar', JSON.stringify(c)); return c;
+    const c = { user_id: JSON.parse(sessionStorage.getItem('mockUser')).id, name, village, appearance, level: 1, xp: 0, rank: 'Academy Student', strength: 5, agility: 5, intelligence: 5, willpower: 5, energy: 100, energy_at: Date.now(), jutsu: {}, ryo: 100 };
+    sessionStorage.setItem('mockChar', JSON.stringify(c)); return (await import('./offline.js')).enrich(c);
   }
-  const { data, error } = await sb.from('characters').insert({ name, village, appearance }).select('*').single();
+  const { error } = await sb.from('characters').insert({ name, village, appearance });
   if (error) {
     if (error.code === '23505') throw new Error('That name was just taken. Try another.');
     throw error;
   }
-  return data;
+  return loadCharacter();
 }
 export async function savePosition(x, y) {
   x = Math.round(x); y = Math.round(y);
@@ -161,16 +161,22 @@ export async function battleAct(battleId, move) {
   if (error) throw rpcErr(error);
   return data;
 }
-export async function spendPoints(style, n = 1) {
-  if (OFFLINE) { const c = mockChar(); if (c.stat_points < n) throw new Error('Not enough points.'); c[style] += n; c.stat_points -= n; saveMock(c); return c; }
-  const { data, error } = await sb.rpc('spend_points', { p_style: style, p_n: n });
+export async function trainStat(stat) {
+  if (OFFLINE) { const o = await import('./offline.js'); const c = mockChar(); const r = o.trainStat(c, stat); saveMock(c); return r; }
+  const { data, error } = await sb.rpc('train_stat', { p_stat: stat });
+  if (error) throw rpcErr(error);
+  return data;
+}
+export async function trainJutsu(move) {
+  if (OFFLINE) { const o = await import('./offline.js'); const c = mockChar(); const r = o.trainJutsu(c, move); saveMock(c); return r; }
+  const { data, error } = await sb.rpc('train_jutsu', { p_move: move });
   if (error) throw rpcErr(error);
   return data;
 }
 
 export async function updateAppearance(appearance) {
-  if (OFFLINE) { const c = JSON.parse(sessionStorage.getItem('mockChar')); c.appearance = appearance; sessionStorage.setItem('mockChar', JSON.stringify(c)); return c; }
-  const { data, error } = await sb.from('characters').update({ appearance }).eq('user_id', (await getUser()).id).select('*').single();
+  if (OFFLINE) { const c = JSON.parse(sessionStorage.getItem('mockChar')); c.appearance = appearance; sessionStorage.setItem('mockChar', JSON.stringify(c)); return loadCharacter(); }
+  const { error } = await sb.from('characters').update({ appearance }).eq('user_id', (await getUser()).id);
   if (error) throw error;
-  return data;
+  return loadCharacter();
 }

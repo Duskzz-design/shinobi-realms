@@ -5,16 +5,22 @@ import { ninjaSprite, beastSprite, VILLAGES } from './sprites.js';
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+export const STATS = {
+  strength: { label: 'Strength', short: 'STR', icon: '💪', color: '#d84a3a', blurb: 'Taijutsu power, Bukijutsu bonus. More health, stamina and defence.' },
+  agility: { label: 'Agility', short: 'AGI', icon: '💨', color: '#3a8a4a', blurb: 'Bukijutsu power, Taijutsu bonus. More stamina, dodges and critical hits.' },
+  intelligence: { label: 'Intelligence', short: 'INT', icon: '📜', color: '#2f7fc4', blurb: 'Ninjutsu power, Genjutsu bonus. More chakra.' },
+  willpower: { label: 'Willpower', short: 'WIL', icon: '🔮', color: '#9a5ad0', blurb: 'Genjutsu power, Ninjutsu bonus. More chakra and health; effects land more often.' },
+};
 export const STYLES = {
-  ninjutsu: { label: 'Ninjutsu', color: '#e8742c', icon: '🔥', blurb: 'Elemental chakra attacks. Big damage, costs chakra. Also raises max chakra.' },
-  genjutsu: { label: 'Genjutsu', color: '#9a5ad0', icon: '🌀', blurb: 'Illusions that confuse or freeze enemies. Raises max chakra.' },
-  taijutsu: { label: 'Taijutsu', color: '#d84a3a', icon: '👊', blurb: 'Free physical strikes. Raises max health and defence.' },
-  bukijutsu: { label: 'Bukijutsu', color: '#7a8a9a', icon: '🗡️', blurb: 'Weapons. Cheap, accurate, frequent critical hits.' },
+  ninjutsu: { label: 'Ninjutsu', color: '#e8742c', icon: '🔥', main: 'intelligence', sec: 'willpower' },
+  genjutsu: { label: 'Genjutsu', color: '#9a5ad0', icon: '🌀', main: 'willpower', sec: 'intelligence' },
+  taijutsu: { label: 'Taijutsu', color: '#d84a3a', icon: '👊', main: 'strength', sec: 'agility' },
+  bukijutsu: { label: 'Bukijutsu', color: '#7a8a9a', icon: '🗡️', main: 'agility', sec: 'strength' },
 };
 const RANKS = ['Academy Student', 'Genin', 'Chunin', 'Jonin'];
+const TIER = ['Academy', 'Genin', 'Chunin', 'Jonin'];
 const GRADE_COL = { D: '#3a8a4a', C: '#2f7fc4', B: '#9a5ad0', A: '#e8742c', S: '#c43c32' };
-export const maxHp = (c) => 80 + c.level * 12 + c.taijutsu * 5;
-export const maxChakra = (c) => 30 + c.level * 4 + c.ninjutsu * 4 + c.genjutsu * 3;
+const cost = (m) => [m.stamina ? `💪${m.stamina}` : '', m.chakra ? `💧${m.chakra}` : ''].filter(Boolean).join(' ') || 'Free';
 
 function overlay(root, cls, html) {
   const el = h(`<div class="ov ${cls}">${html}</div>`);
@@ -42,38 +48,61 @@ export async function openMissionBoard(root, char, onPick) {
 }
 
 // ---------- training ----------
-export async function openTraining(root, getChar, setChar) {
+export async function openTraining(root, getChar, setChar, startTab = 'stats') {
   const el = overlay(root, 'board-wrap', `<div class="scroll board train"></div>`);
-  el.addEventListener('click', (e) => { if (e.target === el) el.remove(); });
-  let cat = null;
+  let tab = startTab, cat = null, busy = false, alive = true;
+  const close = () => { alive = false; el.remove(); };
+  el.addEventListener('click', (e) => { if (e.target === el) close(); });
   try { cat = await net.getCatalog(); } catch {}
-  const render = () => {
-    const c = getChar(), need = c.level * 100, v = VILLAGES[c.village];
-    const next = (style) => {
-      const n = cat && cat.moves.filter((m) => m.style === style && m.req > c[style]).sort((a, b) => a.req - b.req)[0];
-      return n ? `Next: <b>${esc(n.name)}</b> at ${n.req}` : 'All techniques learned';
-    };
+  const energyNow = () => { const c = getChar(); return Math.min(c.energy_max || 100, c.energy + Math.floor((Date.now() - (c._loadedAt || Date.now())) / 1000 / (c.energy_regen_sec || 9))); };
+  function render() {
+    const c = getChar(), need = c.level * 100, v = VILLAGES[c.village], e = energyNow();
+    const statRows = Object.entries(STATS).map(([k, s]) => {
+      const atCap = c[k] >= c.stat_cap;
+      return `<div class="tst"><div class="tic" style="background:${s.color}">${s.icon}</div>
+        <div class="tinfo"><b>${s.label} <span>${c[k]}</span><em>/ ${c.stat_cap}</em></b><small>${s.blurb}</small>
+        <div class="mini"><i style="width:${Math.min(100, 100 * c[k] / c.stat_cap)}%;background:${s.color}"></i></div></div>
+        <button class="btn small primary" data-s="${k}" ${atCap || e < 10 || busy ? 'disabled' : ''}>${atCap ? 'Capped' : 'Train<br><small>⚡10</small>'}</button></div>`;
+    }).join('');
+    const moves = cat ? cat.moves.filter((m) => m.style !== 'none') : [];
+    const jutsuRows = Object.entries(STYLES).map(([sk, st]) => `<h4 style="color:${st.color}">${st.icon} ${st.label} <small>uses ${STATS[st.main].short} + ${STATS[st.sec].short}</small></h4>` +
+      moves.filter((m) => m.style === sk).map((m) => {
+        const locked = m.tier > c.rank_index, j = (c.jutsu || {})[m.id] || { level: 1, xp: 0, next: 5 }, maxed = j.level >= 10;
+        return `<div class="tst jt ${locked ? 'locked' : ''}"><div class="tinfo"><b>${locked ? '🔒 ' : ''}${esc(m.name)} ${locked ? '' : `<span>Lv ${j.level}</span>`}</b>
+          <small>${TIER[m.tier]} jutsu · Power ${m.power} · ${cost(m)}${m.effect && m.effect !== 'focus' ? ' · ' + (m.effect === 'confuse' ? 'Confuse' : 'Stun') : ''}</small>
+          ${locked ? `<small class="nx">Unlocks at ${RANKS[m.tier]} rank</small>` : `<div class="mini"><i style="width:${maxed ? 100 : 100 * j.xp / j.next}%;background:${st.color}"></i></div>`}</div>
+          ${locked ? '' : `<button class="btn small primary" data-j="${m.id}" ${maxed || e < 10 || busy ? 'disabled' : ''}>${maxed ? 'Mastered' : 'Train<br><small>⚡10</small>'}</button>`}</div>`;
+      }).join('')).join('');
     el.querySelector('.board').innerHTML = `
       <h3>${esc(c.name)}</h3>
       <p class="sub" style="color:${v.dark}"><b>${v.name}</b> · ${esc(c.rank)} · Level ${c.level}</p>
       <div class="xp"><div style="width:${Math.min(100, (c.xp / need) * 100)}%"></div></div>
-      <p class="sub">${c.xp} / ${need} XP · 💰 ${c.ryo} ryo · ❤️ ${maxHp(c)} health · 💧 ${maxChakra(c)} chakra</p>
-      <div class="pts ${c.stat_points ? 'has' : ''}">${c.stat_points ? `You have <b>${c.stat_points}</b> point${c.stat_points > 1 ? 's' : ''} to spend!` : 'Win missions to level up and earn points.'}</div>
-      <div class="tstyles">${Object.entries(STYLES).map(([k, s]) => `
-        <div class="tst"><div class="tic" style="background:${s.color}">${s.icon}</div>
-          <div class="tinfo"><b>${s.label} <span>${c[k]}</span></b><small>${s.blurb}</small><small class="nx">${next(k)}</small></div>
-          <button class="btn small primary" data-s="${k}" ${c.stat_points ? '' : 'disabled'}>+1</button></div>`).join('')}</div>
+      <p class="sub">${c.xp} / ${need} XP · 💰 ${c.ryo} ryo</p>
+      <div class="pools"><span>❤️ <b>${c.hp_max}</b> HP</span><span>💪 <b>${c.stamina_max}</b> Stamina</span><span>💧 <b>${c.chakra_max}</b> Chakra</span></div>
+      <div class="energy"><b>⚡ Energy ${e} / ${c.energy_max}</b><div class="ebar"><i style="width:${e}%"></i></div>
+        <small>${e >= c.energy_max ? 'Full! Spend it on training.' : `+1 every ${c.energy_regen_sec}s · full in ${fmt((c.energy_max - e) * c.energy_regen_sec)}`}</small></div>
+      <div class="ttabs"><button data-tab="stats" class="${tab === 'stats' ? 'on' : ''}">General stats</button><button data-tab="jutsu" class="${tab === 'jutsu' ? 'on' : ''}">Jutsu</button></div>
+      <div class="tstyles">${tab === 'stats' ? statRows : jutsuRows}</div>
       <button class="btn ghost" data-x>Close</button>`;
-    el.querySelector('[data-x]').onclick = () => el.remove();
-    el.querySelectorAll('[data-s]').forEach((b) => (b.onclick = async () => {
-      b.disabled = true;
-      try { setChar(await net.spendPoints(b.dataset.s, 1)); } catch (e) { alertMsg(el, e.message); }
-      render();
-    }));
-  };
+    el.querySelector('[data-x]').onclick = close;
+    el.querySelectorAll('[data-tab]').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; render(); }));
+    el.querySelectorAll('[data-s]').forEach((b) => (b.onclick = () => doTrain(() => net.trainStat(b.dataset.s), `${STATS[b.dataset.s].label} +1`)));
+    el.querySelectorAll('[data-j]').forEach((b) => (b.onclick = () => doTrain(() => net.trainJutsu(b.dataset.j), null)));
+  }
+  async function doTrain(fn, msg) {
+    if (busy) return; busy = true; render();
+    try {
+      const r = await fn(); r._loadedAt = Date.now(); setChar(r);
+      const t = r.trained; toast(msg || (t && t.up ? `Jutsu level up! Now level ${t.level}.` : 'Training complete. +2 jutsu XP'), 'ok');
+    } catch (e) { toast(e.message); }
+    busy = false; render();
+  }
   render();
+  const tick = setInterval(() => { if (!alive || !el.isConnected) return clearInterval(tick); if (!busy) render(); }, 3000);
 }
-function alertMsg(el, msg) { const t = h(`<div class="toast err">${esc(msg)}</div>`); document.body.appendChild(t); setTimeout(() => t.remove(), 3500); }
+const fmt = (s) => s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`;
+function toast(msg, kind = 'err') { const t = h(`<div class="toast ${kind}">${esc(msg)}</div>`); document.body.appendChild(t); setTimeout(() => t.remove(), 3000); }
+function alertMsg(el, msg) { toast(msg); }
 
 // ---------- battle ----------
 export async function runBattle(root, char, missionId, onEnd) {
@@ -85,13 +114,13 @@ export async function runBattle(root, char, missionId, onEnd) {
   const el = overlay(root, 'battle', `
     <div class="b-top"><span class="grade" style="background:${GRADE_COL[st().mission.grade]}">${st().mission.grade}</span><b>${esc(st().mission.name)}</b><span class="turn">Turn 1</span></div>
     <div class="b-arena"><canvas width="320" height="180"></canvas>
-      <div class="hpbox e"><b>${esc(st().enemy.name)}</b><small>Lv ${st().enemy.level}</small><div class="bar hp"><i></i></div><span class="num ehp"></span></div>
-      <div class="hpbox p"><b>${esc(char.name)}</b><small>Lv ${char.level}</small><div class="bar hp"><i></i></div><span class="num php"></span><div class="bar ch"><i></i></div><span class="num pch"></span></div>
+      <div class="hpbox e"><b>${esc(st().enemy.name)}</b><small>Lv ${st().enemy.level}</small><div class="gbar hp"><i></i></div><span class="num ehp"></span></div>
+      <div class="hpbox p"><b>${esc(char.name)}</b><small>Lv ${char.level}</small><div class="gbar hp"><i></i></div><span class="num php"></span><div class="gbar sta"><i></i></div><span class="num pst"></span><div class="gbar ch"><i></i></div><span class="num pch"></span></div>
     </div>
     <div class="b-log">What will you do?</div>
     <div class="b-tabs">${Object.entries(STYLES).map(([k, s]) => `<button data-tab="${k}" style="--c:${s.color}">${s.icon} <span>${s.label}</span></button>`).join('')}</div>
     <div class="b-moves"></div>
-    <div class="b-extra"><button class="btn small ghost" data-m="focus">💧 Focus chakra</button><button class="btn small ghost" data-m="flee">🏃 Retreat</button></div>`);
+    <div class="b-extra"><button class="btn small ghost" data-m="focus">🧘 Focus</button><button class="btn small ghost" data-m="flee">🏃 Retreat</button></div>`);
   const cv = el.querySelector('canvas'), ctx = cv.getContext('2d');
   const logEl = el.querySelector('.b-log');
   let tab = 'ninjutsu', busy = false, alive = true;
@@ -102,10 +131,10 @@ export async function runBattle(root, char, missionId, onEnd) {
   function renderMoves() {
     el.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
     el.querySelector('.b-moves').innerHTML = moves.filter((m) => m.style === tab).map((m) => {
-      const learned = char[m.style] >= m.req, afford = st().pch >= m.cost;
+      const learned = m.tier <= char.rank_index, afford = st().pst >= m.stamina && st().pch >= m.chakra, j = (char.jutsu || {})[m.id] || { level: 1 };
       return `<button class="mv ${learned ? '' : 'locked'}" data-m="${m.id}" style="--c:${STYLES[m.style].color}" ${learned && afford && !busy ? '' : 'disabled'}>
-        <b>${learned ? esc(m.name) : '🔒 ' + esc(m.name)}</b>
-        <small>${learned ? `${m.power ? 'Power ' + m.power : ''}${m.effect && m.effect !== 'focus' ? (m.power ? ' · ' : '') + (m.effect === 'confuse' ? 'Confuse' : 'Stun') : ''} · ${m.cost ? '💧' + m.cost : 'Free'}` : `Needs ${STYLES[m.style].label} ${m.req}`}</small></button>`;
+        <b>${learned ? esc(m.name) + ` <span class="jl">Lv ${j.level}</span>` : '🔒 ' + esc(m.name)}</b>
+        <small>${learned ? `Pow ${m.power}${m.effect && m.effect !== 'focus' ? ' · ' + (m.effect === 'confuse' ? 'Confuse' : 'Stun') : ''} · ${cost(m)}` : `${RANKS[m.tier]} rank`}</small></button>`;
     }).join('');
     el.querySelectorAll('.b-moves [data-m]').forEach((b) => (b.onclick = () => act(b.dataset.m)));
     el.querySelectorAll('.b-extra [data-m]').forEach((b) => (b.disabled = busy));
@@ -117,6 +146,8 @@ export async function runBattle(root, char, missionId, onEnd) {
     el.querySelector('.hpbox.e .hp i').style.width = (100 * s.ehp / s.emax) + '%';
     el.querySelector('.hpbox.p .hp i').style.width = (100 * s.php / s.pmax) + '%';
     el.querySelector('.hpbox.p .ch i').style.width = (100 * s.pch / s.pchmax) + '%';
+    el.querySelector('.hpbox.p .sta i').style.width = (100 * s.pst / s.pstmax) + '%';
+    el.querySelector('.pst').textContent = `💪 ${s.pst}/${s.pstmax}`;
     el.querySelector('.ehp').textContent = `${s.ehp}/${s.emax}`;
     el.querySelector('.php').textContent = `❤️ ${s.php}/${s.pmax}`;
     el.querySelector('.pch').textContent = `💧 ${s.pch}/${s.pchmax}`;
@@ -203,7 +234,7 @@ export async function runBattle(root, char, missionId, onEnd) {
     const prev = { ...st() };
     for (const ev of res.events) {
       if (ev.who === 'p') {
-        if (ev.focus) { logEl.textContent = `You focus your chakra. +${ev.focus} chakra.`; float('p', '+' + ev.focus, '#7cc4ec'); await wait(700); continue; }
+        if (ev.focus) { logEl.textContent = `You focus. +${ev.focus} stamina and chakra.`; float('p', '+' + ev.focus, '#7cc4ec'); await wait(700); continue; }
         logEl.textContent = `You used ${ev.name}!`;
         if (ev.style === 'taijutsu') await lunge('p');
         else if (ev.style === 'genjutsu') { fx.swirl = 30; await wait(450); }
@@ -215,6 +246,7 @@ export async function runBattle(root, char, missionId, onEnd) {
           prev.ehp = Math.max(0, prev.ehp - ev.dmg);
         } else { float('e', 'MISS', '#c9ccd4'); logEl.textContent = `${ev.name} missed!`; }
         battle.state = { ...st(), ehp: prev.ehp }; bars();
+        if (ev.jutsu_up) { char.jutsu = char.jutsu || {}; char.jutsu[ev.move] = { ...(char.jutsu[ev.move] || {}), level: ev.jutsu_level }; toast(`${ev.name} reached level ${ev.jutsu_level}!`, 'ok'); }
         await wait(650);
       } else {
         const en = st().enemy.name;
@@ -225,6 +257,7 @@ export async function runBattle(root, char, missionId, onEnd) {
           fx.pFlash = 14; fx.shake = ev.special ? 6 : 3; float('p', String(ev.dmg), '#ff8f7a'); logEl.textContent = `${en} hits you for ${ev.dmg}.`;
           prev.php = Math.max(0, prev.php - ev.dmg); battle.state = { ...st(), php: prev.php }; bars();
         }
+        else if (ev.dodge) { float('p', 'DODGE', '#9fe0a0'); logEl.textContent = `You dodged ${en}'s attack!`; }
         else { float('p', 'MISS', '#c9ccd4'); logEl.textContent = `${en} missed!`; }
         await wait(600);
       }
@@ -246,10 +279,10 @@ export async function runBattle(root, char, missionId, onEnd) {
     const box = h(`<div class="b-result"><div class="scroll">
       <h3 class="${won ? 'win' : 'lose'}">${won ? 'Mission complete!' : 'Defeated…'}</h3>
       ${won ? `<p class="big">+${r.xp} XP &nbsp; +${r.ryo} ryo</p>
-        ${r.leveled ? `<p class="lvl">⬆ Level up! You are now level ${r.level}.<br>You have ${r.points} point${r.points === 1 ? '' : 's'} to spend.</p>` : ''}
+        ${r.leveled ? `<p class="lvl">⬆ Level up! You are now level ${r.level}.<br>Your HP, stamina and chakra grew, and your energy is full!</p>` : ''}
         ${r.capped ? `<p class="cap">You've reached the highest level for your rank. Pass the rank exam at the Academy to keep growing.</p>` : ''}`
-        : `<p>You were carried back to the village to recover.${r.ryo_lost ? ` You dropped ${r.ryo_lost} ryo.` : ''}</p><p class="sub">Tip: train your styles, use Mist Veil to make them miss, and Focus when low on chakra.</p>`}
-      <div class="row">${won && r.points ? '<button class="btn primary" data-t>Spend points</button>' : ''}<button class="btn ${won && r.points ? 'ghost' : 'primary'}" data-back>Back to village</button></div>
+        : `<p>You were carried back to the village to recover.${r.ryo_lost ? ` You dropped ${r.ryo_lost} ryo.` : ''}</p><p class="sub">Tip: train your stats with energy, use Mist Veil to make them miss, and Focus when low on stamina or chakra.</p>`}
+      <div class="row"><button class="btn ${won && r.leveled ? 'primary' : 'ghost'}" data-t>Train</button><button class="btn ${won && r.leveled ? 'ghost' : 'primary'}" data-back>Back to village</button></div>
     </div></div>`);
     el.appendChild(box);
     box.querySelector('[data-back]').onclick = () => { alive = false; el.remove(); onEnd({ status: res.status, result: r }); };
