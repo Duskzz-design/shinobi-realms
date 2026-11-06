@@ -115,7 +115,7 @@ export async function openTraining(root, getChar, setChar, startTab = 'stats') {
       <h3>${esc(c.name)}</h3>
       <p class="sub" style="color:${v.dark}"><b>${v.name}</b> · ${esc(c.rank)} · Level ${c.level}</p>
       <div class="xp"><div style="width:${Math.min(100, (c.xp / need) * 100)}%"></div></div>
-      <p class="sub">${c.xp} / ${need} XP · 💰 ${c.ryo} ryo</p>
+      <p class="sub">${c.xp} / ${need} XP · 💰 ${c.ryo} ryo · 🏆 ${c.arena_points || 0} Arena</p>
       <div class="pools"><span>❤️ <b>${c.hp_max}</b> HP</span><span>💪 <b>${c.stamina_max}</b> Stamina</span><span>💧 <b>${c.chakra_max}</b> Chakra</span></div>
       <div class="energy"><b>⚡ Energy ${e} / ${c.energy_max}</b><div class="ebar"><i style="width:${e}%"></i></div>
         <small>${e >= c.energy_max ? 'Full! Spend it on training.' : `+1 every ${c.energy_regen_sec}s · full in ${fmt((c.energy_max - e) * c.energy_regen_sec)}`}</small></div>
