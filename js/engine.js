@@ -377,3 +377,14 @@ export function enemySpec(st) {
     moves: KITS[f.kit] || KITS.ninja, ai: f.kit === 'ranged' ? 'ranged' : 'melee' };
 }
 export function enemyMoveName(u, id) { return id === 'elem' && u.elements[0] ? `${ELEMENT_INFO[u.elements[0]].label} Jutsu` : ENEMY_MOVES[id]?.name || id; }
+// full fight pools for a character row (same formulas as the database)
+export function poolsOf(c) {
+  const hp = 80 + c.level * 10 + c.strength * 4 + c.willpower, st = 40 + c.level * 3 + c.strength * 2 + c.agility * 2, ch = 40 + c.level * 3 + c.intelligence * 2 + c.willpower * 2;
+  return { php: hp, pmax: hp, pst: st, pstmax: st, pch: ch, pchmax: ch };
+}
+// a duel: both sides are players; faster (higher Agility) ninja moves first
+export function newDuel(seed, ca, jla, cb, jlb) {
+  const s = newBattle({ seed, a: playerSpec(ca, jla, poolsOf(ca)), b: playerSpec(cb, jlb, poolsOf(cb)), aStarts: ca.agility >= cb.agility });
+  return s;
+}
+export const DUEL_TURN_SEC = 60;

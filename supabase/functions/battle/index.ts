@@ -1,6 +1,7 @@
 // Battle server: runs the shared hex combat engine with the server's dice.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import * as G from './engine.js';
+import { duelOp } from './duel.ts';
 
 const URL = Deno.env.get('SUPABASE_URL')!, SR = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const admin = createClient(URL, SR, { auth: { persistSession: false } });
@@ -65,6 +66,7 @@ Deno.serve(async (req) => {
       await admin.from('battles').update({ state: b.state, status, updated_at: new Date().toISOString() }).eq('id', b.id);
       return out(view(b, events, result));
     }
+    if (String(body.op).startsWith('duel_')) return out(await duelOp(admin, u.id, body, seed));
     if (body.op === 'get') { const b = await initEngine(body.battle, u.id); return out(view(b)); }
     return out({ error: 'Unknown request.' }, 400);
   } catch (e) {

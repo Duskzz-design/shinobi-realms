@@ -324,3 +324,12 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 @media (max-width: 760px) { .hexb .b-top { font-size: 14px; gap: 6px; } .hexb .b-top .rnd { font-size: 11px; } }
 .elrow { margin: 3px 0; display: flex; gap: 6px; flex-wrap: wrap; }
 .hx-bar { padding-bottom: max(56px, env(safe-area-inset-bottom)); } /* keep buttons clear of the host's corner badge */
+.duel-pop { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(20,12,6,.45); padding: 16px; }
+.duel-pop .scroll { width: min(380px, 100%); text-align: center; font-size: 17px; }
+.duel-pop h3 { font-family: var(--title); font-size: 13px; margin: 6px 0 10px; color: var(--red); }
+.duel-pop .row { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
+.dp-ico { font-size: 40px; animation: pop 0.8s steps(4) infinite alternate; }
+.b-top .tmr { font-family: var(--title); font-size: 11px; background: #24160e; padding: 4px 8px; box-shadow: 0 0 0 2px #ffe07a; margin-left: auto; }
+.b-top .tmr.them { box-shadow: 0 0 0 2px #ff8f7a; opacity: .85; } .b-top .tmr.low { background: var(--red); animation: pop .5s steps(2) infinite alternate; }
+.b-top .tmr:not([hidden]) + .turn { margin-left: 8px; }
+.pcard + [data-duel] { width: 100%; margin: 6px 0; }

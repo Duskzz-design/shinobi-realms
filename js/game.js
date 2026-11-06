@@ -3,6 +3,7 @@ import * as net from './net.js';
 import { buildWorld, blocked, T, MW, MH, BUILDINGS } from './world.js';
 import { ninjaSprite, emblem, VILLAGES } from './sprites.js';
 import { openMissionBoard, openTraining, runBattle, openExamHall } from './battle.js';
+import { setupDuels } from './duelui.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -201,6 +202,16 @@ export async function enterWorld(app, char, hooks) {
   }
   if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char, exam: () => startExam(), hall: () => openExamHall(root, char, startExam), click: (x, y) => { const sp = spotAt(x, y); sp ? goTo(sp.x, sp.y, sp) : goTo(x, y); }, me };
   function startExam() { startBattle(null, () => net.startExam()); }
+  const duels = setupDuels(root, char, {
+    canStart: () => !root.querySelector('.ov.battle'),
+    stopWalking: () => { path = []; dest = null; closeModal(); root.querySelectorAll('.ov').forEach((o) => o.remove()); },
+    onEnd: async (r, d) => {
+      try { Object.assign(char, await net.loadCharacter(), { _loadedAt: Date.now() }); } catch {}
+      refreshPlate();
+      if (r && r.status === 'won') { const foe = d.a === char.user_id ? d.b_name : d.a_name; const m = { id: me.id, name: me.name, village: me.village, text: `won a duel against ${foe}! ⚔️`, ch: 'village' }; room?.send('chat', m); addMsg(m); }
+    },
+  });
+  if (net.isOffline()) window.__duels = duels;
   function startBattle(mid, starter = null) {
     path = []; dest = null;
     runBattle(root, char, mid, async (r) => {
@@ -223,9 +234,10 @@ export async function enterWorld(app, char, hooks) {
   modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
   function playerCard(m) {
     const vv = VILLAGES[m.village] || v;
-    showModal(`<div class="pcard"><canvas width="64" height="80"></canvas><div><h3>${esc(m.name)}</h3><p style="color:${vv.dark}"><b>${vv.name}</b></p><p>${esc(m.rank || 'Academy Student')} · Level ${m.level || 1}</p></div></div><p class="soon">Challenges arrive with the Arena update.</p>`, (el) => {
+    showModal(`<div class="pcard"><canvas width="64" height="80"></canvas><div><h3>${esc(m.name)}</h3><p style="color:${vv.dark}"><b>${vv.name}</b></p><p>${esc(m.rank || 'Academy Student')} · Level ${m.level || 1}</p></div></div><button class="btn primary" data-duel>⚔️ Challenge to a duel</button>`, (el) => {
       const c = el.querySelector('canvas').getContext('2d'); c.imageSmoothingEnabled = false;
       c.drawImage(ninjaSprite(m.look || {}, 0, 0), 0, 0, 18, 26, 5, 2, 54, 78);
+      el.querySelector('[data-duel]').onclick = () => { closeModal(); duels.challenge(m); };
     });
   }
   const SPOT_TEXT = {
@@ -384,7 +396,7 @@ export async function enterWorld(app, char, hooks) {
     removeEventListener('keydown', onKey); removeEventListener('resize', resize);
     document.body.classList.remove('in-world');
     try { await net.savePosition(me.x, me.y); } catch {}
-    room?.leave(); worldRoom?.leave();
+    room?.leave(); worldRoom?.leave(); duels.stop();
   }
   addEventListener('pagehide', () => { room?.leave(); }, { once: true });
   requestAnimationFrame(step);

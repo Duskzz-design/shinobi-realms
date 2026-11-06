@@ -26,10 +26,25 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
   let battle;
   try { battle = await (start ? start() : net.startMission(missionId)); }
   catch (e) { toast(e.message); onEnd(null); return; }
-  let S0 = battle.state, eng = S0.engine;
-  const me = () => eng.units.a, foe = () => eng.units.b;
+  const S0 = battle.state;
+  battleView(root, char, {
+    my: 'a', state: S0, exam: S0.exam,
+    head: `<span class="grade" style="background:${GRADE_COL[S0.mission.grade]}">${S0.exam ? '★' : S0.mission.grade}</span><b>${esc(S0.mission.name)}</b>${S0.exam ? `<span class="rnd">Round ${S0.exam.round}/${S0.exam.rounds}</span>` : ''}`,
+    act: (a) => net.battleAct(battle.id, a),
+    intro: S0.exam && S0.exam.round === 1 ? `<b>${esc(S0.mission.name)}.</b> Move with blue hexes, use rocks as cover, and strike from range. Good luck!` : null,
+    result: (res, finish) => missionResult(root, char, res, S0, battle, onEnd, finish),
+    fled: () => onEnd({ status: 'fled' }),
+  });
+}
+
+// cfg: { my:'a'|'b', state:{engine}, head, act(action)->res, listen(cb)?, deadline()?, result(res, finish), fled(), duel? }
+// res: { status:'active'|'won'|'lost'|'fled', state:{engine}, events, result, seq? }
+export function battleView(root, char, cfg) {
+  let S0 = cfg.state, eng = S0.engine;
+  const MY = cfg.my, OT = MY === 'a' ? 'b' : 'a';
+  const me = () => eng.units[MY], foe = () => eng.units[OT];
   const el = h(`<div class="ov battle hexb">
-    <div class="b-top"><span class="grade" style="background:${GRADE_COL[S0.mission.grade]}">${S0.exam ? '★' : S0.mission.grade}</span><b>${esc(S0.mission.name)}</b>${S0.exam ? `<span class="rnd">Round ${S0.exam.round}/${S0.exam.rounds}</span>` : ''}<span class="turn"></span></div>
+    <div class="b-top">${cfg.head}<span class="tmr" hidden></span><span class="turn"></span></div>
     <div class="hx-arena"><canvas width="${W}" height="${H}"></canvas><div class="hx-banner" hidden></div></div>
     <div class="hx-cards"><div class="hx-card p"></div><div class="hx-card e"></div></div>
     <div class="hx-info"></div>
@@ -50,15 +65,16 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
   const elChip = (e) => e ? `<span class="elc" style="--c:${G.ELEMENT_INFO[e].color}">${G.ELEMENT_INFO[e].icon} ${G.ELEMENT_INFO[e].label}</span>` : '';
   const stIcons = (u) => u.effects.map((x) => `<span class="sti ${G.STATUS[x.k].good ? 'good' : 'bad'}" title="${G.STATUS[x.k].label} (${x.turns})">${G.STATUS[x.k].icon}<small>${x.turns}</small></span>`).join('');
   function cards() {
-    const p = me(), e = foe(), max = G.apMax(p) + 2, myTurn = eng.side === 'a';
+    const p = me(), e = foe(), max = G.apMax(p) + 2, myTurn = eng.side === MY;
     el.querySelector('.hx-card.p').innerHTML = `<div class="nm"><b>${esc(p.name)}</b>${p.elements.map(elChip).join('')}${p.bloodline ? `<span class="elc" style="--c:#c43c8a">${G.BLOODLINES[p.bloodline].icon}</span>` : ''}</div>
       <div class="gbar hp ${p.hp / p.hpmax < 0.3 ? 'low' : ''}"><i style="width:${100 * p.hp / p.hpmax}%"></i><span>❤️ ${p.hp}/${p.hpmax}</span></div>
       <div class="gbar sta"><i style="width:${100 * p.st / p.stmax}%"></i><span>💪 ${p.st}/${p.stmax}</span></div>
       <div class="gbar ch"><i style="width:${100 * p.ch / p.chmax}%"></i><span>💧 ${p.ch}/${p.chmax}</span></div>
-      <div class="aprow">${myTurn ? Array.from({ length: Math.max(max, p.ap) }, (_, i) => `<i class="${i < p.ap ? 'on' : ''}"></i>`).join('') + `<b>${p.ap} AP</b>` : '<b class="wait">Enemy turn…</b>'}</div>
+      <div class="aprow">${myTurn ? Array.from({ length: Math.max(max, p.ap) }, (_, i) => `<i class="${i < p.ap ? 'on' : ''}"></i>`).join('') + `<b>${p.ap} AP</b>` : `<b class="wait">${cfg.duel ? esc(e.name) + "'s turn…" : 'Enemy turn…'}</b>`}</div>
       <div class="sts">${stIcons(p)}</div>`;
-    el.querySelector('.hx-card.e').innerHTML = `<div class="nm"><b>${esc(e.name)}</b><small>Lv ${e.level}</small>${e.elements.map(elChip).join('')}</div>
+    el.querySelector('.hx-card.e').innerHTML = `<div class="nm"><b>${esc(e.name)}</b><small>Lv ${e.level}</small>${e.elements.map(elChip).join('')}${e.bloodline ? `<span class="elc" style="--c:#c43c8a">${G.BLOODLINES[e.bloodline].icon}</span>` : ''}</div>
       <div class="gbar hp ${e.hp / e.hpmax < 0.3 ? 'low' : ''}"><i style="width:${100 * e.hp / e.hpmax}%"></i><span>${e.hp}/${e.hpmax}</span></div>
+      ${cfg.duel ? `<div class="gbar ch"><i style="width:${100 * e.ch / e.chmax}%"></i><span>💧 ${e.ch}/${e.chmax}</span></div>` : ''}
       <div class="sts">${stIcons(e)}</div>`;
     el.querySelector('.turn').textContent = `Turn ${eng.turn}`;
   }
@@ -67,7 +83,7 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
     const afford = learned && p.ap >= m.ap && p.st >= m.stamina && p.ch >= m.chakra;
     const rng = m.target === 'self' ? 'Self' : m.range[1] === 0 ? `Around you` : m.range[0] === m.range[1] ? `Range ${m.range[1]}` : `Range ${m.range[0]}-${m.range[1]}`;
     const c = STYLE_INFO[m.style].color;
-    return `<button class="mv hx ${learned ? '' : 'locked'} ${sel === id ? 'sel' : ''}" data-m="${id}" style="--c:${m.element ? G.ELEMENT_INFO[m.element].color : c}" ${learned && afford && !busy && eng.side === 'a' ? '' : 'disabled'}>
+    return `<button class="mv hx ${learned ? '' : 'locked'} ${sel === id ? 'sel' : ''}" data-m="${id}" style="--c:${m.element ? G.ELEMENT_INFO[m.element].color : c}" ${learned && afford && !busy && eng.side === MY ? '' : 'disabled'}>
       <b>${learned ? '' : '🔒 '}${esc(m.name)}${learned ? ` <span class="jl">Lv ${jl}</span>` : ''}</b>
       <small>${learned ? `<em class="ap">${m.ap} AP</em> ${rng}${m.aoe ? ' · Area' : ''} · ${[m.stamina ? '💪' + m.stamina : '', m.chakra ? '💧' + m.chakra : ''].join(' ').trim() || 'Free'}` : `${RANKS[m.tier]} rank`}</small></button>`;
   }
@@ -79,14 +95,14 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
     el.querySelector('.hx-moves').innerHTML = mine().filter((id) => G.MOVES[id].style === tab).concat(locked).map(moveBtn).join('');
     el.querySelectorAll('[data-tab]').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; panel(); }));
     el.querySelectorAll('.hx-moves [data-m]').forEach((b) => (b.onclick = () => pick(b.dataset.m)));
-    const myTurn = eng.side === 'a' && !busy;
+    const myTurn = eng.side === MY && !busy;
     el.querySelectorAll('.hx-bar [data-u]').forEach((b) => { const m = G.MOVES[b.dataset.u]; b.disabled = !myTurn || p.ap < m.ap; b.classList.toggle('sel', sel === b.dataset.u); });
-    el.querySelector('[data-end]').disabled = !myTurn; el.querySelector('[data-flee]').disabled = busy;
+    el.querySelector('[data-end]').disabled = !myTurn; el.querySelector('[data-flee]').disabled = busy && !cfg.duel;
     cards();
   }
   function say(html) { info.innerHTML = html; }
   function idleInfo() {
-    if (eng.side !== 'a') return say('Enemy turn…');
+    if (eng.side !== MY) return say(cfg.duel ? `<b>${esc(foe().name)}</b> is thinking… Watch their moves.` : 'Enemy turn…');
     const p = me();
     if (G.hasStatus(p, 'root')) return say(`🌿 You are <b>rooted</b> and cannot move this turn. Use a technique or end your turn.`);
     say(`<b>Tap a blue hex</b> to move (1 AP each), or <b>pick a technique</b> below. You have <b>${p.ap} AP</b>.`);
@@ -105,7 +121,7 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
     say(`<b>${esc(m.name)}</b> ${m.power ? `· Power ${m.power}` : ''} ${mtxt}<br><small>${esc(m.desc)}${effs ? ' · ' + effs : ''}</small><br>${how}`);
   }
   function pick(id) {
-    if (busy || eng.side !== 'a') return;
+    if (busy || eng.side !== MY) return;
     const m = G.MOVES[id];
     if (sel === id && (m.target === 'self' || m.range[1] === 0)) return send({ t: 'use', move: id, at: null });
     sel = sel === id ? null : id; panel(); sel ? moveInfo(id) : idleInfo();
@@ -114,14 +130,14 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
   el.querySelector('[data-end]').onclick = () => { sel = null; send({ t: 'end' }); };
   el.querySelector('[data-flee]').onclick = () => { if (confirmFlee()) send({ t: 'flee' }); };
   let fleeArmed = 0;
-  function confirmFlee() { if (Date.now() - fleeArmed < 3000) return true; fleeArmed = Date.now(); say(`<b>Retreat?</b> Tap 🏃 again to give up this fight.${S0.exam ? ' You will fail the exam.' : ''}`); return false; }
+  function confirmFlee() { if (Date.now() - fleeArmed < 3000) return true; fleeArmed = Date.now(); say(`<b>${cfg.duel ? 'Forfeit?' : 'Retreat?'}</b> Tap 🏃 again to give up this fight.${cfg.exam ? ' You will fail the exam.' : cfg.duel ? ' Your opponent wins.' : ''}`); return false; }
 
   // ---------- board input ----------
   const toCanvas = (ev) => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) * W / r.width, (ev.clientY - r.top) * H / r.height]; };
   cv.addEventListener('pointermove', (ev) => { hover = hexAt(...toCanvas(ev)); });
   cv.addEventListener('pointerleave', () => { hover = null; });
   cv.addEventListener('click', (ev) => {
-    const hex = hexAt(...toCanvas(ev)); if (!hex || busy || eng.side !== 'a') return;
+    const hex = hexAt(...toCanvas(ev)); if (!hex || busy || eng.side !== MY) return;
     const p = me(), e = foe(), onFoe = hex[0] === e.c && hex[1] === e.r, onMe = hex[0] === p.c && hex[1] === p.r;
     if (sel) {
       const m = G.MOVES[sel];
@@ -129,26 +145,38 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
       else if (m.target === 'enemy' && onFoe) { if (G.canHitFrom(eng, m, [p.c, p.r], hex)) return send({ t: 'use', move: sel, at: hex }); return moveInfo(sel); }
       else if (m.target === 'hex' && G.canHitFrom(eng, m, [p.c, p.r], hex)) return send({ t: 'use', move: sel, at: hex });
     }
-    if (onFoe) { const e2 = foe(); say(`<b>${esc(e2.name)}</b> ${e2.elements[0] ? `· ${G.ELEMENT_INFO[e2.elements[0]].label} user: weak to ${G.ELEMENT_INFO[G.ELEMENTS[(G.ELEMENTS.indexOf(e2.elements[0]) + 4) % 5]].label}` : '· no element'}<br><small>${e2.ai === 'ranged' ? 'Fights from range: close the gap or break line of sight.' : 'Fights up close: keep your distance and strike from range.'}</small>`); return; }
+    if (onFoe) { const e2 = foe(); say(`<b>${esc(e2.name)}</b> ${e2.elements[0] ? `· ${G.ELEMENT_INFO[e2.elements[0]].label} user: weak to ${G.ELEMENT_INFO[G.ELEMENTS[(G.ELEMENTS.indexOf(e2.elements[0]) + 4) % 5]].label}` : '· no element'}<br><small>${cfg.duel ? `Lv ${e2.level} · ${e2.moves.length - 2} techniques. Read their element and stay out of their best range.` : e2.ai === 'ranged' ? 'Fights from range: close the gap or break line of sight.' : 'Fights up close: keep your distance and strike from range.'}</small>`); return; }
     const reach = G.reachable(eng, p, p.ap), k = G.key(hex[0], hex[1]);
     if (reach.has(k) && reach.get(k).cost > 0) return send({ t: 'move', to: hex });
   });
 
   // ---------- server round trip ----------
+  let chain = Promise.resolve(), lastSeq = cfg.seq || 0, over = false;
   async function send(action) {
-    if (busy) return; busy = true; panel();
+    if (busy && !(cfg.duel && action.t === 'flee')) return; busy = true; panel();
     let res;
-    try { res = await net.battleAct(battle.id, action); }
+    try { res = await cfg.act(action); }
     catch (e) { busy = false; panel(); say(`<span class="bad">${esc(e.message)}</span>`); return; }
     sel = null;
-    if (res.status === 'fled') { finish(); onEnd({ status: 'fled' }); return; }
-    await play(res.events);
-    S0 = res.state; eng = S0.engine; battle.status = res.status;
-    busy = false; panel();
-    if (res.status === 'won' || res.status === 'lost') { await wait(500); showResult(res); return; }
-    idleInfo();
-    if (eng.side === 'a' && me().ap <= 0 && !G.hasStatus(me(), 'stun')) { say('Out of AP. Ending your turn…'); await wait(500); send({ t: 'end' }); }
+    await apply(res);
   }
+  // play a result (ours or, in duels, the opponent's) exactly once and in order
+  function apply(res) {
+    chain = chain.then(async () => {
+      if (!alive || over) return;
+      if (res.seq != null) { if (res.seq <= lastSeq) { busy = false; panel(); if (res.seq === lastSeq && (res.status === 'won' || res.status === 'lost')) { over = true; await wait(500); showResult(res); } return; } if (res.seq > lastSeq + 1) res.events = []; lastSeq = res.seq; }
+      if (res.status === 'fled') { finish(); cfg.fled(); return; }
+      busy = true; panel();
+      await play(res.events || []);
+      S0 = res.state; eng = S0.engine;
+      busy = false; panel();
+      if (res.status === 'won' || res.status === 'lost') { over = true; await wait(500); showResult(res); return; }
+      idleInfo();
+      if (eng.side === MY && me().ap <= 0 && !G.hasStatus(me(), 'stun')) { say('Out of AP. Ending your turn…'); await wait(500); send({ t: 'end' }); }
+    });
+    return chain;
+  }
+  if (cfg.listen) cfg.listen(apply);
 
   // ---------- event animation ----------
   const unit = (who) => eng.units[who];
@@ -160,11 +188,11 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
       if (!alive) return;
       const name = ev.who ? unit(ev.who).name : '';
       if (ev.t === 'move') {
-        say(ev.who === 'a' ? 'You move.' : `${esc(name)} moves.`);
+        say(ev.who === MY ? 'You move.' : `${esc(name)} moves.`);
         for (const [c, r] of ev.path) { unit(ev.who).c = c; unit(ev.who).r = r; fx.anim[ev.who] = t; await wait(110); }
       } else if (ev.t === 'use') {
-        const u = unit(ev.who), tgt = unit(ev.who === 'a' ? 'b' : 'a'), m = ev.who === 'a' ? G.MOVES[ev.move] : G.ENEMY_MOVES[ev.move];
-        say(`${ev.who === 'a' ? 'You use' : esc(name) + ' uses'} <b>${esc(ev.name)}</b>!`);
+        const u = unit(ev.who), tgt = unit(ev.who === 'a' ? 'b' : 'a'), m = u.npc ? G.ENEMY_MOVES[ev.move] : G.MOVES[ev.move];
+        say(`${ev.who === MY ? 'You use' : esc(name) + ' uses'} <b>${esc(ev.name)}</b>!`);
         const col = ev.element ? G.ELEMENT_INFO[ev.element].color : STYLE_INFO[ev.style || 'taijutsu']?.color || '#c9ccd4';
         if (m.target === 'self') { fx.flash = { at: [u.c, u.r], r: 0, col, life: 18 }; await wait(380); }
         else {
@@ -179,7 +207,7 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
         for (const hit of ev.hits || []) {
           if (!hit.hit) { float(hit.who, hit.dodge ? 'DODGE' : 'MISS', hit.dodge ? '#9fe0a0' : '#c9ccd4'); continue; }
           const v = unit(hit.who); v.hp = Math.max(0, v.hp - hit.dmg); fx.hurt = { who: hit.who, start: t };
-          float(hit.who, hit.crit ? `CRIT ${hit.dmg}` : String(hit.dmg), hit.crit ? '#ffe07a' : hit.who === 'a' ? '#ff8f7a' : '#fff4dc');
+          float(hit.who, hit.crit ? `CRIT ${hit.dmg}` : String(hit.dmg), hit.crit ? '#ffe07a' : hit.who === MY ? '#ff8f7a' : '#fff4dc');
           if (hit.mult > 1) float(hit.who, 'Super effective!', '#ffb04a', 14); else if (hit.mult < 1) float(hit.who, 'Resisted', '#9ab0c0', 14);
           (hit.effects || []).forEach((k, i) => setTimeout(() => float(hit.who, G.STATUS[k].icon + ' ' + G.STATUS[k].label, '#e0a0ff', 26 + i * 10), 200 + i * 160));
         }
@@ -188,7 +216,8 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
         const u = unit(ev.who); u.hp = Math.max(0, u.hp - ev.dmg); float(ev.who, `${G.STATUS[ev.k].icon} ${ev.dmg}`, '#ff9a63'); cards(); await wait(420);
       } else if (ev.t === 'heal') { const u = unit(ev.who); u.hp = Math.min(u.hpmax, u.hp + ev.amount); float(ev.who, `💚 +${ev.amount}`, '#7ce08a'); cards(); await wait(380);
       } else if (ev.t === 'stunned') { float(ev.who, '💫 Stunned!', '#ffe07a'); await wait(450);
-      } else if (ev.t === 'turn') { eng.side = ev.who; showBanner(ev.who === 'a' ? 'Your turn' : 'Enemy turn', ev.who); cards(); await wait(ev.who === 'b' ? 500 : 250);
+      } else if (ev.t === 'turn') { eng.side = ev.who; showBanner(ev.who === MY ? 'Your turn' : cfg.duel ? `${foe().name}'s turn` : 'Enemy turn', ev.who === MY ? 'a' : 'b'); cards(); await wait(ev.who !== MY ? 500 : 250);
+      } else if (ev.t === 'timeout') { float(ev.who, '⏱ Too slow!', '#ff8f7a'); say(ev.who === MY ? `<span class="bad">Time ran out: your turn was skipped (${ev.n}/3).</span>` : `${esc(name)} ran out of time (${ev.n}/3).`); await wait(600);
       } else if (ev.t === 'end') { fx.dead = ev.winner === 'a' ? 'b' : 'a'; await wait(600); }
     }
   }
@@ -206,7 +235,7 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
     if (!alive) return; t++;
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = theme[2]; ctx.fillRect(0, 0, W, H);
-    const p = me(), e = foe(), myTurn = eng.side === 'a' && !busy;
+    const p = me(), e = foe(), myTurn = eng.side === MY && !busy;
     const reach = myTurn && !sel ? G.reachable(eng, p, p.ap) : null;
     const m = sel ? G.MOVES[sel] : null;
     let aoe = null;
@@ -242,7 +271,7 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
       const dir = foeU.c < u.c || (foeU.c === u.c && th.id === 'b') ? 1 : 2;
       const moving = fx.anim[th.id] && t - fx.anim[th.id] < 8;
       ctx.fillStyle = 'rgba(20,20,10,.3)'; ctx.fillRect(x - 7, y + 5, 14, 3);
-      if (th.id === eng.side && !busy) { ctx.strokeStyle = th.id === 'a' ? '#ffe07a' : '#ff8f7a'; ctx.lineWidth = 1; hexPath(ctx, x, y, S - 3); ctx.stroke(); }
+      if (th.id === eng.side && !busy) { ctx.strokeStyle = th.id === MY ? '#ffe07a' : '#ff8f7a'; ctx.lineWidth = 1; hexPath(ctx, x, y, S - 3); ctx.stroke(); }
       let spr;
       if (u.kind === 'ninja') spr = ninjaSprite(u.look, dir, moving ? 1 + ((t >> 3) & 1) : fx.lunge && fx.lunge.who === th.id ? 3 : 0);
       else spr = beastSprite(u.kind, u.look?.tint, (t >> 4) % 2);
@@ -252,7 +281,7 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
       ctx.restore();
       // mini hp bar
       const bw = 22; ctx.fillStyle = '#24160e'; ctx.fillRect(x - bw / 2 - 1, y - spr.height + 2, bw + 2, 4);
-      ctx.fillStyle = th.id === 'a' ? '#5ccf5c' : '#e8542c'; ctx.fillRect(x - bw / 2, y - spr.height + 3, Math.max(0, bw * u.hp / u.hpmax), 2);
+      ctx.fillStyle = th.id === MY ? '#5ccf5c' : '#e8542c'; ctx.fillRect(x - bw / 2, y - spr.height + 3, Math.max(0, bw * u.hp / u.hpmax), 2);
       if (G.hasStatus(u, 'stun')) { ctx.fillStyle = '#ffe07a'; for (let i = 0; i < 3; i++) { const a = t / 8 + i * 2.1; ctx.fillRect(x + Math.cos(a) * 7 - 1, y - spr.height - 3 + Math.sin(a) * 2, 2, 2); } }
     }
     // projectile
@@ -271,12 +300,28 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
     requestAnimationFrame(draw);
   }
   requestAnimationFrame(draw);
-  panel(); idleInfo(); showBanner('Your turn', 'a');
-  if (S0.exam && S0.exam.round === 1) say(`<b>${esc(S0.mission.name)}.</b> Move with blue hexes, use rocks as cover, and strike from range. Good luck!`);
-  window.__hex = { get eng() { return eng; }, send, pick, hx, cv };
+  panel(); idleInfo(); showBanner(eng.side === MY ? 'Your turn' : `${foe().name} goes first`, eng.side === MY ? 'a' : 'b');
+  if (cfg.intro) say(cfg.intro);
+  window.__hex = { get eng() { return eng; }, send, pick, hx, cv, my: MY };
+  // turn timer (duels)
+  const tmr = el.querySelector('.tmr');
+  if (cfg.deadline) {
+    tmr.hidden = false;
+    const tick = setInterval(() => {
+      if (!alive) return clearInterval(tick);
+      const left = Math.max(0, Math.ceil((cfg.deadline() - Date.now()) / 1000));
+      tmr.textContent = `⏱ ${left}s`; tmr.classList.toggle('low', left <= 10 && eng.side === MY); tmr.classList.toggle('them', eng.side !== MY);
+      if (left <= 0 && !over && cfg.onTimeout) cfg.onTimeout();
+    }, 500);
+  }
 
   function finish() { alive = false; el.remove(); }
-  function showResult(res) {
+  function showResult(res) { cfg.result(res, finish, el); }
+}
+
+function missionResult(root, char, res, S0, battle, onEnd, finish) {
+  const el = root.querySelector('.hexb');
+  {
     const won = res.status === 'won', r = res.result || {}, exam = S0.exam;
     let body;
     const ups = Object.entries(r.jutsu_up || {}).map(([id, lv]) => `<p class="lvl">📜 ${esc(G.MOVES[id]?.name || id)} reached level ${lv}!</p>`).join('');
@@ -303,4 +348,36 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
     const nx = box.querySelector('[data-next]');
     if (nx) nx.onclick = () => { nx.disabled = true; finish(); runBattle(root, char, null, onEnd, () => net.examContinue(battle.id)); };
   }
+}
+
+// ---------- live duel ----------
+// duel row -> battle-style result for the viewer
+export function duelRes(d, myId) {
+  const over = d.status === 'over' || d.status === 'expired';
+  return { seq: d.seq, state: d.state, events: (d.state && d.state.events) || [], status: over ? (d.winner === myId ? 'won' : 'lost') : 'active', result: { points: d.points, reason: d.reason, expired: d.status === 'expired' } };
+}
+export function runDuel(root, char, duel, onEnd) {
+  const myId = char.user_id, my = duel.a === myId ? 'a' : 'b', foeName = my === 'a' ? duel.b_name : duel.a_name;
+  let deadline = new Date(duel.deadline).getTime(), lastClaim = 0, unsub = null, seqNow = duel.seq;
+  const track = (d) => { if (d.deadline) deadline = new Date(d.deadline).getTime(); seqNow = Math.max(seqNow, d.seq); return duelRes(d, myId); };
+  battleView(root, char, {
+    my, duel: true, state: duel.state, seq: duel.seq,
+    head: `<span class="grade" style="background:#c43c32">⚔</span><b>Duel vs ${esc(foeName)}</b>`,
+    intro: `<b>Live duel!</b> You have 60 seconds per turn. Three missed turns and you lose.`,
+    act: async (a) => track(await net.duelAct(duel.id, a)),
+    listen: (apply) => { unsub = net.watchDuel(duel.id, (d) => apply(track(d))); },
+    deadline: () => deadline,
+    onTimeout: () => { if (Date.now() - lastClaim < 4000 || Date.now() < deadline + 1500) return; lastClaim = Date.now(); net.duelTimeout(duel.id, seqNow).then((d) => d && d.seq > 0 && null).catch(() => {}); },
+    fled: () => { unsub && unsub(); onEnd({ status: 'fled' }); },
+    result: (res, finish, el) => {
+      unsub && unsub();
+      const won = res.status === 'won', r = res.result || {}, p = r.points || {};
+      const why = r.reason === 'timeout' ? (won ? `${esc(foeName)} ran out of time too often.` : 'You ran out of time three times.') : r.reason === 'forfeit' ? (won ? `${esc(foeName)} forfeited.` : 'You forfeited.') : '';
+      const pts = p.capped ? `<p class="sub">No Arena points: you two have already duelled 3 times today.</p>` : won ? `<p class="big">+${p.gain || 0} Arena points</p>` : `<p class="sub">${p.loss ? `−${p.loss} Arena points` : 'No points lost.'}</p>`;
+      const box = h(`<div class="b-result"><div class="scroll"><h3 class="${won ? 'win' : 'lose'}">${won ? 'Victory!' : 'Defeated…'}</h3><p>${won ? `You beat ${esc(foeName)} in a live duel.` : `${esc(foeName)} won this duel.`} ${why}</p>${pts}
+        <div class="row"><button class="btn primary" data-back>Back to village</button></div></div></div>`);
+      el.appendChild(box);
+      box.querySelector('[data-back]').onclick = () => { finish(); onEnd({ status: res.status, result: r }); };
+    },
+  });
 }

@@ -147,3 +147,61 @@ function finish(c, b, win) {
   else { const lost = Math.min(c.ryo, Math.round(m.ryo * 0.2)); c.ryo -= lost; r = { ryo_lost: lost }; }
   return { ...r, jutsu_up: ups };
 }
+
+// ---------- offline duels against a bot ----------
+const watchers = new Set();
+let duel = null, botTimer = null;
+const emit = () => { const d = JSON.parse(JSON.stringify(duel)); for (const w of watchers) if (w.id === '*' || w.id === d.id) w.cb(d); };
+export function mockWatch(id, cb) { const w = { id, cb }; watchers.add(w); return () => watchers.delete(w); }
+const botChar = (name, level) => ({ user_id: 'bot-' + name, name, rank: level >= 5 ? 'Genin' : 'Academy Student', level, element: G.ELEMENTS[name.length % 5], strength: 8 + level, agility: 8 + level, intelligence: 8 + level, willpower: 8 + level, appearance: { hairStyle: 2, hair: 3, skin: 2, outfit: 5, band: 1, bandSpot: 0 } });
+function botPlays() {
+  clearTimeout(botTimer);
+  if (!duel || duel.status !== 'active') return;
+  const s = duel.state.engine, bot = duel.a.startsWith('bot') ? 'a' : 'b';
+  if (s.side !== bot) return;
+  botTimer = setTimeout(() => {
+    s.seed = (Math.random() * 2 ** 32) >>> 0;
+    const ev = G.aiTurn(s, bot, 14); if (s.status === 'active' && s.side === bot) ev.push(...G.act(s, bot, { t: 'end' }));
+    step(ev);
+  }, new URLSearchParams(location.search).has('slowbot') ? 70000 : 1800);
+}
+function step(events, reason = null) {
+  const s = duel.state.engine; delete s.seed;
+  duel.state.events = events; duel.seq++;
+  if (events.some((e) => e.t === 'turn')) duel.deadline = new Date(Date.now() + 60000).toISOString();
+  if (s.status === 'over') { duel.status = 'over'; duel.winner = s.winner === 'a' ? duel.a : duel.b; duel.reason = reason || 'ko'; duel.points = { gain: 15, loss: 0 }; }
+  emit(); botPlays();
+}
+export function mockDuelOp(c, body) {
+  const me = c.user_id;
+  if (body.op === 'duel_challenge') {
+    const name = { bot0: 'Ren', bot1: 'Mika', bot2: 'Sora' }[body.target] || 'Rival';
+    duel = { id: 'duel' + Date.now(), a: me, b: 'bot-' + name, a_name: c.name, b_name: name, status: 'pending', seq: 0, misses: { a: 0, b: 0 }, deadline: new Date(Date.now() + 60000).toISOString(), state: null };
+    const b = botChar(name, 4);
+    setTimeout(() => { if (duel.status !== 'pending') return;
+      duel.state = { engine: G.newDuel(1 + ((Math.random() * 1e9) | 0), c, {}, b, {}), events: [] }; delete duel.state.engine.seed;
+      duel.status = 'active'; duel.seq = 1; duel.deadline = new Date(Date.now() + 60000).toISOString(); emit(); botPlays(); }, 1500);
+    return JSON.parse(JSON.stringify(duel));
+  }
+  if (body.op === 'duel_cancel') { duel.status = 'cancelled'; emit(); return duel; }
+  if (body.op === 'duel_invite') { // test hook: a bot challenges me
+    const b = botChar('Kaito', 3);
+    duel = { id: 'duel' + Date.now(), a: b.user_id, b: me, a_name: 'Kaito', b_name: c.name, status: 'pending', seq: 0, misses: { a: 0, b: 0 }, deadline: new Date(Date.now() + 60000).toISOString(), state: null, _bot: b };
+    emit(); return duel;
+  }
+  if (body.op === 'duel_accept') {
+    duel.state = { engine: G.newDuel(7 + ((Math.random() * 1e9) | 0), duel._bot, {}, enrich(c), {}), events: [] }; delete duel.state.engine.seed;
+    duel.status = 'active'; duel.seq = 1; duel.deadline = new Date(Date.now() + 60000).toISOString(); emit(); botPlays(); return JSON.parse(JSON.stringify(duel));
+  }
+  if (body.op === 'duel_act' || body.op === 'duel_timeout') {
+    const s = duel.state.engine, my = duel.a === me ? 'a' : 'b';
+    if (body.op === 'duel_timeout') { if (Date.now() < new Date(duel.deadline).getTime() + 1500) return duel; const late = s.side; duel.misses[late]++; const ev = [{ t: 'timeout', who: late, n: duel.misses[late] }];
+      s.seed = 5; if (duel.misses[late] >= 3) ev.push(...G.act(s, late, { t: 'flee' })); else ev.push(...G.act(s, late, { t: 'end' })); step(ev, 'timeout'); return JSON.parse(JSON.stringify(duel)); }
+    const a = body.action; if (a.t !== 'flee' && s.side !== my) throw new Error('Wait for your turn.');
+    if (a.t === 'flee') s.side = my;
+    s.seed = (Math.random() * 2 ** 32) >>> 0;
+    const ev = G.act(s, my, a); duel.misses[my] = 0; step(ev, a.t === 'flee' ? 'forfeit' : null);
+    return JSON.parse(JSON.stringify(duel));
+  }
+  return duel;
+}

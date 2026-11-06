@@ -10,7 +10,9 @@ export function isOffline() { return OFFLINE; }
 export async function init() {
   if (OFFLINE) return;
   if (!window.supabase) throw new Error('Could not reach the game servers. Check your connection and refresh.');
-  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, detectSessionInUrl: true, flowType: 'pkce' } });
+  // tester mode keeps each tab's login separate, so two test ninjas can duel each other
+  const tester = new URLSearchParams(location.search).has('tester');
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, detectSessionInUrl: true, flowType: 'pkce', ...(tester ? { storage: window.sessionStorage, storageKey: 'sr-tester' } : {}) } });
 }
 export function client() { return sb; }
 
@@ -214,4 +216,33 @@ export async function updateAppearance(appearance) {
   const { error } = await sb.from('characters').update({ appearance }).eq('user_id', (await getUser()).id);
   if (error) throw error;
   return loadCharacter();
+}
+
+// ---------- live duels ----------
+const duelCall = async (body) => { if (OFFLINE) { const o = await import('./offline.js'); return o.mockDuelOp(mockChar(), body); } return battleCall(body); };
+export const duelChallenge = (target) => duelCall({ op: 'duel_challenge', target });
+export const duelAccept = (duel) => duelCall({ op: 'duel_accept', duel });
+export const duelCancel = (duel) => duelCall({ op: 'duel_cancel', duel });
+export const duelAct = (duel, action) => duelCall({ op: 'duel_act', duel, action });
+export const duelTimeout = (duel, seq) => duelCall({ op: 'duel_timeout', duel, seq });
+export const duelGet = (duel) => duelCall({ op: 'duel_get', duel });
+// live updates of one duel row; returns an unsubscribe function
+export function watchDuel(id, cb) {
+  if (OFFLINE) { let off; import('./offline.js').then((o) => (off = o.mockWatch(id, cb))); return () => off && off(); }
+  const ch = sb.channel('duel-' + id).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'duels', filter: `id=eq.${id}` }, (m) => cb(m.new)).subscribe();
+  return () => sb.removeChannel(ch);
+}
+// every duel I'm part of (new challenges to me, and answers to mine)
+export async function watchMyDuels(myId, cb) {
+  if (OFFLINE) { const o = await import('./offline.js'); return o.mockWatch('*', cb); }
+  const { data } = await sb.auth.getSession(); if (data.session) sb.realtime.setAuth(data.session.access_token);
+  const ch = sb.channel('my-duels-' + myId)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'duels', filter: `b=eq.${myId}` }, (m) => cb(m.new))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'duels', filter: `a=eq.${myId}` }, (m) => cb(m.new)).subscribe();
+  return () => sb.removeChannel(ch);
+}
+export async function myActiveDuel() {
+  if (OFFLINE) return null;
+  const { data } = await sb.from('duels').select('*').eq('status', 'active').gt('deadline', new Date(Date.now() - 5 * 60000).toISOString()).order('created_at', { ascending: false }).limit(1);
+  return (data || [])[0] || null;
 }
