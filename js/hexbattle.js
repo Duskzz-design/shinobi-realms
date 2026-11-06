@@ -182,6 +182,8 @@ export function battleView(root, char, cfg) {
   const unit = (who) => eng.units[who];
   const float = (who, text, color, dy = 0) => { const u = unit(who); const [x, y] = hx(u.c, u.r); fx.floats.push({ x, y: y - 26 - dy, text, color, life: 50 }); };
   function showBanner(text, cls) { banner.textContent = text; banner.className = 'hx-banner ' + cls; banner.hidden = false; setTimeout(() => (banner.hidden = true), 900); }
+  // animations run on screen refreshes, which stop in a hidden tab: never let them hold up the fight
+  const pause = (ms) => wait(document.hidden ? 0 : ms);
   async function play(events) {
     eng = clone(eng);
     for (const ev of events) {
@@ -189,17 +191,17 @@ export function battleView(root, char, cfg) {
       const name = ev.who ? unit(ev.who).name : '';
       if (ev.t === 'move') {
         say(ev.who === MY ? 'You move.' : `${esc(name)} moves.`);
-        for (const [c, r] of ev.path) { unit(ev.who).c = c; unit(ev.who).r = r; fx.anim[ev.who] = t; await wait(110); }
+        for (const [c, r] of ev.path) { unit(ev.who).c = c; unit(ev.who).r = r; fx.anim[ev.who] = t; await pause(110); }
       } else if (ev.t === 'use') {
         const u = unit(ev.who), tgt = unit(ev.who === 'a' ? 'b' : 'a'), m = u.npc ? G.ENEMY_MOVES[ev.move] : G.MOVES[ev.move];
         say(`${ev.who === MY ? 'You use' : esc(name) + ' uses'} <b>${esc(ev.name)}</b>!`);
         const col = ev.element ? G.ELEMENT_INFO[ev.element].color : STYLE_INFO[ev.style || 'taijutsu']?.color || '#c9ccd4';
-        if (m.target === 'self') { fx.flash = { at: [u.c, u.r], r: 0, col, life: 18 }; await wait(380); }
+        if (m.target === 'self') { fx.flash = { at: [u.c, u.r], r: 0, col, life: 18 }; await pause(380); }
         else {
           const to = ev.at || [u.c, u.r];
-          if (m.range[1] <= 1 && !m.aoe) { fx.anim[ev.who] = t; fx.lunge = { who: ev.who, to: [tgt.c, tgt.r], start: t }; await wait(260); fx.lunge = null; }
+          if (m.range[1] <= 1 && !m.aoe) { fx.anim[ev.who] = t; fx.lunge = { who: ev.who, to: [tgt.c, tgt.r], start: t }; await pause(260); fx.lunge = null; }
           else if (m.range[1] > 0) await shoot([u.c, u.r], to, col, ev.style === 'bukijutsu' ? 'blade' : ev.style === 'genjutsu' ? 'swirl' : 'orb', !!ev.aoe);
-          if (ev.aoe) { fx.flash = { at: to, r: ev.aoe, col, life: 22 }; await wait(200); }
+          if (ev.aoe) { fx.flash = { at: to, r: ev.aoe, col, life: 22 }; await pause(200); }
         }
         if (ev.focus) float(ev.who, `+${ev.focus} 💪💧`, '#7cc4ec');
         if (ev.heal) { u.hp = Math.min(u.hpmax, u.hp + ev.heal); float(ev.who, `+${ev.heal}`, '#7ce08a'); }
@@ -211,18 +213,22 @@ export function battleView(root, char, cfg) {
           if (hit.mult > 1) float(hit.who, 'Super effective!', '#ffb04a', 14); else if (hit.mult < 1) float(hit.who, 'Resisted', '#9ab0c0', 14);
           (hit.effects || []).forEach((k, i) => setTimeout(() => float(hit.who, G.STATUS[k].icon + ' ' + G.STATUS[k].label, '#e0a0ff', 26 + i * 10), 200 + i * 160));
         }
-        cards(); await wait(ev.hits?.length ? 620 : 300);
+        cards(); await pause(ev.hits?.length ? 620 : 300);
       } else if (ev.t === 'dot') {
-        const u = unit(ev.who); u.hp = Math.max(0, u.hp - ev.dmg); float(ev.who, `${G.STATUS[ev.k].icon} ${ev.dmg}`, '#ff9a63'); cards(); await wait(420);
-      } else if (ev.t === 'heal') { const u = unit(ev.who); u.hp = Math.min(u.hpmax, u.hp + ev.amount); float(ev.who, `💚 +${ev.amount}`, '#7ce08a'); cards(); await wait(380);
-      } else if (ev.t === 'stunned') { float(ev.who, '💫 Stunned!', '#ffe07a'); await wait(450);
-      } else if (ev.t === 'turn') { eng.side = ev.who; showBanner(ev.who === MY ? 'Your turn' : cfg.duel ? `${foe().name}'s turn` : 'Enemy turn', ev.who === MY ? 'a' : 'b'); cards(); await wait(ev.who !== MY ? 500 : 250);
-      } else if (ev.t === 'timeout') { float(ev.who, '⏱ Too slow!', '#ff8f7a'); say(ev.who === MY ? `<span class="bad">Time ran out: your turn was skipped (${ev.n}/3).</span>` : `${esc(name)} ran out of time (${ev.n}/3).`); await wait(600);
-      } else if (ev.t === 'end') { fx.dead = ev.winner === 'a' ? 'b' : 'a'; await wait(600); }
+        const u = unit(ev.who); u.hp = Math.max(0, u.hp - ev.dmg); float(ev.who, `${G.STATUS[ev.k].icon} ${ev.dmg}`, '#ff9a63'); cards(); await pause(420);
+      } else if (ev.t === 'heal') { const u = unit(ev.who); u.hp = Math.min(u.hpmax, u.hp + ev.amount); float(ev.who, `💚 +${ev.amount}`, '#7ce08a'); cards(); await pause(380);
+      } else if (ev.t === 'stunned') { float(ev.who, '💫 Stunned!', '#ffe07a'); await pause(450);
+      } else if (ev.t === 'turn') { eng.side = ev.who; showBanner(ev.who === MY ? 'Your turn' : cfg.duel ? `${foe().name}'s turn` : 'Enemy turn', ev.who === MY ? 'a' : 'b'); cards(); await pause(ev.who !== MY ? 500 : 250);
+      } else if (ev.t === 'timeout') { float(ev.who, '⏱ Too slow!', '#ff8f7a'); say(ev.who === MY ? `<span class="bad">Time ran out: your turn was skipped (${ev.n}/3).</span>` : `${esc(name)} ran out of time (${ev.n}/3).`); await pause(600);
+      } else if (ev.t === 'end') { fx.dead = ev.winner === 'a' ? 'b' : 'a'; await pause(600); }
     }
   }
   function shoot(from, to, col, kind, big) {
-    return new Promise((res) => { const [x0, y0] = hx(...from), [x1, y1] = hx(...to); fx.proj = { x0, y0: y0 - 10, x1, y1: y1 - 10, k: 0, col, kind, big, done: res }; });
+    return new Promise((res) => {
+      let fin = false; const done = () => { if (!fin) { fin = true; if (fx.proj && fx.proj.done === done) fx.proj = null; res(); } };
+      const [x0, y0] = hx(...from), [x1, y1] = hx(...to); fx.proj = { x0, y0: y0 - 10, x1, y1: y1 - 10, k: 0, col, kind, big, done };
+      setTimeout(done, document.hidden ? 0 : 700);
+    });
   }
 
   // ---------- drawing ----------
