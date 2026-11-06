@@ -37,7 +37,7 @@ export async function signOut() {
 
 // ---------- character ----------
 export async function loadCharacter() {
-  if (OFFLINE) { const c = sessionStorage.getItem('mockChar'); if (!c) return null; const o = await import('./offline.js'); return o.enrich(JSON.parse(c)); }
+  if (OFFLINE) { const c = sessionStorage.getItem('mockChar'); if (!c) return null; const o = await import('./offline.js'); const x = JSON.parse(c); o.enrich(x); saveMock(x); return o.enrich(x); }
   const { data, error } = await sb.rpc('get_me');
   if (error) throw error;
   return data;
@@ -142,19 +142,32 @@ export async function examInfo() {
   if (OFFLINE) { const o = await import('./offline.js'); return o.examInfo(mockChar()); }
   const { data, error } = await sb.rpc('exam_info'); if (error) throw rpcErr(error); return data;
 }
-export async function startExam() {
-  if (OFFLINE) { const o = await import('./offline.js'); mockBattle = o.mockStartExam(mockChar()); return mockBattle; }
-  const { data, error } = await sb.rpc('start_exam'); if (error) throw rpcErr(error); return data;
-}
-export async function examContinue(battleId) {
-  if (OFFLINE) { const o = await import('./offline.js'); mockBattle = o.mockExamContinue(mockChar(), mockBattle); return mockBattle; }
-  const { data, error } = await sb.rpc('exam_continue', { p_battle: battleId }); if (error) throw rpcErr(error); return data;
-}
-
-// ---------- missions & combat ----------
 let catalog = null, mockBattle = null;
 const mockChar = () => JSON.parse(sessionStorage.getItem('mockChar'));
 const saveMock = (c) => sessionStorage.setItem('mockChar', JSON.stringify(c));
+const rpcErr = (error) => new Error((error.message || 'Something went wrong.').replace(/^.*?ERROR:\s*/, ''));
+// all fights run on the battle server
+async function battleCall(body) {
+  const { data, error } = await sb.functions.invoke('battle', { body });
+  if (error) {
+    let msg = 'Could not reach the battle server. Try again.';
+    try { const j = await error.context.json(); if (j.error) msg = j.error; } catch {}
+    throw new Error(msg);
+  }
+  if (data && data.error) throw new Error(data.error);
+  return data;
+}
+export async function startExam() {
+  if (OFFLINE) { const o = await import('./offline.js'); const c = mockChar(); mockBattle = o.mockStartExam(c); saveMock(c); return clone(mockBattle); }
+  return battleCall({ op: 'exam' });
+}
+export async function examContinue(battleId) {
+  if (OFFLINE) { const o = await import('./offline.js'); mockBattle = o.mockExamContinue(mockChar(), mockBattle); return clone(mockBattle); }
+  return battleCall({ op: 'continue', battle: battleId });
+}
+
+// ---------- missions & combat ----------
+const clone = (x) => JSON.parse(JSON.stringify({ ...x, m: undefined }));
 export async function getCatalog() {
   if (catalog) return catalog;
   if (OFFLINE) { const o = await import('./offline.js'); return (catalog = { moves: o.MOVES, missions: o.MISSIONS }); }
@@ -162,16 +175,18 @@ export async function getCatalog() {
   if (mv.error) throw mv.error; if (ms.error) throw ms.error;
   return (catalog = { moves: mv.data, missions: ms.data });
 }
-const rpcErr = (error) => new Error((error.message || 'Something went wrong.').replace(/^.*?ERROR:\s*/, ''));
 export async function startMission(id) {
-  if (OFFLINE) { const o = await import('./offline.js'); mockBattle = o.mockStart(mockChar(), id); return mockBattle; }
-  const { data, error } = await sb.rpc('start_mission', { p_mission: id });
-  if (error) throw rpcErr(error);
-  return data;
+  if (OFFLINE) { const o = await import('./offline.js'); mockBattle = o.mockStart(mockChar(), id); return clone(mockBattle); }
+  return battleCall({ op: 'start', mission: id });
 }
-export async function battleAct(battleId, move) {
-  if (OFFLINE) { const o = await import('./offline.js'); const c = mockChar(); const r = o.mockAct(c, mockBattle, move); saveMock(c); return r; }
-  const { data, error } = await sb.rpc('battle_act', { p_battle: battleId, p_move: move });
+// action: {t:'move',to:[c,r]} | {t:'use',move,at:[c,r]} | {t:'end'} | {t:'flee'}
+export async function battleAct(battleId, action) {
+  if (OFFLINE) { const o = await import('./offline.js'); const c = mockChar(); const r = o.mockAct(c, mockBattle, action); saveMock(c); return clone(r); }
+  return battleCall({ op: 'act', battle: battleId, action });
+}
+export async function trainElement(element, times = 1) {
+  if (OFFLINE) { const o = await import('./offline.js'); const c = mockChar(); const r = o.trainElement(c, element, times); saveMock(c); return r; }
+  const { data, error } = await sb.rpc('train_element', { p_element: element, p_times: times });
   if (error) throw rpcErr(error);
   return data;
 }

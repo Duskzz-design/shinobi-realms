@@ -1,6 +1,7 @@
 import * as net from './net.js';
 import { startTitleScene } from './scene.js';
 import { enterWorld } from './game.js';
+import { ELEMENT_INFO, BLOODLINES } from './engine.js';
 import { ninjaSprite, emblem, PALETTES, HAIR_STYLES, BAND_SPOTS, VILLAGES, DEFAULT_LOOK } from './sprites.js';
 
 const app = document.getElementById('app');
@@ -186,6 +187,7 @@ function profileScreen(c, fresh = false) {
           <div class="vrow"><span class="em"></span><span>${v.name}</span></div>
           <h3>${esc(c.name)}</h3>
           <div class="rank">${esc(c.rank)} · Level ${c.level}</div>
+          <div class="elrow">${[c.element, c.element2].filter(Boolean).map((k) => `<span class="elc" style="--c:${ELEMENT_INFO[k].color}">${ELEMENT_INFO[k].icon} ${ELEMENT_INFO[k].label}</span>`).join(' ')}${c.bloodline ? ` <span class="elc" style="--c:#c43c8a">${BLOODLINES[c.bloodline].icon} ${BLOODLINES[c.bloodline].label}</span>` : ''}</div>
           <div class="xp"><div style="width:${Math.min(100, (c.xp / xpNeed) * 100)}%"></div></div>
           <small>${c.xp} / ${xpNeed} XP · 💰 ${c.ryo} ryo</small>
         </div>
