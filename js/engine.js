@@ -80,6 +80,8 @@ export const MOVES = {
   // Always available
   focus: J({ name: 'Focus', style: 'none', tier: 0, ap: 2, target: 'self', desc: 'Restore stamina and chakra.' }),
   guard: J({ name: 'Guard', style: 'none', tier: 0, ap: 1, target: 'self', effects: [E('def_up', 1)], desc: 'Brace: take less damage until your next turn.' }),
+  // boss scrolls (learned only from boss drops)
+  serpentfang: J({ name: 'Serpent Fang', style: 'bukijutsu', scroll: true, tier: 2, ap: 3, stamina: 8, chakra: 6, range: [1, 3], power: 40, crit: 0.2, effects: [E('poison', 3, 0.8), E('armor_break', 2, 0.5)], desc: 'Boss scroll: a coiling strike that poisons and breaks armour.' }),
 };
 export const BLOODLINES = {
   verdant: { label: 'Verdant Blood', icon: '🌳', main: 'willpower', sec: 'strength', desc: 'Living wood answers your call.' },
@@ -97,7 +99,10 @@ export const ENEMY_MOVES = {
   throw: EM({ name: 'Throwing Knives', ap: 2, range: [1, 3], f: 0.85 }), venom: EM({ name: 'Venom Spit', ap: 3, range: [1, 2], f: 0.9, effects: [E('poison', 3, 0.7)] }),
   elem: EM({ name: 'Element Jutsu', ap: 3, range: [1, 4], f: 1.25 }), roar: EM({ name: 'War Cry', ap: 2, target: 'self', effects: [E('atk_up', 2)] }),
   guard: EM({ name: 'Guard', ap: 1, target: 'self', effects: [E('def_up', 1)] }),
+  slam: EM({ name: 'Crushing Sweep', ap: 3, range: [0, 0], aoe: 1, target: 'hex', f: 1.1 }),
+  rain: EM({ name: 'Barrage', ap: 4, range: [1, 5], aoe: 1, target: 'hex', f: 0.9, effects: [E('burn', 2, 0.3)] }),
 };
+export const BOSS_KITS = { warlord: ['heavy', 'slam', 'throw', 'roar'], wyrm: ['bite', 'venom', 'slam', 'rain'], shogun: ['strike', 'elem', 'slam', 'rain', 'roar'] };
 const ELEM_RIDER = { fire: E('burn', 2, 0.3), wind: E('armor_break', 2, 0.3), lightning: E('stun', 1, 0.15), earth: E('slow', 1, 0.4), water: E('weaken', 1, 0.3) };
 
 // ---------- hex maths ----------
@@ -135,21 +140,34 @@ function rand(s) { let t = (s.seed += 0x6D2B79F5) >>> 0; t = Math.imul(t ^ (t >>
 // ---------- setup ----------
 // unit spec: {name, look, kind, level, stats{strength,agility,intelligence,willpower}, elements[], bloodline, moves[], jl{}, hpmax, stmax, chmax, hp?, st?, ch?}
 // enemy spec: {name, look, kind, level, hpmax, atk, def, element, moves[], ai:'melee'|'ranged', npc:true}
-export function apMax(u) { return u.npc ? 5 : 5 + Math.min(4, Math.floor((u.stats.agility || 0) / 50)); }
+export function apMax(u) { return u.npc ? u.apBase || 5 : 5 + Math.min(4, Math.floor((u.stats.agility || 0) / 50)); }
 export function newBattle({ seed, a, b, aStarts = null }) {
   const s = { v: 1, seed: seed >>> 0, turn: 1, side: 'a', status: 'active', winner: null, rocks: [], units: {}, log: [] };
   const R = () => rand(s);
   // terrain: 5-7 rocks in the middle columns, never fully blocking a row
   const n = 5 + Math.floor(R() * 3);
   while (s.rocks.length < n) { const c = 2 + Math.floor(R() * 5), r = Math.floor(R() * GH), k = key(c, r); if (!s.rocks.includes(k) && !(r === 3 && (c === 1 || c === 7))) s.rocks.push(k); }
-  s.units.a = mkUnit('a', a, 1, 3); s.units.b = mkUnit('b', b, 7, 3);
+  s.units.a = mkUnit('a', a, 1, 3, 'A'); s.units.b = mkUnit('b', b, 7, 3, 'B'); s.order = ['a', 'b'];
   const first = aStarts !== null ? (aStarts ? 'a' : 'b') : ((a.stats?.agility || 0) >= (b.npc ? 0 : b.stats?.agility || 0) ? 'a' : 'b');
   s.side = first;
   startTurn(s, first, []);
   return s;
 }
-function mkUnit(id, spec, c, r) {
-  const u = { id, c, r, name: spec.name, look: spec.look || {}, kind: spec.kind || 'ninja', level: spec.level || 1, npc: !!spec.npc,
+// team boss fight: up to 3 players (p1..p3, acting in order) against one boss
+export function newRaid({ seed, players, boss }) {
+  const s = { v: 1, seed: seed >>> 0, turn: 1, side: 'p1', status: 'active', winner: null, rocks: [], units: {}, log: [], raid: true };
+  const R = () => rand(s), starts = [[1, 3], [1, 1], [1, 5]];
+  const n = 5 + Math.floor(R() * 3);
+  while (s.rocks.length < n) { const c = 2 + Math.floor(R() * 4), r = Math.floor(R() * GH), k = key(c, r); if (!s.rocks.includes(k)) s.rocks.push(k); }
+  s.order = [];
+  players.forEach((p, i) => { const id = 'p' + (i + 1); s.units[id] = mkUnit(id, p, starts[i][0], starts[i][1], 'A'); s.order.push(id); });
+  s.units.boss = mkUnit('boss', boss, 7, 3, 'B'); s.order.push('boss');
+  s.side = s.order[0];
+  startTurn(s, s.side, []);
+  return s;
+}
+function mkUnit(id, spec, c, r, team) {
+  const u = { id, c, r, team, boss: !!spec.boss, apBase: spec.apBase || 0, uid: spec.uid || null, name: spec.name, look: spec.look || {}, kind: spec.kind || 'ninja', level: spec.level || 1, npc: !!spec.npc,
     stats: spec.stats || {}, elements: spec.elements || (spec.element ? [spec.element] : []), bloodline: spec.bloodline || null,
     moves: spec.moves || [], jl: spec.jl || {}, atk: spec.atk || 0, def: spec.def || 0, ai: spec.ai || 'melee',
     hpmax: spec.hpmax, stmax: spec.stmax || 0, chmax: spec.chmax || 0, effects: [], ap: 0 };
@@ -160,16 +178,24 @@ export const other = (side) => (side === 'a' ? 'b' : 'a');
 export function hasStatus(u, k) { return u.effects.some((e) => e.k === k && e.turns > 0); }
 function addStatus(u, k, turns) { const e = u.effects.find((x) => x.k === k); if (e) e.turns = Math.max(e.turns, turns); else u.effects.push({ k, turns }); }
 
+export const foesOf = (s, u) => Object.values(s.units).filter((x) => x.team !== u.team && x.hp > 0);
+const teamAlive = (s, team) => Object.values(s.units).some((x) => x.team === team && x.hp > 0);
+function finishTeam(s, team, ev) { s.status = 'over'; s.winner = s.raid ? team : team === 'A' ? 'a' : 'b'; ev.push({ t: 'end', winner: s.winner }); return ev; }
+function checkWipe(s, ev) {
+  if (!teamAlive(s, 'B')) { finishTeam(s, 'A', ev); return true; }
+  if (!teamAlive(s, 'A')) { finishTeam(s, 'B', ev); return true; }
+  return false;
+}
 function startTurn(s, side, ev) {
   const u = s.units[side];
   u.ap = apMax(u) + (hasStatus(u, 'speed_up') ? 2 : 0) - (hasStatus(u, 'slow') ? 2 : 0);
   if (!u.npc) { u.st = Math.min(u.stmax, u.st + 3); u.ch = Math.min(u.chmax, u.ch + 2); }
   for (const k of ['burn', 'poison']) if (hasStatus(u, k)) {
-    const d = Math.max(1, Math.round(u.hpmax * (k === 'burn' ? 0.06 : 0.05))); u.hp = Math.max(0, u.hp - d);
+    const d = Math.max(1, Math.round(u.hpmax * (k === 'burn' ? 0.06 : 0.05) * (u.boss ? 0.25 : 1))); u.hp = Math.max(0, u.hp - d);
     ev.push({ t: 'dot', who: side, k, dmg: d });
   }
   if (hasStatus(u, 'regen')) { const h = Math.round(u.hpmax * 0.06); u.hp = Math.min(u.hpmax, u.hp + h); ev.push({ t: 'heal', who: side, amount: h }); }
-  if (u.hp <= 0) return finish(s, other(side), ev);
+  if (u.hp <= 0) { ev.push({ t: 'down', who: side }); if (checkWipe(s, ev)) return; return endTurn(s, ev); }
   if (hasStatus(u, 'stun')) { u.ap = 0; ev.push({ t: 'stunned', who: side }); }
   ev.push({ t: 'turn', who: side, ap: u.ap });
 }
@@ -177,11 +203,13 @@ function endTurn(s, ev) {
   const u = s.units[s.side];
   for (const e of u.effects) e.turns--;
   u.effects = u.effects.filter((e) => e.turns > 0);
-  s.side = other(s.side); if (s.side === 'a') s.turn++;
+  let i = s.order.indexOf(s.side);
+  for (let k = 0; k < s.order.length; k++) { i = (i + 1) % s.order.length; if (i === 0) s.turn++; if (s.units[s.order[i]].hp > 0) break; }
+  s.side = s.order[i];
   startTurn(s, s.side, ev);
   if (s.status === 'active' && s.units[s.side].ap <= 0 && hasStatus(s.units[s.side], 'stun')) { ev.push({ t: 'skip', who: s.side }); endTurn(s, ev); }
 }
-function finish(s, winner, ev) { s.status = 'over'; s.winner = winner; ev.push({ t: 'end', winner }); return ev; }
+function finish(s, winner, ev) { return finishTeam(s, s.units[winner].team, ev); }
 
 // ---------- move helpers ----------
 export function moveDef(u, id) { return u.npc ? ENEMY_MOVES[id] : MOVES[id]; }
@@ -236,8 +264,12 @@ export function act(s, side, a) {
   const ev = [];
   if (s.status !== 'active') throw new Error('This fight is over.');
   if (s.side !== side) throw new Error('It is not your turn.');
-  const u = s.units[side], foe = s.units[other(side)];
-  if (a.t === 'flee') { ev.push({ t: 'flee', who: side }); return finish(s, other(side), ev); }
+  const u = s.units[side];
+  if (a.t === 'flee') {
+    ev.push({ t: 'flee', who: side });
+    if (!s.raid) return finish(s, other(side), ev);
+    u.hp = 0; ev.push({ t: 'down', who: side }); if (!checkWipe(s, ev)) endTurn(s, ev); return ev;
+  }
   if (a.t === 'end') { ev.push({ t: 'endturn', who: side }); endTurn(s, ev); return ev; }
   if (a.t === 'move') {
     if (hasStatus(u, 'root')) throw new Error('You are rooted and cannot move.');
@@ -257,7 +289,8 @@ export function act(s, side, a) {
     if (!target) throw new Error('Choose a target.');
     if (m.target !== 'self' && !(m.range[1] === 0) && !inRange(m, [u.c, u.r], target)) throw new Error('Out of range.');
     if (m.target !== 'self' && !(m.range[1] === 0) && !canHitFrom(s, m, [u.c, u.r], target)) throw new Error('A rock is in the way.');
-    if (m.target === 'enemy' && !(foe.c === target[0] && foe.r === target[1])) throw new Error('No enemy there.');
+    const foes = foesOf(s, u), tgt = m.target === 'enemy' ? foes.find((f) => f.c === target[0] && f.r === target[1]) : null;
+    if (m.target === 'enemy' && !tgt) throw new Error('No enemy there.');
     u.ap -= m.ap; if (!u.npc) { u.st -= m.stamina || 0; u.ch -= m.chakra || 0; }
     const e = { t: 'use', who: side, move: a.move, name: u.npc ? enemyMoveName(u, a.move) : m.name, style: m.style, element: m.element || (u.npc && a.move === 'elem' ? u.elements[0] : null), at: target, aoe: m.aoe, hits: [] };
     ev.push(e);
@@ -265,9 +298,10 @@ export function act(s, side, a) {
     if (m.heal) { const h = Math.round(u.hpmax * m.heal); u.hp = Math.min(u.hpmax, u.hp + h); e.heal = h; }
     if (m.target === 'self') { for (const x of m.effects) addStatus(u, x.k, x.turns + 1); e.self = m.effects.map((x) => x.k); }
     else {
-      const hitFoe = m.aoe ? dist(target, [foe.c, foe.r]) <= m.aoe : true;
-      if (hitFoe) {
-        let acc = m.acc + (hasStatus(u, 'focus_up') ? 0.1 : 0) - (hasStatus(u, 'confuse') ? 0.4 : 0) - dodgeOf(foe);
+      const targets = m.aoe ? foes.filter((f) => dist(target, [f.c, f.r]) <= m.aoe) : [tgt];
+      let downed = false;
+      for (const foe of targets) {
+        const acc = m.acc + (hasStatus(u, 'focus_up') ? 0.1 : 0) - (hasStatus(u, 'confuse') ? 0.4 : 0) - dodgeOf(foe);
         const hit = rand(s) < acc;
         const h = { who: foe.id, hit, dodge: !hit && rand(s) < 0.5 };
         if (hit) {
@@ -278,13 +312,16 @@ export function act(s, side, a) {
           const effs = [...m.effects]; if (u.npc && a.move === 'elem' && ELEM_RIDER[u.elements[0]]) effs.push(ELEM_RIDER[u.elements[0]]);
           h.effects = [];
           for (const x of effs) {
+            if (foe.boss && (x.k === 'stun' || x.k === 'root') && rand(s) < 0.5) continue; // bosses shrug off half of all stuns and roots
             const chance = x.chance + (!u.npc && x.chance < 1 ? (u.stats.willpower || 0) * 0.003 : 0);
             if (rand(s) < chance) { addStatus(foe, x.k, x.turns); h.effects.push(x.k); }
           }
+          if (foe.boss && !foe.enraged && foe.hp > 0 && foe.hp < foe.hpmax / 2) { foe.enraged = true; addStatus(foe, 'atk_up', 99); h.enrage = true; }
+          if (foe.hp <= 0) downed = true;
         }
         e.hits.push(h);
-        if (foe.hp <= 0) return finish(s, side, ev);
       }
+      if (downed) { for (const h of e.hits) if (s.units[h.who].hp <= 0) ev.push({ t: 'down', who: h.who }); if (checkWipe(s, ev)) return ev; }
     }
     return ev;
   }
@@ -301,7 +338,7 @@ export function aiTurn(s, side, maxSteps = 12) {
   return ev;
 }
 function aiChoose(s, side) {
-  const u = s.units[side], foe = s.units[other(side)], fpos = [foe.c, foe.r];
+  const u = s.units[side], foes = foesOf(s, u);
   const map = reachable(s, u, u.ap);
   let best = null;
   for (const id of u.moves) {
@@ -315,29 +352,32 @@ function aiChoose(s, side) {
       if (useful) best = pick(best, { score: useful, a: { t: 'use', move: id } });
       continue;
     }
-    // where could I stand to use it?
-    const radius = m.range[1] === 0 ? m.aoe : m.range[1];
-    let opt = null;
-    for (const [k, h] of map) {
-      const from = [h.c, h.r];
-      if (u.ap - h.cost < m.ap) continue;
-      const ok = m.range[1] === 0 ? dist(from, fpos) <= m.aoe : canHitFrom(s, m, from, fpos);
-      if (!ok) continue;
-      // prefer staying far when ranged, and fewer steps
-      const keepAway = u.ai === 'ranged' || m.range[1] >= 3 ? dist(from, fpos) * 0.6 : 0;
-      const sc = -h.cost + keepAway;
-      if (!opt || sc > opt.sc) opt = { sc, h };
+    for (const foe of foes) {
+      const fpos = [foe.c, foe.r];
+      let opt = null;
+      for (const [k, h] of map) {
+        const from = [h.c, h.r];
+        if (u.ap - h.cost < m.ap) continue;
+        const ok = m.range[1] === 0 ? dist(from, fpos) <= m.aoe : canHitFrom(s, m, from, fpos);
+        if (!ok) continue;
+        const keepAway = u.ai === 'ranged' || m.range[1] >= 3 ? dist(from, fpos) * 0.6 : 0;
+        const sc = -h.cost + keepAway;
+        if (!opt || sc > opt.sc) opt = { sc, h };
+      }
+      if (!opt) continue;
+      const from = [opt.h.c, opt.h.r], center = m.range[1] === 0 ? from : fpos;
+      const n = m.aoe ? foes.filter((f) => dist(center, [f.c, f.r]) <= m.aoe).length : 1;
+      const exp = damage(s, u, foe, m, false).dmg * (m.acc || 0.9) * n + (m.effects.length ? 6 : 0) + (1 - foe.hp / foe.hpmax) * 8;
+      const score = exp - opt.h.cost * 0.5;
+      const act = opt.h.cost > 0 ? { t: 'move', to: [opt.h.c, opt.h.r] } : { t: 'use', move: id, at: m.range[1] === 0 ? null : fpos };
+      best = pick(best, { score, a: act });
     }
-    if (!opt) continue;
-    const exp = damage(s, u, foe, m, false).dmg * (m.acc || 0.9) + (m.effects.length ? 6 : 0);
-    const score = exp - opt.h.cost * 0.5;
-    const target = m.range[1] === 0 ? null : fpos;
-    const act = opt.h.cost > 0 ? { t: 'move', to: [opt.h.c, opt.h.r] } : { t: 'use', move: id, at: target };
-    best = pick(best, { score, a: act });
   }
   if (best) return best.a;
-  // nothing to use: walk toward the foe (or keep distance if ranged and close)
   let step = null;
+  const near = foes.reduce((a, f) => (!a || dist([u.c, u.r], [f.c, f.r]) < dist([u.c, u.r], [a.c, a.r]) ? f : a), null);
+  if (!near) return { t: 'end' };
+  const fpos = [near.c, near.r];
   for (const [k, h] of map) {
     if (h.cost === 0) continue;
     const d = dist([h.c, h.r], fpos), want = u.ai === 'ranged' ? 3 : 1;
@@ -350,8 +390,9 @@ function aiChoose(s, side) {
 const pick = (a, b) => (!a || b.score > a.score ? b : a);
 
 // ---------- what a player knows ----------
-export function knownMoves({ rankIndex = 0, elements = [], bloodline = null }) {
+export function knownMoves({ rankIndex = 0, elements = [], bloodline = null, scrolls = [] }) {
   return Object.entries(MOVES).filter(([id, m]) => {
+    if (m.scroll) return scrolls.includes(id);
     if (m.style === 'none') return true;
     if (m.style === 'bloodline') return m.bloodline === bloodline && (m.tier === 0 || rankIndex >= 2);
     if (m.tier > rankIndex) return false;
@@ -366,8 +407,8 @@ export const KITS = { beast: ['claw', 'bite', 'roar'], ninja: ['strike', 'throw'
 // c: character row; jl: {move: level}; pools: {php,pmax,pst,pstmax,pch,pchmax}
 export function playerSpec(c, jl, pools) {
   const ri = Math.max(0, RANKS.indexOf(c.rank)), elements = [c.element, c.element2].filter(Boolean);
-  return { name: c.name, look: c.appearance, kind: 'ninja', level: c.level, stats: { strength: c.strength, agility: c.agility, intelligence: c.intelligence, willpower: c.willpower },
-    elements, bloodline: c.bloodline || null, moves: knownMoves({ rankIndex: ri, elements, bloodline: c.bloodline }), jl: jl || {},
+  return { uid: c.user_id || null, name: c.name, look: c.appearance, kind: 'ninja', level: c.level, stats: { strength: c.strength, agility: c.agility, intelligence: c.intelligence, willpower: c.willpower },
+    elements, bloodline: c.bloodline || null, moves: knownMoves({ rankIndex: ri, elements, bloodline: c.bloodline, scrolls: c.scrolls || [] }), jl: jl || {},
     hpmax: pools.pmax, stmax: pools.pstmax, chmax: pools.pchmax, hp: pools.php, st: pools.pst, ch: pools.pch };
 }
 // st: battle state with foe {hp,atk,def,kit,element,level} and enemy {name,kind,look}
@@ -395,3 +436,16 @@ export function newDuel(seed, ca, jla, cb, jlb) {
   return s;
 }
 export const DUEL_TURN_SEC = 60;
+
+// boss for a team of n players (1-3): smaller teams face a weaker boss
+export const BOSSES = {
+  iron: { name: 'Warlord Gorou', kind: 'ninja', kit: 'warlord', hp: 7600, atk: 85, def: 22, element: 'earth', level: 26, look: { hairStyle: 0, hair: 0, skin: 3, outfit: 6, band: 1, bandSpot: 1 } },
+  serpent: { name: 'Venomfang', kind: 'beast_snake', kit: 'wyrm', hp: 8000, atk: 86, def: 22, element: null, level: 26, look: { tint: '#3a6a3a' } },
+  shrine: { name: 'The Hollow Shogun', kind: 'ninja', kit: 'shogun', hp: 14600, atk: 188, def: 36, element: 'lightning', level: 40, look: { hairStyle: 3, hair: 0, skin: 5, outfit: 4, band: 2, bandSpot: 0 } },
+};
+const BOSS_SCALE = { 1: [0.3, 0.65], 2: [0.6, 0.85], 3: [1, 1] };
+export function bossSpec(line, n) {
+  const b = BOSSES[line], [hf, af] = BOSS_SCALE[Math.max(1, Math.min(3, n))];
+  return { name: b.name, look: b.look, kind: b.kind, level: b.level, npc: true, boss: true, apBase: 7, hpmax: Math.round(b.hp * hf), atk: Math.round(b.atk * af), def: b.def,
+    element: b.element, moves: BOSS_KITS[b.kit], ai: 'melee' };
+}

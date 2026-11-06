@@ -371,3 +371,18 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .wm-step .btn, .wm-q .btn { align-self: flex-start; } .wm-q.locked { opacity: .6; } .wm-q.done { box-shadow: 0 0 0 3px var(--green); }
 .wm-boss { box-shadow: 0 0 0 3px #8a2a2a; background: #fbe8e0; }
 .wm-step .mini i { background: #7a4a2a; }
+/* ---------- boss lair + team fights ---------- */
+.board.lair .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 8px 0; }
+.board.lair h4 { margin: 12px 2px 6px; }
+.lmembers { display: flex; flex-direction: column; gap: 6px; }
+.lm { background: #fffaf0; box-shadow: 0 0 0 3px var(--ink); padding: 6px 10px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.lm small { width: 100%; color: var(--ink2); } .lm.empty { box-shadow: 0 0 0 2px #c9a86a; color: var(--ink2); font-style: italic; }
+.lm .ldr { font-size: 12px; color: var(--wood); font-weight: 700; }
+.lteam { display: flex; align-items: center; gap: 8px; background: #fffaf0; box-shadow: 0 0 0 3px var(--ink); padding: 6px 10px; margin: 6px 2px; }
+.lteam > div { flex: 1; display: flex; flex-direction: column; } .lteam small { color: var(--ink2); }
+.hx-allies { display: flex; gap: 6px; padding: 0 6px 6px; background: var(--wood); }
+.hx-allies .ally { flex: 1; background: var(--paper); box-shadow: 0 0 0 3px var(--ink); padding: 4px 7px; font-size: 13px; min-width: 0; }
+.hx-allies .ally.now { box-shadow: 0 0 0 3px #ffe07a; } .hx-allies .ally.down { opacity: .55; }
+.hx-allies .ally small { color: var(--wood); font-weight: 700; } .hx-allies .gbar { position: relative; height: 12px; margin: 3px 1px 1px; }
+.hx-allies .gbar span { position: absolute; inset: 0; font-size: 10px; font-weight: 700; line-height: 12px; padding-left: 4px; }
+.enr { color: var(--red); font-weight: 700; } .ttl { color: var(--wood); font-weight: 700; font-size: 14px; margin: 2px 0; }

@@ -282,3 +282,25 @@ export async function startQuest(line) {
   const { data, error } = await sb.rpc('start_quest', { p_line: line }); if (error) throw rpcErr(error);
   return battleCall({ op: 'get', battle: data.id });
 }
+// ---------- team boss fights ----------
+const raidCall = async (body) => { if (OFFLINE) { const o = await import('./offline.js'); return o.mockRaidOp(mockChar(), body); } return battleCall(body); };
+export const raidCreate = (line) => raidCall({ op: 'raid_create', line });
+export const raidJoin = (raid) => raidCall({ op: 'raid_join', raid });
+export const raidLeave = (raid) => raidCall({ op: 'raid_leave', raid });
+export const raidStart = (raid) => raidCall({ op: 'raid_start', raid });
+export const raidAct = (raid, action) => raidCall({ op: 'raid_act', raid, action });
+export const raidTimeout = (raid, seq) => raidCall({ op: 'raid_timeout', raid, seq });
+export async function raidLobbies(line) {
+  if (OFFLINE) { const o = await import('./offline.js'); return o.mockLobbies(line); }
+  const { data, error } = await sb.from('raids').select('*').eq('line', line).in('status', ['lobby', 'active']).gt('updated_at', new Date(Date.now() - 30 * 60000).toISOString()).order('created_at');
+  if (error) throw rpcErr(error); return data || [];
+}
+export function watchRaid(id, cb) {
+  if (OFFLINE) { let off; import('./offline.js').then((o) => (off = o.mockWatch(id, cb))); return () => off && off(); }
+  const ch = sb.channel('raid-' + id).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'raids', filter: `id=eq.${id}` }, (m) => cb(m.new)).subscribe();
+  return () => sb.removeChannel(ch);
+}
+export async function setTitle(title) {
+  if (OFFLINE) return loadCharacter();
+  const { data, error } = await sb.rpc('set_title', { p_title: title }); if (error) throw rpcErr(error); return data;
+}

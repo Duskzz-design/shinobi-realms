@@ -41,12 +41,16 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
 // res: { status:'active'|'won'|'lost'|'fled', state:{engine}, events, result, seq? }
 export function battleView(root, char, cfg) {
   let S0 = cfg.state, eng = S0.engine;
-  const MY = cfg.my, OT = MY === 'a' ? 'b' : 'a';
-  const me = () => eng.units[MY], foe = () => eng.units[OT];
+  const MY = cfg.my, team = () => eng.units[MY].team;
+  const me = () => eng.units[MY];
+  const foes = () => Object.values(eng.units).filter((u) => u.team !== team() && u.hp > 0);
+  const foe = () => foes()[0] || Object.values(eng.units).find((u) => u.team !== team());
+  const allies = () => Object.values(eng.units).filter((u) => u.team === team() && u.id !== MY);
+  const turnName = (id) => (id === MY ? 'Your turn' : `${eng.units[id].name}'s turn`);
   const el = h(`<div class="ov battle hexb">
     <div class="b-top">${cfg.head}<span class="tmr" hidden></span><span class="turn"></span></div>
     <div class="hx-arena"><canvas width="${W}" height="${H}"></canvas><div class="hx-banner" hidden></div></div>
-    <div class="hx-cards"><div class="hx-card p"></div><div class="hx-card e"></div></div>
+    <div class="hx-cards"><div class="hx-card p"></div><div class="hx-card e"></div></div>${cfg.raid ? '<div class="hx-allies"></div>' : ''}
     <div class="hx-info"></div>
     <div class="b-tabs"></div>
     <div class="hx-moves"></div>
@@ -70,13 +74,17 @@ export function battleView(root, char, cfg) {
       <div class="gbar hp ${p.hp / p.hpmax < 0.3 ? 'low' : ''}"><i style="width:${100 * p.hp / p.hpmax}%"></i><span>❤️ ${p.hp}/${p.hpmax}</span></div>
       <div class="gbar sta"><i style="width:${100 * p.st / p.stmax}%"></i><span>💪 ${p.st}/${p.stmax}</span></div>
       <div class="gbar ch"><i style="width:${100 * p.ch / p.chmax}%"></i><span>💧 ${p.ch}/${p.chmax}</span></div>
-      <div class="aprow">${myTurn ? Array.from({ length: Math.max(max, p.ap) }, (_, i) => `<i class="${i < p.ap ? 'on' : ''}"></i>`).join('') + `<b>${p.ap} AP</b>` : `<b class="wait">${cfg.duel ? esc(e.name) + "'s turn…" : 'Enemy turn…'}</b>`}</div>
+      <div class="aprow">${myTurn ? Array.from({ length: Math.max(max, p.ap) }, (_, i) => `<i class="${i < p.ap ? 'on' : ''}"></i>`).join('') + `<b>${p.ap} AP</b>` : `<b class="wait">${p.hp <= 0 ? 'Down' : cfg.duel || cfg.raid ? esc(eng.units[eng.side].name) + "'s turn…" : 'Enemy turn…'}</b>`}</div>
       <div class="sts">${stIcons(p)}</div>`;
     el.querySelector('.hx-card.e').innerHTML = `<div class="nm"><b>${esc(e.name)}</b><small>Lv ${e.level}</small>${e.elements.map(elChip).join('')}${e.bloodline ? `<span class="elc" style="--c:#c43c8a">${G.BLOODLINES[e.bloodline].icon}</span>` : ''}</div>
       <div class="gbar hp ${e.hp / e.hpmax < 0.3 ? 'low' : ''}"><i style="width:${100 * e.hp / e.hpmax}%"></i><span>${e.hp}/${e.hpmax}</span></div>
       ${cfg.duel ? `<div class="gbar ch"><i style="width:${100 * e.ch / e.chmax}%"></i><span>💧 ${e.ch}/${e.chmax}</span></div>` : ''}
+      ${e.boss && e.enraged ? '<small class="enr">😡 Enraged: hits harder</small>' : ''}
       <div class="sts">${stIcons(e)}</div>`;
     el.querySelector('.turn').textContent = `Turn ${eng.turn}`;
+    const al = el.querySelector('.hx-allies');
+    if (al) al.innerHTML = allies().map((u) => `<div class="ally ${u.hp <= 0 ? 'down' : ''} ${eng.side === u.id ? 'now' : ''}"><b>${esc(u.name)}</b>${u.elements.map(elChip).join('')}
+      <div class="gbar hp ${u.hp / u.hpmax < 0.3 ? 'low' : ''}"><i style="width:${100 * u.hp / u.hpmax}%"></i><span>${u.hp <= 0 ? 'Down' : `❤️ ${u.hp}/${u.hpmax}`}</span></div>${eng.side === u.id ? '<small>Acting…</small>' : ''}</div>`).join('');
   }
   function moveBtn(id) {
     const m = G.MOVES[id], p = me(), learned = p.moves.includes(id), jl = p.jl[id] || 1;
@@ -102,7 +110,8 @@ export function battleView(root, char, cfg) {
   }
   function say(html) { info.innerHTML = html; }
   function idleInfo() {
-    if (eng.side !== MY) return say(cfg.duel ? `<b>${esc(foe().name)}</b> is thinking… Watch their moves.` : 'Enemy turn…');
+    if (me().hp <= 0) return say('You are down. Cheer on your team!');
+    if (eng.side !== MY) return say(cfg.duel || cfg.raid ? `<b>${esc(eng.units[eng.side].name)}</b> is acting… Watch their moves.` : 'Enemy turn…');
     const p = me();
     if (G.hasStatus(p, 'root')) return say(`🌿 You are <b>rooted</b> and cannot move this turn. Use a technique or end your turn.`);
     say(`<b>Tap a blue hex</b> to move (1 AP each), or <b>pick a technique</b> below. You have <b>${p.ap} AP</b>.`);
@@ -110,7 +119,7 @@ export function battleView(root, char, cfg) {
   function moveInfo(id) {
     const m = G.MOVES[id], p = me(), e = foe();
     const mult = m.element ? G.elementMult(m.element, e.elements[0]) : 1;
-    const mtxt = mult > 1 ? `<span class="good">Strong vs ${G.ELEMENT_INFO[e.elements[0]].label} ×1.5</span>` : mult < 1 ? `<span class="bad">Weak vs ${G.ELEMENT_INFO[e.elements[0]].label} ×0.7</span>` : '';
+    const mtxt = mult > 1 ? `<span class="good">Strong vs ${G.ELEMENT_INFO[e.elements[0]].label} ×${mult}</span>` : mult < 1 ? `<span class="bad">Weak vs ${G.ELEMENT_INFO[e.elements[0]].label} ×${mult}</span>` : '';
     const effs = m.effects.map((x) => `${G.STATUS[x.k].icon} ${G.STATUS[x.k].label}${x.chance < 1 ? ` ${Math.round(x.chance * 100)}%` : ''}`).join(', ');
     let how = '';
     if (m.target === 'self' || m.range[1] === 0) how = `<b>Tap it again</b> (or tap yourself) to use.`;
@@ -138,14 +147,14 @@ export function battleView(root, char, cfg) {
   cv.addEventListener('pointerleave', () => { hover = null; });
   cv.addEventListener('click', (ev) => {
     const hex = hexAt(...toCanvas(ev)); if (!hex || busy || eng.side !== MY) return;
-    const p = me(), e = foe(), onFoe = hex[0] === e.c && hex[1] === e.r, onMe = hex[0] === p.c && hex[1] === p.r;
+    const p = me(), fAt = foes().find((f) => hex[0] === f.c && hex[1] === f.r), onFoe = !!fAt, onMe = hex[0] === p.c && hex[1] === p.r;
     if (sel) {
       const m = G.MOVES[sel];
       if (m.target === 'self' || m.range[1] === 0) { if (onMe || (m.range[1] === 0 && G.dist(hex, [p.c, p.r]) <= m.aoe)) return send({ t: 'use', move: sel, at: null }); }
       else if (m.target === 'enemy' && onFoe) { if (G.canHitFrom(eng, m, [p.c, p.r], hex)) return send({ t: 'use', move: sel, at: hex }); return moveInfo(sel); }
       else if (m.target === 'hex' && G.canHitFrom(eng, m, [p.c, p.r], hex)) return send({ t: 'use', move: sel, at: hex });
     }
-    if (onFoe) { const e2 = foe(); say(`<b>${esc(e2.name)}</b> ${e2.elements[0] ? `· ${G.ELEMENT_INFO[e2.elements[0]].label} user: weak to ${G.ELEMENT_INFO[G.ELEMENTS[(G.ELEMENTS.indexOf(e2.elements[0]) + 4) % 5]].label}` : '· no element'}<br><small>${cfg.duel ? `Lv ${e2.level} · ${e2.moves.length - 2} techniques. Read their element and stay out of their best range.` : e2.ai === 'ranged' ? 'Fights from range: close the gap or break line of sight.' : 'Fights up close: keep your distance and strike from range.'}</small>`); return; }
+    if (onFoe) { const e2 = fAt; say(`<b>${esc(e2.name)}</b> ${e2.elements[0] ? `· ${G.ELEMENT_INFO[e2.elements[0]].label} user: weak to ${G.ELEMENT_INFO[G.ELEMENTS[(G.ELEMENTS.indexOf(e2.elements[0]) + 4) % 5]].label}` : '· no element'}<br><small>${e2.boss ? 'A boss: area attacks hit everyone standing close together. Spread out, and shrug off: half your stuns and roots will fail.' : cfg.duel ? `Lv ${e2.level} · ${e2.moves.length - 2} techniques. Read their element and stay out of their best range.` : e2.ai === 'ranged' ? 'Fights from range: close the gap or break line of sight.' : 'Fights up close: keep your distance and strike from range.'}</small>`); return; }
     const reach = G.reachable(eng, p, p.ap), k = G.key(hex[0], hex[1]);
     if (reach.has(k) && reach.get(k).cost > 0) return send({ t: 'move', to: hex });
   });
@@ -193,7 +202,7 @@ export function battleView(root, char, cfg) {
         say(ev.who === MY ? 'You move.' : `${esc(name)} moves.`);
         for (const [c, r] of ev.path) { unit(ev.who).c = c; unit(ev.who).r = r; fx.anim[ev.who] = t; await pause(110); }
       } else if (ev.t === 'use') {
-        const u = unit(ev.who), tgt = unit(ev.who === 'a' ? 'b' : 'a'), m = u.npc ? G.ENEMY_MOVES[ev.move] : G.MOVES[ev.move];
+        const u = unit(ev.who), m = u.npc ? G.ENEMY_MOVES[ev.move] : G.MOVES[ev.move], tgt = ev.at ? { c: ev.at[0], r: ev.at[1] } : u;
         say(`${ev.who === MY ? 'You use' : esc(name) + ' uses'} <b>${esc(ev.name)}</b>!`);
         const col = ev.element ? G.ELEMENT_INFO[ev.element].color : STYLE_INFO[ev.style || 'taijutsu']?.color || '#c9ccd4';
         if (m.target === 'self') { fx.flash = { at: [u.c, u.r], r: 0, col, life: 18 }; await pause(380); }
@@ -211,6 +220,7 @@ export function battleView(root, char, cfg) {
           const v = unit(hit.who); v.hp = Math.max(0, v.hp - hit.dmg); fx.hurt = { who: hit.who, start: t };
           float(hit.who, hit.crit ? `CRIT ${hit.dmg}` : String(hit.dmg), hit.crit ? '#ffe07a' : hit.who === MY ? '#ff8f7a' : '#fff4dc');
           if (hit.mult > 1) float(hit.who, 'Super effective!', '#ffb04a', 14); else if (hit.mult < 1) float(hit.who, 'Resisted', '#9ab0c0', 14);
+          if (hit.enrage) { float(hit.who, '😡 ENRAGED!', '#ff5a3a', 40); say(`<b>${esc(unit(hit.who).name)}</b> is enraged and hits harder!`); }
           (hit.effects || []).forEach((k, i) => setTimeout(() => float(hit.who, G.STATUS[k].icon + ' ' + G.STATUS[k].label, '#e0a0ff', 26 + i * 10), 200 + i * 160));
         }
         cards(); await pause(ev.hits?.length ? 620 : 300);
@@ -218,9 +228,10 @@ export function battleView(root, char, cfg) {
         const u = unit(ev.who); u.hp = Math.max(0, u.hp - ev.dmg); float(ev.who, `${G.STATUS[ev.k].icon} ${ev.dmg}`, '#ff9a63'); cards(); await pause(420);
       } else if (ev.t === 'heal') { const u = unit(ev.who); u.hp = Math.min(u.hpmax, u.hp + ev.amount); float(ev.who, `💚 +${ev.amount}`, '#7ce08a'); cards(); await pause(380);
       } else if (ev.t === 'stunned') { float(ev.who, '💫 Stunned!', '#ffe07a'); await pause(450);
-      } else if (ev.t === 'turn') { eng.side = ev.who; showBanner(ev.who === MY ? 'Your turn' : cfg.duel ? `${foe().name}'s turn` : 'Enemy turn', ev.who === MY ? 'a' : 'b'); cards(); await pause(ev.who !== MY ? 500 : 250);
+      } else if (ev.t === 'turn') { eng.side = ev.who; showBanner(ev.who === MY ? 'Your turn' : cfg.duel || cfg.raid ? turnName(ev.who) : 'Enemy turn', ev.who === MY ? 'a' : 'b'); cards(); await pause(ev.who !== MY ? 500 : 250);
+      } else if (ev.t === 'down') { unit(ev.who).hp = 0; float(ev.who, '💀 Down!', '#ff8f7a'); say(ev.who === MY ? '<span class="bad">You are down!</span>' : `${esc(unit(ev.who).name)} is down!`); cards(); await pause(500);
       } else if (ev.t === 'timeout') { float(ev.who, '⏱ Too slow!', '#ff8f7a'); say(ev.who === MY ? `<span class="bad">Time ran out: your turn was skipped (${ev.n}/3).</span>` : `${esc(name)} ran out of time (${ev.n}/3).`); await pause(600);
-      } else if (ev.t === 'end') { fx.dead = ev.winner === 'a' ? 'b' : 'a'; await pause(600); }
+      } else if (ev.t === 'end') { if (!eng.raid) fx.dead = ev.winner === 'a' ? 'b' : 'a'; await pause(600); }
     }
   }
   function shoot(from, to, col, kind, big) {
@@ -241,7 +252,7 @@ export function battleView(root, char, cfg) {
     if (!alive) return; t++;
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = theme[2]; ctx.fillRect(0, 0, W, H);
-    const p = me(), e = foe(), myTurn = eng.side === MY && !busy;
+    const p = me(), e = foe(), myTurn = eng.side === MY && !busy && p.hp > 0;
     const reach = myTurn && !sel ? G.reachable(eng, p, p.ap) : null;
     const m = sel ? G.MOVES[sel] : null;
     let aoe = null;
@@ -265,29 +276,32 @@ export function battleView(root, char, cfg) {
     if (path) { ctx.fillStyle = '#fff4dc'; for (const [c, r] of path) { const [x, y] = hx(c, r); ctx.fillRect(x - 2, y - 2, 4, 4); } }
     // things sorted by row so lower rows draw on top
     const things = eng.rocks.map((k) => { const [c, r] = k.split(',').map(Number); return { r, c, rock: true }; });
-    for (const id of ['a', 'b']) { const u = unit(id); things.push({ r: u.r, c: u.c, u, id }); }
+    for (const id of Object.keys(eng.units)) { const u = unit(id); if (u.hp > 0 || fx.dead === id) things.push({ r: u.r, c: u.c, u, id }); }
     things.sort((a, b) => a.r - b.r);
     for (const th of things) {
       let [x, y] = hx(th.c, th.r);
       if (th.rock) { rock(x, y); continue; }
-      const u = th.u, foeU = unit(th.id === 'a' ? 'b' : 'a');
+      const u = th.u, foeU = Object.values(eng.units).filter((x) => x.team !== u.team && x.hp > 0).sort((p, q) => G.dist([u.c, u.r], [p.c, p.r]) - G.dist([u.c, u.r], [q.c, q.r]))[0] || u;
       if (fx.dead === th.id && t % 8 < 4) continue;
       if (fx.lunge && fx.lunge.who === th.id) { const [tx, ty] = hx(...fx.lunge.to), k = Math.sin(Math.min(1, (t - fx.lunge.start) / 14) * Math.PI) * 0.45; x += (tx - x) * k; y += (ty - y) * k; }
       const hurt = fx.hurt && fx.hurt.who === th.id && t - fx.hurt.start < 16;
       const dir = foeU.c < u.c || (foeU.c === u.c && th.id === 'b') ? 1 : 2;
       const moving = fx.anim[th.id] && t - fx.anim[th.id] < 8;
       ctx.fillStyle = 'rgba(20,20,10,.3)'; ctx.fillRect(x - 7, y + 5, 14, 3);
-      if (th.id === eng.side && !busy) { ctx.strokeStyle = th.id === MY ? '#ffe07a' : '#ff8f7a'; ctx.lineWidth = 1; hexPath(ctx, x, y, S - 3); ctx.stroke(); }
+      if (th.id === eng.side && !busy) { ctx.strokeStyle = u.team === team() ? '#ffe07a' : '#ff8f7a'; ctx.lineWidth = 1; hexPath(ctx, x, y, S - 3); ctx.stroke(); }
       let spr;
       if (u.kind === 'ninja') spr = ninjaSprite(u.look, dir, moving ? 1 + ((t >> 3) & 1) : fx.lunge && fx.lunge.who === th.id ? 3 : 0);
       else spr = beastSprite(u.kind, u.look?.tint, (t >> 4) % 2);
       ctx.save(); if (hurt && t % 4 < 2) ctx.globalAlpha = 0.35;
-      if (u.kind !== 'ninja' && dir === 2) { ctx.translate(x, 0); ctx.scale(-1, 1); ctx.drawImage(spr, -spr.width / 2, y + 7 - spr.height); }
-      else ctx.drawImage(spr, Math.round(x - spr.width / 2), Math.round(y + 7 - spr.height));
+      const k = u.boss ? 1.6 : 1, sw = spr.width * k, sh = spr.height * k;
+      if (u.boss) { ctx.fillStyle = 'rgba(120,20,20,.35)'; ctx.beginPath(); ctx.ellipse(x, y + 6, 13, 4, 0, 0, 7); ctx.fill(); }
+      if (u.kind !== 'ninja' && dir === 2) { ctx.translate(x, 0); ctx.scale(-1, 1); ctx.drawImage(spr, -sw / 2, y + 7 - sh, sw, sh); }
+      else ctx.drawImage(spr, Math.round(x - sw / 2), Math.round(y + 7 - sh), sw, sh);
       ctx.restore();
       // mini hp bar
-      const bw = 22; ctx.fillStyle = '#24160e'; ctx.fillRect(x - bw / 2 - 1, y - spr.height + 2, bw + 2, 4);
-      ctx.fillStyle = th.id === MY ? '#5ccf5c' : '#e8542c'; ctx.fillRect(x - bw / 2, y - spr.height + 3, Math.max(0, bw * u.hp / u.hpmax), 2);
+      const bw = u.boss ? 34 : 22, by = y + 7 - sh - 5; ctx.fillStyle = '#24160e'; ctx.fillRect(x - bw / 2 - 1, by, bw + 2, 4);
+      ctx.fillStyle = th.id === MY ? '#5ccf5c' : u.team === team() ? '#9fd88a' : '#e8542c'; ctx.fillRect(x - bw / 2, by + 1, Math.max(0, bw * u.hp / u.hpmax), 2);
+      if (eng.raid && u.team === team() && th.id !== MY) { ctx.font = "6px 'Press Start 2P', monospace"; ctx.textAlign = 'center'; ctx.fillStyle = '#fff4dc'; ctx.fillText(u.name.slice(0, 8), x, by - 2); }
       if (G.hasStatus(u, 'stun')) { ctx.fillStyle = '#ffe07a'; for (let i = 0; i < 3; i++) { const a = t / 8 + i * 2.1; ctx.fillRect(x + Math.cos(a) * 7 - 1, y - spr.height - 3 + Math.sin(a) * 2, 2, 2); } }
     }
     // projectile
@@ -306,7 +320,7 @@ export function battleView(root, char, cfg) {
     requestAnimationFrame(draw);
   }
   requestAnimationFrame(draw);
-  panel(); idleInfo(); showBanner(eng.side === MY ? 'Your turn' : `${foe().name} goes first`, eng.side === MY ? 'a' : 'b');
+  panel(); idleInfo(); showBanner(eng.side === MY ? 'Your turn' : `${eng.units[eng.side].name} goes first`, eng.side === MY ? 'a' : 'b');
   if (cfg.intro) say(cfg.intro);
   window.__hex = { get eng() { return eng; }, send, pick, hx, cv, my: MY };
   // turn timer (duels)
@@ -387,6 +401,40 @@ export function runDuel(root, char, duel, onEnd) {
       const pts = p.capped ? `<p class="sub">No Arena points: you two have already duelled 3 times today.</p>` : won ? `<p class="big">+${p.gain || 0} Arena points</p>` : `<p class="sub">${p.loss ? `−${p.loss} Arena points` : 'No points lost.'}</p>`;
       const box = h(`<div class="b-result"><div class="scroll"><h3 class="${won ? 'win' : 'lose'}">${won ? 'Victory!' : 'Defeated…'}</h3><p>${won ? `You beat ${esc(foeName)} in a live duel.` : `${esc(foeName)} won this duel.`} ${why}</p>${pts}
         <div class="row"><button class="btn primary" data-back>Back to village</button></div></div></div>`);
+      el.appendChild(box);
+      box.querySelector('[data-back]').onclick = () => { finish(); onEnd({ status: res.status, result: r }); };
+    },
+  });
+}
+
+// ---------- team boss fight ----------
+export function raidRes(r, myId) {
+  const over = ['over', 'closed'].includes(r.status);
+  return { seq: r.seq, state: r.state, events: (r.state && r.state.events) || [], status: over ? (r.winner === 'A' ? 'won' : 'lost') : 'active', result: { rewards: r.rewards && r.rewards[myId], closed: r.status === 'closed' } };
+}
+export function runRaid(root, char, raid, bossName, onEnd) {
+  const myId = char.user_id, units = raid.state.engine.units, my = Object.keys(units).find((k) => units[k].uid === myId);
+  let deadline = new Date(raid.deadline).getTime(), lastClaim = 0, unsub = null, seqNow = raid.seq;
+  const track = (r) => { if (r.deadline) deadline = new Date(r.deadline).getTime(); seqNow = Math.max(seqNow, r.seq); return raidRes(r, myId); };
+  battleView(root, char, {
+    my, raid: true, state: raid.state, seq: raid.seq,
+    head: `<span class="grade" style="background:#8a2a2a">☠</span><b>${esc(bossName)}</b>`,
+    intro: `<b>Boss fight!</b> Players act in turn (60 seconds each), then the boss. Spread out: its sweeps and barrages hit everyone close together.`,
+    act: async (a) => track(await net.raidAct(raid.id, a)),
+    listen: (apply) => { unsub = net.watchRaid(raid.id, (r) => apply(track(r))); },
+    deadline: () => deadline,
+    onTimeout: () => { if (Date.now() - lastClaim < 4000 || Date.now() < deadline + 1500) return; lastClaim = Date.now(); net.raidTimeout(raid.id, seqNow).catch(() => {}); },
+    fled: () => { unsub && unsub(); onEnd({ status: 'fled' }); },
+    result: (res, finish, el) => {
+      unsub && unsub();
+      const won = res.status === 'won', r = (res.result || {}).rewards || {};
+      const rw = !won ? '<p>The team was defeated. Train, regroup and try again. Defeat costs nothing.</p>'
+        : r.capped ? '<p class="sub">You have already claimed this boss\'s rewards 3 times today. Thanks for helping your team!</p>'
+        : `<p class="big">+${r.xp || 0} XP &nbsp; +${r.ryo || 0} ryo</p>${r.scroll ? `<div class="blood"><div class="bico">📜</div><h4>Rare drop: ${esc(G.MOVES[r.scroll]?.name || r.scroll)} scroll!</h4><p>You learned a boss-only technique. Find it in your Bukijutsu tab.</p></div>` : ''}
+           ${r.title ? `<div class="blood"><div class="bico">🏆</div><h4>New title: "${esc(r.title)}"</h4><p>It now shows under your name.</p></div>` : ''}${r.leveled ? `<p class="lvl">⬆ Level up! You are now level ${r.level}.</p>` : ''}
+           <p class="sub">Rewarded wins left today for this boss: ${r.claims_left ?? 0}</p>`;
+      const box = h(`<div class="b-result"><div class="scroll"><h3 class="${won ? 'win' : 'lose'}">${won ? `${esc(bossName)} is defeated!` : 'Your team fell…'}</h3>${rw}
+        <div class="row"><button class="btn primary" data-back>Back</button></div></div></div>`);
       el.appendChild(box);
       box.querySelector('[data-back]').onclick = () => { finish(); onEnd({ status: res.status, result: r }); };
     },

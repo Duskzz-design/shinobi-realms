@@ -2,6 +2,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import * as G from './engine.js';
 import { duelOp } from './duel.ts';
+import { raidOp } from './raid.ts';
 
 const URL = Deno.env.get('SUPABASE_URL')!, SR = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const admin = createClient(URL, SR, { auth: { persistSession: false } });
@@ -47,14 +48,15 @@ Deno.serve(async (req) => {
       const s = b.state.engine; s.seed = seed();
       const a = body.action || {};
       const action = a.t === 'move' ? { t: 'move', to: [a.to[0] | 0, a.to[1] | 0] } : a.t === 'use' ? { t: 'use', move: String(a.move), at: a.at ? [a.at[0] | 0, a.at[1] | 0] : null } : a.t === 'flee' ? { t: 'flee' } : { t: 'end' };
-      const events: any[] = G.act(s, 'a', action);
-      if (action.t === 'use') b.state.used[action.move] = (b.state.used[action.move] || 0) + 1;
+      // a fight that ended but was never settled (e.g. a dropped connection) is settled now
+      const events: any[] = s.status === 'over' ? [] : G.act(s, 'a', action);
+      if (action.t === 'use' && events.length) b.state.used[action.move] = (b.state.used[action.move] || 0) + 1;
       if (s.status === 'active' && s.side === 'b') events.push(...G.aiTurn(s, 'b', 14));
       if (s.status === 'active' && s.side === 'b') { events.push(...G.act(s, 'b', { t: 'end' })); }
       let result = null, status = 'active';
       if (s.status === 'over') {
         const win = s.winner === 'a', p = s.units.a;
-        status = action.t === 'flee' ? 'fled' : win ? 'won' : 'lost';
+        status = action.t === 'flee' && events.length && !win ? 'fled' : win ? 'won' : 'lost';
         Object.assign(b.state, { php: p.hp, pst: p.st, pch: p.ch });
         await admin.from('battles').update({ state: b.state }).eq('id', b.id);
         if (status !== 'fled') {
@@ -66,6 +68,7 @@ Deno.serve(async (req) => {
       await admin.from('battles').update({ state: b.state, status, updated_at: new Date().toISOString() }).eq('id', b.id);
       return out(view(b, events, result));
     }
+    if (String(body.op).startsWith('raid_')) return out(await raidOp(admin, u.id, body, seed));
     if (String(body.op).startsWith('duel_')) return out(await duelOp(admin, u.id, body, seed));
     if (body.op === 'get') { const b = await initEngine(body.battle, u.id); return out(view(b)); }
     return out({ error: 'Unknown request.' }, 400);

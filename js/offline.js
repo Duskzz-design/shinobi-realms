@@ -284,3 +284,43 @@ function questAdvance(c, q) {
   if (cnt >= q.need) { cur++; cnt = 0; } if (cur > max) { done = true; cur = max; }
   c.quests[q.line] = { step: cur, count: cnt, done }; return { ...c.quests[q.line], line: q.line };
 }
+
+// ---------- offline boss fights: you plus two AI teammates ----------
+let raid = null, raidTimer = null;
+const remit = () => { const d = JSON.parse(JSON.stringify(raid)); for (const w of watchers) if (w.id === '*' || w.id === d.id) w.cb(d); };
+export function mockLobbies() { return raid && ['lobby', 'active'].includes(raid.status) ? [JSON.parse(JSON.stringify(raid))] : []; }
+function raidStep(events) {
+  const s = raid.state.engine; delete s.seed; raid.state.events = events; raid.seq++;
+  if (events.some((e) => e.t === 'turn')) raid.deadline = new Date(Date.now() + 60000).toISOString();
+  if (s.status === 'over') { raid.status = 'over'; raid.winner = s.winner; raid.rewards = { [raid.leader]: s.winner === 'A' ? { win: true, xp: 900, ryo: 1200, claims_left: 2, scroll: raid.line === 'serpent' ? 'serpentfang' : null, title: raid.line === 'shrine' ? 'Shogun Slayer' : null } : { win: false } }; }
+  remit(); raidAI();
+}
+function raidAI() {
+  clearTimeout(raidTimer);
+  if (!raid || raid.status !== 'active') return;
+  const s = raid.state.engine, u = s.units[s.side];
+  if (u.uid === raid.leader) return;
+  raidTimer = setTimeout(() => { s.seed = (Math.random() * 2 ** 32) >>> 0; const ev = G.aiTurn(s, s.side, 16); if (s.status === 'active' && s.side === u.id) ev.push(...G.act(s, u.id, { t: 'end' })); raidStep(ev); }, 1500);
+}
+export function mockRaidOp(c, body) {
+  const me = c.user_id, x = enrich(c);
+  if (body.op === 'raid_create') { raid = { id: 'raid' + Date.now(), line: body.line, leader: me, status: 'lobby', seq: 0, misses: {}, members: [{ id: me, name: c.name, level: c.level, rank: c.rank, element: x.element }], state: null };
+    setTimeout(() => { if (raid.status !== 'lobby') return; raid.members.push({ id: 'ally1', name: 'Ren', level: c.level, rank: c.rank, element: 'fire' }); raid.seq++; remit(); }, 1200);
+    setTimeout(() => { if (raid.status !== 'lobby') return; raid.members.push({ id: 'ally2', name: 'Mika', level: c.level, rank: c.rank, element: 'water' }); raid.seq++; remit(); }, 2400);
+    return JSON.parse(JSON.stringify(raid)); }
+  if (body.op === 'raid_leave') { raid.status = 'closed'; remit(); return raid; }
+  if (body.op === 'raid_start') {
+    const specs = raid.members.map((m) => (m.id === me ? G.playerSpec(x, {}, G.poolsOf(x)) : { ...G.playerSpec({ ...botChar(m.name, c.level), rank: c.rank, element: m.element, strength: x.strength, agility: x.agility, intelligence: x.intelligence, willpower: x.willpower }, {}, G.poolsOf({ ...x })), uid: m.id, name: m.name }));
+    specs[0].uid = me;
+    raid.state = { engine: G.newRaid({ seed: (Math.random() * 2 ** 32) >>> 0, players: specs, boss: G.bossSpec(raid.line, specs.length) }), events: [] }; delete raid.state.engine.seed;
+    raid.status = 'active'; raid.seq++; raid.deadline = new Date(Date.now() + 60000).toISOString(); remit(); raidAI(); return JSON.parse(JSON.stringify(raid));
+  }
+  if (body.op === 'raid_act') {
+    const s = raid.state.engine, my = Object.values(s.units).find((u) => u.uid === me);
+    if (body.action.t !== 'flee' && s.side !== my.id) throw new Error('Wait for your turn.');
+    s.seed = (Math.random() * 2 ** 32) >>> 0; const ev = G.act(s, my.id, body.action);
+    let g = 0; while (s.status === 'active' && s.units[s.side].npc && g++ < 3) { ev.push(...G.aiTurn(s, s.side, 16)); if (s.status === 'active' && s.units[s.side].npc) ev.push(...G.act(s, s.side, { t: 'end' })); }
+    raidStep(ev); return JSON.parse(JSON.stringify(raid));
+  }
+  return raid;
+}

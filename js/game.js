@@ -3,6 +3,7 @@ import * as net from './net.js';
 import { buildWorld, blocked, T, MW, MH, BUILDINGS, STATUES } from './world.js';
 import { openArena, statueSprite } from './arenaui.js';
 import { openWorldMap } from './worldmap.js';
+import { openLair } from './raidui.js';
 import { ninjaSprite, emblem, VILLAGES } from './sprites.js';
 import { openMissionBoard, openTraining, runBattle, openExamHall } from './battle.js';
 import { setupDuels } from './duelui.js';
@@ -210,7 +211,11 @@ export async function enterWorld(app, char, hooks) {
     path = []; dest = null;
     openWorldMap(root, char, {
       onQuest: (line) => startBattle(null, () => net.startQuest(line), (r) => { if (!r || !r.train) worldMap(); }),
-      onLair: (line, close) => { showModal('<h3>⚔️ Boss lair</h3><p>Team boss fights open in the next update. You have found the way in!</p>'); },
+      onLair: (line) => openLair(root, char, line, async (r) => {
+        try { Object.assign(char, await net.loadCharacter(), { _loadedAt: Date.now() }); refreshPlate(); } catch {}
+        if (r && r.status === 'won') { const m = { id: me.id, name: me.name, village: me.village, text: `helped defeat ${line.boss_name}! ☠️`, ch: 'world' }; worldRoom?.send('chat', m); addMsg(m); }
+        worldMap();
+      }),
       onHome: () => {},
     });
   }
@@ -262,7 +267,7 @@ export async function enterWorld(app, char, hooks) {
   }
   function playerCard(m) {
     const vv = VILLAGES[m.village] || v;
-    showModal(`<div class="pcard"><canvas width="64" height="80"></canvas><div><h3>${esc(m.name)}</h3><p style="color:${vv.dark}"><b>${vv.name}</b></p><p>${esc(m.rank || 'Academy Student')} · Level ${m.level || 1}</p></div></div>${char.rank === 'Academy Student' ? '<p class="soon">Academy students can\'t duel. Practise in the sparring lessons at the Academy, then graduate.</p>' : (m.rank || 'Academy Student') === 'Academy Student' ? '<p class="soon">Academy students can\'t be challenged.</p>' : '<button class="btn primary" data-duel>⚔️ Challenge to a duel</button>'}`, (el) => {
+    showModal(`<div class="pcard"><canvas width="64" height="80"></canvas><div><h3>${esc(m.name)}</h3>${m.title ? `<p class="ttl">🏆 ${esc(m.title)}</p>` : ''}<p style="color:${vv.dark}"><b>${vv.name}</b></p><p>${esc(m.rank || 'Academy Student')} · Level ${m.level || 1}</p></div></div>${char.rank === 'Academy Student' ? '<p class="soon">Academy students can\'t duel. Practise in the sparring lessons at the Academy, then graduate.</p>' : (m.rank || 'Academy Student') === 'Academy Student' ? '<p class="soon">Academy students can\'t be challenged.</p>' : '<button class="btn primary" data-duel>⚔️ Challenge to a duel</button>'}`, (el) => {
       const c = el.querySelector('canvas').getContext('2d'); c.imageSmoothingEnabled = false;
       c.drawImage(ninjaSprite(m.look || {}, 0, 0), 0, 0, 18, 26, 5, 2, 54, 78);
       const db = el.querySelector('[data-duel]'); if (db) db.onclick = () => { closeModal(); duels.challenge(m); };
@@ -287,7 +292,7 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, worldRoom = null, lastSend = 0, lastTrack = 0, lastSave = performance.now();
-  const meta = () => ({ id: me.id, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
+  const meta = () => ({ id: me.id, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   const onEvent = (ev, p) => {
     if (!p || p.id === me.id) return;
     if (ev === 'mv') { const o = others.get(p.id); if (o) { o.tx = p.x; o.ty = p.y; o.dir = p.dir; o.moving = !!p.m; o.last = performance.now(); } }

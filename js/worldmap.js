@@ -130,7 +130,7 @@ export async function openWorldMap(root, char, { onQuest, onLair, onHome }) {
     panel.innerHTML = `<h3>${L.icon} ${esc(L.name)}</h3><p class="sub">${esc(L.desc)}</p>${body}`;
     const hb = panel.querySelector('[data-home2]'); if (hb) hb.onclick = () => { close(); onHome && onHome(); };
     panel.querySelectorAll('[data-q]').forEach((b) => (b.onclick = () => { close(); onQuest(b.dataset.q); }));
-    panel.querySelectorAll('[data-lair]').forEach((b) => (b.onclick = () => { onLair ? onLair(L.line, close) : null; }));
+    panel.querySelectorAll('[data-lair]').forEach((b) => (b.onclick = () => { close(); onLair && onLair(data.lines.find((l) => l.id === L.line)); }));
   }
   const firstActive = data.lines.map((l) => states[l.id]).find((s) => !s.locked && !s.done);
   firstActive ? showLoc(firstActive.cur.location) : showLog();
