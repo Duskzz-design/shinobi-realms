@@ -2,6 +2,7 @@
 import * as net from './net.js';
 import { buildWorld, blocked, T, MW, MH } from './world.js';
 import { ninjaSprite, emblem, VILLAGES } from './sprites.js';
+import { openMissionBoard, openTraining, runBattle } from './battle.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -26,10 +27,11 @@ export async function enterWorld(app, char, hooks) {
     <div class="hud-top">
       <div class="plate">
         <canvas class="face" width="36" height="36"></canvas>
-        <div><b>${esc(char.name)}</b><small>Lv ${char.level} · ${esc(char.rank)}</small></div>
+        <div><b>${esc(char.name)}</b><small id="plateSub">Lv ${char.level} · ${esc(char.rank)}</small></div>
       </div>
       <div class="hud-right">
         <div class="online" title="Ninja in this village right now">👥 <span id="count">1</span> here</div>
+        <button class="btn small primary train-btn" id="trainBtn">⭐ Ninja<i id="ptsBadge" hidden></i></button>
         <button class="btn small ghost" id="menuBtn">☰ Menu</button>
       </div>
     </div>
@@ -44,7 +46,7 @@ export async function enterWorld(app, char, hooks) {
     <div class="stick" id="stick" ${isTouch ? '' : 'hidden'}><div class="knob"></div></div>
     <button class="act btn primary" id="act" ${isTouch ? '' : 'hidden'}>A</button>
     <div class="menu scroll" id="menu" hidden>
-      <button class="btn ghost" id="mProfile">My Ninja</button>
+      <button class="btn ghost" id="mProfile">My Ninja & training</button>
       <button class="btn ghost" id="mOut">Sign out</button>
       <button class="btn ghost" id="mClose">Close</button>
     </div>
@@ -53,6 +55,7 @@ export async function enterWorld(app, char, hooks) {
   app.innerHTML = ''; app.appendChild(root);
   document.body.classList.add('in-world');
   root.querySelector('.vname .em').appendChild(emblem(char.village, 18));
+  setTimeout(() => refreshPlate(), 0);
   const face = root.querySelector('.face').getContext('2d');
   face.imageSmoothingEnabled = false;
   const fs = ninjaSprite(me.look, 0, 0);
@@ -75,6 +78,7 @@ export async function enterWorld(app, char, hooks) {
   const typing = () => document.activeElement && document.activeElement.tagName === 'INPUT';
   const onKey = (e) => {
     if (typing()) { if (e.key === 'Escape') document.activeElement.blur(); return; }
+    if (root.querySelector('.ov')) { if (e.key === 'Escape') { const o = root.querySelector('.ov:not(.battle)'); o && o.remove(); } return; }
     const k = e.key.toLowerCase();
     if (e.type === 'keydown') {
       if (k === 'enter') { e.preventDefault(); openChat(); chatIn.focus(); return; }
@@ -151,7 +155,24 @@ export async function enterWorld(app, char, hooks) {
   root.querySelector('#menuBtn').onclick = () => (menu.hidden = !menu.hidden);
   root.querySelector('#mClose').onclick = () => (menu.hidden = true);
   root.querySelector('#mOut').onclick = async () => { await leave(); net.signOut(); };
-  root.querySelector('#mProfile').onclick = async () => { await leave(); hooks.profile(); };
+  root.querySelector('#mProfile').onclick = () => { menu.hidden = true; train(); };
+  root.querySelector('#trainBtn').onclick = () => train();
+  function train() { openTraining(root, () => char, (c) => { Object.assign(char, c); refreshPlate(); }); }
+  function refreshPlate() {
+    root.querySelector('#plateSub').textContent = `Lv ${char.level} · ${char.rank}`;
+    root.querySelector('#ptsBadge').hidden = !char.stat_points;
+    me.level = char.level; me.rank = char.rank;
+  }
+  if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char };
+  function startBattle(mid) {
+    keys.clear();
+    runBattle(root, char, mid, async (r) => {
+      try { Object.assign(char, await net.loadCharacter()); } catch {}
+      refreshPlate(); room?.track(meta());
+      if (r && r.status === 'won' && r.result && r.result.leveled) room?.send('chat', { id: me.id, name: me.name, village: me.village, text: `reached level ${char.level}! 🎉`, ch: 'village' });
+      if (r && r.train) train();
+    });
+  }
   function showModal(html, onReady) {
     modal.querySelector('.modal').innerHTML = html + `<button class="btn primary" data-close>OK</button>`;
     modal.hidden = false; modal.querySelectorAll('[data-close]').forEach((b) => (b.onclick = closeModal));
@@ -168,13 +189,14 @@ export async function enterWorld(app, char, hooks) {
   }
   const SPOT_TEXT = {
     academy: ['Academy', 'Sensei Hiro nods at you. "Rank exams open here soon. Keep training, and come back when you\'re ready to test for Genin."'],
-    missions: ['Mission Hall', 'The mission board is being stocked with D to S-rank jobs. It opens in the next update.'],
     shop: ['Tool Shop', 'Kunai, shuriken and scrolls are on their way. The shopkeeper is still unpacking crates.'],
     arena: ['Arena', 'Player duels and village wars will be fought here.'],
     gate: ['Village Gate', 'Beyond the gate lie the Wilds. The guards won\'t let Academy students out alone… yet.'],
   };
   function interact() {
+    if (root.querySelector('.ov')) return;
     const s = nearSpot(); if (!s) return;
+    if (s.id === 'missions') { openMissionBoard(root, char, startBattle); return; }
     const [title, text] = SPOT_TEXT[s.id] || [s.name, ''];
     showModal(`<h3>${title}</h3><p>${text}</p>`);
   }
@@ -212,13 +234,14 @@ export async function enterWorld(app, char, hooks) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
     // movement
     let mx = 0, my = 0;
-    if (!typing()) {
+    const frozen = !!root.querySelector('.ov') || !modal.hidden;
+    if (!typing() && !frozen) {
       if (keys.has('arrowleft') || keys.has('a')) mx -= 1;
       if (keys.has('arrowright') || keys.has('d')) mx += 1;
       if (keys.has('arrowup') || keys.has('w')) my -= 1;
       if (keys.has('arrowdown') || keys.has('s')) my += 1;
     }
-    if (joy.id !== null && Math.hypot(joy.x, joy.y) > 0.25) { mx = joy.x; my = joy.y; }
+    if (!frozen && joy.id !== null && Math.hypot(joy.x, joy.y) > 0.25) { mx = joy.x; my = joy.y; }
     const mag = Math.hypot(mx, my);
     me.moving = mag > 0;
     if (me.moving) {

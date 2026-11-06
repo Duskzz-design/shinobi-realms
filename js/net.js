@@ -137,6 +137,37 @@ function makeBots(onEvent) {
   });
 }
 
+// ---------- missions & combat ----------
+let catalog = null, mockBattle = null;
+const mockChar = () => JSON.parse(sessionStorage.getItem('mockChar'));
+const saveMock = (c) => sessionStorage.setItem('mockChar', JSON.stringify(c));
+export async function getCatalog() {
+  if (catalog) return catalog;
+  if (OFFLINE) { const o = await import('./offline.js'); return (catalog = { moves: o.MOVES, missions: o.MISSIONS }); }
+  const [mv, ms] = await Promise.all([sb.from('moves').select('*').order('sort'), sb.from('missions').select('*').order('sort')]);
+  if (mv.error) throw mv.error; if (ms.error) throw ms.error;
+  return (catalog = { moves: mv.data, missions: ms.data });
+}
+const rpcErr = (error) => new Error((error.message || 'Something went wrong.').replace(/^.*?ERROR:\s*/, ''));
+export async function startMission(id) {
+  if (OFFLINE) { const o = await import('./offline.js'); mockBattle = o.mockStart(mockChar(), id); return mockBattle; }
+  const { data, error } = await sb.rpc('start_mission', { p_mission: id });
+  if (error) throw rpcErr(error);
+  return data;
+}
+export async function battleAct(battleId, move) {
+  if (OFFLINE) { const o = await import('./offline.js'); const c = mockChar(); const r = o.mockAct(c, mockBattle, move); saveMock(c); return r; }
+  const { data, error } = await sb.rpc('battle_act', { p_battle: battleId, p_move: move });
+  if (error) throw rpcErr(error);
+  return data;
+}
+export async function spendPoints(style, n = 1) {
+  if (OFFLINE) { const c = mockChar(); if (c.stat_points < n) throw new Error('Not enough points.'); c[style] += n; c.stat_points -= n; saveMock(c); return c; }
+  const { data, error } = await sb.rpc('spend_points', { p_style: style, p_n: n });
+  if (error) throw rpcErr(error);
+  return data;
+}
+
 export async function updateAppearance(appearance) {
   if (OFFLINE) { const c = JSON.parse(sessionStorage.getItem('mockChar')); c.appearance = appearance; sessionStorage.setItem('mockChar', JSON.stringify(c)); return c; }
   const { data, error } = await sb.from('characters').update({ appearance }).eq('user_id', (await getUser()).id).select('*').single();

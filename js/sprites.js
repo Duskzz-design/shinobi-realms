@@ -144,6 +144,40 @@ export function ninjaSprite(look, dir, frame) {
   return cache.get(k);
 }
 
+// Beast enemies, drawn facing left. kind: beast_cat | beast_boar | beast_wolf | beast_snake
+export function beastSprite(kind, tint = '#7a4a2a', frame = 0) {
+  const k = kind + tint + frame;
+  if (cache.has(k)) return cache.get(k);
+  const c = document.createElement('canvas'); c.width = 28; c.height = 22;
+  const x = c.getContext('2d');
+  const P = (col, px, py, w = 1, h = 1) => { x.fillStyle = col; x.fillRect(px, py, w, h); };
+  const L = shade(tint, 40), D = shade(tint, -40), eye = '#ffe07a', bob = frame ? 1 : 0;
+  if (kind === 'beast_cat') {
+    P(tint, 9, 11 + bob, 13, 7); P(L, 10, 12 + bob, 10, 2); P(tint, 3, 7, 8, 7); P(tint, 3, 5, 2, 2); P(tint, 9, 5, 2, 2);
+    P(eye, 5, 9, 1, 1); P(eye, 8, 9, 1, 1); P('#ff8fb1', 6, 11, 2, 1);
+    P(tint, 21, 6 - bob, 2, 7); P(tint, 22, 4 - bob, 2, 3); P(D, 10, 18, 2, 3); P(D, 19, 18, 2, 3); P(D, 13, 18, 2, 3); P(D, 16, 18, 2, 3);
+    P(D, 12, 13 + bob, 1, 3); P(D, 15, 13 + bob, 1, 3); P(D, 18, 13 + bob, 1, 3);
+  } else if (kind === 'beast_boar') {
+    P(tint, 7, 7 + bob, 18, 11); P(D, 8, 6 + bob, 16, 2); P(L, 9, 9 + bob, 12, 2); P(tint, 1, 9, 8, 8); P(D, 0, 12, 3, 4);
+    P('#1b1424', 0, 13, 1, 1); P('#1b1424', 0, 15, 1, 1); P('#fff4dc', 2, 16, 1, 3); P('#fff4dc', 5, 16, 1, 3); P('#c43c32', 4, 11, 2, 1);
+    P(D, 3, 7, 3, 2); P(D, 9, 18, 3, 3); P(D, 21, 18, 3, 3); P(D, 13, 18, 2, 3); P(D, 25, 9 + bob, 2, 2);
+  } else if (kind === 'beast_wolf') {
+    P(tint, 9, 9 + bob, 15, 8); P(L, 10, 13 + bob, 12, 2); P(tint, 2, 6, 9, 7); P(tint, 0, 9, 3, 3); P(tint, 3, 3, 2, 3); P(tint, 8, 3, 2, 3);
+    P('#1b1424', 0, 9, 1, 1); P(eye, 5, 8, 2, 1); P('#fff4dc', 1, 12, 3, 1);
+    P(tint, 23, 7 - bob, 4, 3); P(L, 25, 6 - bob, 2, 2); P(D, 10, 17, 2, 4); P(D, 14, 17, 2, 4); P(D, 18, 17, 2, 4); P(D, 22, 17, 2, 4);
+    P(D, 11, 9 + bob, 10, 1);
+  } else {
+    // snake: coiled body and raised head
+    P(tint, 8, 15, 18, 5); P(tint, 12, 11, 14, 5); P(L, 13, 12, 10, 1); P(D, 9, 19, 16, 1);
+    for (let i = 10; i < 26; i += 4) P(D, i, 16, 2, 2);
+    P(tint, 10, 5 + bob, 4, 8); P(tint, 3, 3 + bob, 9, 5); P(L, 4, 4 + bob, 6, 1); P(eye, 5, 5 + bob, 1, 1); P('#1b1424', 5, 5 + bob, 1, 1);
+    P(eye, 8, 5 + bob, 1, 1); P('#c43c32', 0, 6 + bob, 3, 1); P('#c43c32', 0, 5 + bob, 1, 1);
+  }
+  const o = outline(c);
+  cache.set(k, o);
+  return o;
+}
+
 // Village emblems, 12x12
 export function emblem(village, size = 48) {
   const c = document.createElement('canvas'); c.width = 12; c.height = 12;
