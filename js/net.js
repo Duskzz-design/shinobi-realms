@@ -137,6 +137,20 @@ function makeBots(onEvent) {
   });
 }
 
+// ---------- rank exams ----------
+export async function examInfo() {
+  if (OFFLINE) { const o = await import('./offline.js'); return o.examInfo(mockChar()); }
+  const { data, error } = await sb.rpc('exam_info'); if (error) throw rpcErr(error); return data;
+}
+export async function startExam() {
+  if (OFFLINE) { const o = await import('./offline.js'); mockBattle = o.mockStartExam(mockChar()); return mockBattle; }
+  const { data, error } = await sb.rpc('start_exam'); if (error) throw rpcErr(error); return data;
+}
+export async function examContinue(battleId) {
+  if (OFFLINE) { const o = await import('./offline.js'); mockBattle = o.mockExamContinue(mockChar(), mockBattle); return mockBattle; }
+  const { data, error } = await sb.rpc('exam_continue', { p_battle: battleId }); if (error) throw rpcErr(error); return data;
+}
+
 // ---------- missions & combat ----------
 let catalog = null, mockBattle = null;
 const mockChar = () => JSON.parse(sessionStorage.getItem('mockChar'));
@@ -144,7 +158,7 @@ const saveMock = (c) => sessionStorage.setItem('mockChar', JSON.stringify(c));
 export async function getCatalog() {
   if (catalog) return catalog;
   if (OFFLINE) { const o = await import('./offline.js'); return (catalog = { moves: o.MOVES, missions: o.MISSIONS }); }
-  const [mv, ms] = await Promise.all([sb.from('moves').select('*').order('sort'), sb.from('missions').select('*').order('sort')]);
+  const [mv, ms] = await Promise.all([sb.from('moves').select('*').order('sort'), sb.from('missions').select('*').eq('kind', 'mission').order('sort')]);
   if (mv.error) throw mv.error; if (ms.error) throw ms.error;
   return (catalog = { moves: mv.data, missions: ms.data });
 }

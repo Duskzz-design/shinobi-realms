@@ -161,7 +161,7 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .vname { position: absolute; top: max(70px, calc(env(safe-area-inset-top) + 60px)); left: 50%; transform: translateX(-50%); font-family: var(--title); font-size: 10px; color: #fff4dc;
   text-shadow: 2px 2px 0 var(--ink); display: flex; align-items: center; gap: 8px; pointer-events: none; opacity: .9; white-space: nowrap; }
 .vname .em canvas { display: block; }
-.prompt { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); background: var(--paper); padding: 8px 14px; font-size: 17px; font-weight: 700; box-shadow: 0 0 0 4px var(--ink); white-space: nowrap; animation: pop .15s steps(2); }
+.prompt { position: absolute; left: 50%; bottom: 120px; border: 0; cursor: pointer; font-family: var(--body); color: var(--ink); transform: translateX(-50%); background: var(--paper); padding: 8px 14px; font-size: 17px; font-weight: 700; box-shadow: 0 0 0 4px var(--ink); white-space: nowrap; animation: pop .15s steps(2); }
 .chat { position: absolute; left: 14px; bottom: 14px; width: min(380px, calc(100vw - 28px)); background: rgba(247,232,200,.94); box-shadow: 0 0 0 4px var(--ink); display: flex; flex-direction: column; }
 .chat-tabs { display: flex; gap: 2px; background: var(--wood); padding: 4px 4px 0; }
 .chat-tabs button { font-family: var(--body); font-size: 15px; font-weight: 700; border: 0; padding: 4px 12px; background: #a8683a; color: #fff4dc; cursor: pointer; }
@@ -190,8 +190,8 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
   .chat-tabs .chat-close { display: block; }
   .chat-toggle { display: block; }
   .chat-log { height: 32vh; }
-  .prompt { bottom: 190px; }
-  .vname { top: auto; bottom: calc(170px + env(safe-area-inset-bottom)); }
+  .prompt { bottom: 90px; }
+  .vname { top: auto; bottom: calc(24px + env(safe-area-inset-bottom)); }
   .plate b { font-size: 15px; } .plate small { font-size: 12px; }
   .online { font-size: 13px; padding: 5px 8px; }
 }
@@ -276,3 +276,7 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .toast.ok { box-shadow: 0 0 0 4px var(--green), 0 0 0 8px var(--ink); }
 .tbtns { display: flex; flex-direction: column; gap: 2px; flex: none; }
 .tbtns .btn { margin: 4px; min-width: 64px; }
+.exreq { background: #fffaf0; padding: 10px; margin: 3px; box-shadow: 0 0 0 3px var(--ink2); font-size: 17px; }
+.exreq.ok { box-shadow: 0 0 0 3px var(--green); } .exreq span { color: var(--ink2); font-size: 15px; }
+.b-top .rnd { font-size: 14px; background: rgba(0,0,0,.25); padding: 2px 8px; }
+.promo { font-size: 56px; color: var(--gold); text-shadow: 3px 3px 0 var(--ink); animation: pop .4s steps(4); line-height: 1; }

@@ -19,7 +19,7 @@ export const STYLES = {
 };
 const RANKS = ['Academy Student', 'Genin', 'Chunin', 'Jonin'];
 const TIER = ['Academy', 'Genin', 'Chunin', 'Jonin'];
-const GRADE_COL = { D: '#3a8a4a', C: '#2f7fc4', B: '#9a5ad0', A: '#e8742c', S: '#c43c32' };
+const GRADE_COL = { D: '#3a8a4a', C: '#2f7fc4', B: '#9a5ad0', A: '#e8742c', S: '#c43c32', X: '#b8860b' };
 const cost = (m) => [m.stamina ? `💪${m.stamina}` : '', m.chakra ? `💧${m.chakra}` : ''].filter(Boolean).join(' ') || 'Free';
 
 function overlay(root, cls, html) {
@@ -45,6 +45,26 @@ export async function openMissionBoard(root, char, onPick) {
       <em>${locked ? '🔒 ' + why : `Foe: ${esc(m.enemy_name)} (Lv ${m.enemy_level}) · +${m.xp} XP · +${m.ryo} ryo`}</em></span></button>`;
   }).join('');
   el.querySelectorAll('.mcard:not(.locked)').forEach((b) => (b.onclick = () => { el.remove(); onPick(b.dataset.id); }));
+}
+
+// ---------- academy: rank exams ----------
+export async function openExamHall(root, char, onStart) {
+  const el = overlay(root, 'board-wrap', `<div class="scroll board"><h3>Academy · Rank Exams</h3><div class="mlist"><div class="spinner"></div></div><button class="btn ghost" data-x>Close</button></div>`);
+  el.querySelector('[data-x]').onclick = () => el.remove();
+  el.addEventListener('click', (e) => { if (e.target === el) el.remove(); });
+  let info;
+  try { info = await net.examInfo(); } catch (e) { el.querySelector('.mlist').innerHTML = `<p>${esc(e.message)}</p>`; return; }
+  const box = el.querySelector('.mlist');
+  if (!info.next_rank) { box.innerHTML = `<p class="sub" style="text-align:center">You are a Jonin, the highest rank. Sensei Hiro bows to you.</p>`; return; }
+  const ready = info.ready, wait = info.wait_seconds;
+  box.innerHTML = `
+    <p class="sub" style="text-align:center">Sensei Hiro: "Pass the <b>${esc(info.next_rank)} Exam</b> to raise your level and stat limits and unlock ${esc(info.next_rank)} jutsu."</p>
+    <div class="exreq ${ready ? 'ok' : ''}">${ready ? '✅' : '🔒'} Reach level <b>${info.needed_level}</b> <span>(you are level ${info.level})</span></div>
+    ${info.rounds.map((r, i) => `<div class="mcard"><span class="grade" style="background:${GRADE_COL.X}">${i + 1}</span><span class="mtxt"><b>${esc(r.name)}</b><small>${esc(r.description)}</small><em>Opponent: ${esc(r.enemy)} (Lv ${r.enemy_level})</em></span></div>`).join('')}
+    <p class="sub" style="text-align:center">Rounds are back to back. Between rounds you recover 30% of your HP, stamina and chakra. If you fail, rest 5 minutes and try again.</p>
+    <button class="btn primary big" data-go ${ready && !wait ? '' : 'disabled'}>${!ready ? `Reach level ${info.needed_level} first` : wait ? `Resting… ${Math.ceil(wait / 60)} min` : `Begin the ${esc(info.next_rank)} Exam`}</button>`;
+  const go = box.querySelector('[data-go]');
+  go.onclick = () => { el.remove(); onStart(); };
 }
 
 // ---------- training ----------
@@ -110,14 +130,14 @@ function toast(msg, kind = 'err') { const t = h(`<div class="toast ${kind}">${es
 function alertMsg(el, msg) { toast(msg); }
 
 // ---------- battle ----------
-export async function runBattle(root, char, missionId, onEnd) {
+export async function runBattle(root, char, missionId, onEnd, start = null) {
   let battle, cat;
-  try { [cat, battle] = await Promise.all([net.getCatalog(), net.startMission(missionId)]); }
+  try { [cat, battle] = await Promise.all([net.getCatalog(), start ? start() : net.startMission(missionId)]); }
   catch (e) { alertMsg(root, e.message); onEnd(null); return; }
   const st = () => battle.state;
   const village = VILLAGES[char.village];
   const el = overlay(root, 'battle', `
-    <div class="b-top"><span class="grade" style="background:${GRADE_COL[st().mission.grade]}">${st().mission.grade}</span><b>${esc(st().mission.name)}</b><span class="turn">Turn 1</span></div>
+    <div class="b-top"><span class="grade" style="background:${GRADE_COL[st().mission.grade]}">${st().exam ? '★' : st().mission.grade}</span><b>${esc(st().mission.name)}</b>${st().exam ? `<span class="rnd">Round ${st().exam.round}/${st().exam.rounds}</span>` : ''}<span class="turn">Turn 1</span></div>
     <div class="b-arena"><canvas width="320" height="180"></canvas>
       <div class="hpbox e"><b>${esc(st().enemy.name)}</b><small>Lv ${st().enemy.level}</small><div class="gbar hp"><i></i></div><span class="num ehp"></span></div>
       <div class="hpbox p"><b>${esc(char.name)}</b><small>Lv ${char.level}</small><div class="gbar hp"><i></i></div><span class="num php"></span><div class="gbar sta"><i></i></div><span class="num pst"></span><div class="gbar ch"><i></i></div><span class="num pch"></span></div>
@@ -280,17 +300,27 @@ export async function runBattle(root, char, missionId, onEnd) {
   }
 
   function showResult(res) {
-    const won = res.status === 'won', r = res.result || {};
-    const box = h(`<div class="b-result"><div class="scroll">
-      <h3 class="${won ? 'win' : 'lose'}">${won ? 'Mission complete!' : 'Defeated…'}</h3>
+    const won = res.status === 'won', r = res.result || {}, exam = st().exam;
+    let body;
+    if (exam && won && r.next) body = `<h3 class="win">Round ${r.exam_round} cleared!</h3><p>Catch your breath: you recover 30% of your HP, stamina and chakra before the next round.</p>
+      <div class="row"><button class="btn primary" data-next>Next round ▶</button></div>`;
+    else if (exam && won && r.promoted) body = `<div class="promo">★</div><h3 class="win">You are now a ${esc(r.promoted)}!</h3>
+      <p class="lvl">New level cap, higher stat caps, and ${esc(r.promoted)} jutsu unlocked.<br>+${r.ryo} ryo and your energy is full.</p>
+      <div class="row"><button class="btn primary" data-t>Train new jutsu</button><button class="btn ghost" data-back>Back to village</button></div>`;
+    else if (exam) body = `<h3 class="lose">Exam failed…</h3><p>The proctors send you home to recover. You can try again after a 5-minute rest.</p>
+      <p class="sub">Tip: train your stats and jutsu levels, then come back stronger.</p><div class="row"><button class="btn ghost" data-t>Train</button><button class="btn primary" data-back>Back to village</button></div>`;
+    else body = `<h3 class="${won ? 'win' : 'lose'}">${won ? 'Mission complete!' : 'Defeated…'}</h3>
       ${won ? `<p class="big">+${r.xp} XP &nbsp; +${r.ryo} ryo</p>
         ${r.leveled ? `<p class="lvl">⬆ Level up! You are now level ${r.level}.<br>Your HP, stamina and chakra grew, and your energy is full!</p>` : ''}
-        ${r.capped ? `<p class="cap">You've reached the highest level for your rank. Pass the rank exam at the Academy to keep growing.</p>` : ''}`
+        ${r.capped ? `<p class="cap">You've reached the highest level for your rank. Take the rank exam at the Academy to keep growing.</p>` : ''}`
         : `<p>You were carried back to the village to recover.${r.ryo_lost ? ` You dropped ${r.ryo_lost} ryo.` : ''}</p><p class="sub">Tip: train your stats with energy, use Mist Veil to make them miss, and Focus when low on stamina or chakra.</p>`}
-      <div class="row"><button class="btn ${won && r.leveled ? 'primary' : 'ghost'}" data-t>Train</button><button class="btn ${won && r.leveled ? 'ghost' : 'primary'}" data-back>Back to village</button></div>
-    </div></div>`);
+      <div class="row"><button class="btn ${won && r.leveled ? 'primary' : 'ghost'}" data-t>Train</button><button class="btn ${won && r.leveled ? 'ghost' : 'primary'}" data-back>Back to village</button></div>`;
+    const box = h(`<div class="b-result"><div class="scroll">${body}</div></div>`);
     el.appendChild(box);
-    box.querySelector('[data-back]').onclick = () => { alive = false; el.remove(); onEnd({ status: res.status, result: r }); };
-    const t = box.querySelector('[data-t]'); if (t) t.onclick = () => { alive = false; el.remove(); onEnd({ status: res.status, result: r, train: true }); };
+    const done = (extra = {}) => { alive = false; el.remove(); onEnd({ status: res.status, result: r, ...extra }); };
+    const back = box.querySelector('[data-back]'); if (back) back.onclick = () => done();
+    const t = box.querySelector('[data-t]'); if (t) t.onclick = () => done({ train: true });
+    const nx = box.querySelector('[data-next]');
+    if (nx) nx.onclick = () => { nx.disabled = true; alive = false; el.remove(); runBattle(root, char, null, onEnd, () => net.examContinue(battle.id)); };
   }
 }

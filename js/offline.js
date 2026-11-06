@@ -29,7 +29,37 @@ export const MISSIONS = [
   Q('c1', 'C', 'Smugglers\' Cove', 'Smugglers are hiding stolen scrolls in a sea cave.', 5, 1, 'Smuggler Chief', 'ninja', 6, 260, 35, 6, { hairStyle: 0, hair: 4, skin: 3, outfit: 4, band: 2, bandSpot: 1 }, 120, 110, 10),
   Q('c3', 'C', 'The Swamp Serpent', 'A huge snake is blocking the trade river.', 9, 1, 'Swamp Serpent', 'beast_snake', 10, 420, 48, 10, { tint: '#3a8a4a' }, 200, 170, 12),
 ];
+export const EXAMS = [
+  Q('eg1', 'X', 'Genin Exam · Round 1', 'Prove your basics against the exam proctor.', 5, 0, 'Proctor Ume', 'ninja', 5, 213, 24, 5, { hairStyle: 3, hair: 7, skin: 1, outfit: 1, band: 0, bandSpot: 0 }, 0, 0, 100),
+  Q('eg2', 'X', 'Genin Exam · Round 2', 'Survive Sensei Hiro\'s final test.', 5, 0, 'Sensei Hiro', 'ninja', 6, 249, 26, 7, { hairStyle: 1, hair: 6, skin: 2, outfit: 4, band: 0, bandSpot: 0 }, 0, 0, 101),
+  Q('ec1', 'X', 'Chunin Exam · Forest of Thorns', 'Cross the forest. Something huge guards the scroll.', 15, 1, 'Thorn Serpent', 'beast_snake', 15, 551, 44, 15, { tint: '#5a3a6a' }, 0, 0, 110),
+  Q('ec2', 'X', 'Chunin Exam · Preliminaries', 'Duel a rival Genin from another village.', 15, 1, 'Rival Sayo', 'ninja', 16, 628, 48, 18, { hairStyle: 4, hair: 4, skin: 0, outfit: 7, band: 2, bandSpot: 2 }, 0, 0, 111),
+  Q('ec3', 'X', 'Chunin Exam · Finals', 'The whole village is watching the final bout.', 15, 1, 'Taro the Iron Fist', 'ninja', 17, 731, 53, 21, { hairStyle: 0, hair: 5, skin: 3, outfit: 5, band: 1, bandSpot: 1 }, 0, 0, 112),
+];
 const RANKS = ['Academy Student', 'Genin', 'Chunin', 'Jonin'];
+let lastExamFail = 0;
+export function examInfo(c) {
+  const ri = Math.max(0, RANKS.indexOf(c.rank)), nxt = RANKS[ri + 1] || null;
+  return { next_rank: nxt, level: c.level, needed_level: LCAP[ri], ready: !!nxt && c.level >= LCAP[ri], wait_seconds: Math.max(0, 300 - Math.floor((Date.now() - lastExamFail) / 1000)),
+    rounds: EXAMS.filter((e) => e.min_rank === ri).map((e) => ({ id: e.id, name: e.name, description: e.description, enemy: e.enemy_name, enemy_level: e.enemy_level })) };
+}
+function examBattle(c, round, pools) {
+  const x = enrich(c), ri = x.rank_index, list = EXAMS.filter((e) => e.min_rank === ri), m = list[round - 1];
+  const st = { php: Math.min(x.hp_max, pools.php), pmax: x.hp_max, pst: Math.min(x.stamina_max, pools.pst), pstmax: x.stamina_max, pch: Math.min(x.chakra_max, pools.pch), pchmax: x.chakra_max,
+    ehp: m.enemy_hp, emax: m.enemy_hp, turn: 1, e_confuse: 0, e_stun: 0, enemy: { name: m.enemy_name, kind: m.enemy_kind, level: m.enemy_level, look: m.enemy_look },
+    mission: { id: m.id, name: m.name, grade: 'X', xp: 0, ryo: 0 }, exam: { to: RANKS[ri + 1], round, rounds: list.length } };
+  return { id: 'b' + Date.now(), status: 'active', state: st, m };
+}
+export function mockStartExam(c) {
+  const i = examInfo(c); if (!i.next_rank) throw new Error('You are already a Jonin.');
+  if (!i.ready) throw new Error(`You must reach level ${i.needed_level} before taking the ${i.next_rank} exam.`);
+  if (i.wait_seconds > 0 && lastExamFail) throw new Error(`Rest before retrying: ${i.wait_seconds} more seconds.`);
+  const x = enrich(c); return examBattle(c, 1, { php: x.hp_max, pst: x.stamina_max, pch: x.chakra_max });
+}
+export function mockExamContinue(c, b) {
+  const st = b.state; if (b.status !== 'won' || !st.exam || st.continued) throw new Error('Cannot continue this exam.'); st.continued = true;
+  return examBattle(c, st.exam.round + 1, { php: st.php + Math.round(0.3 * st.pmax), pst: st.pst + Math.round(0.3 * st.pstmax), pch: st.pch + Math.round(0.3 * st.pchmax) });
+}
 const LCAP = [5, 15, 30, 60], SCAP = [20, 50, 100, 200];
 const R = Math.random;
 const TM = [0.4, 1, 1.5, 2.5];
@@ -77,7 +107,7 @@ export function mockStart(c, mid) {
 
 export function mockAct(c, b, moveId) {
   const st = b.state, m = b.m, ev = [];
-  if (moveId === 'flee') { b.status = 'fled'; return { status: 'fled', state: st, events: [] }; }
+  if (moveId === 'flee') { b.status = 'fled'; if (st.exam) lastExamFail = Date.now(); return { status: 'fled', state: st, events: [] }; }
   const mv = MOVES.find((x) => x.id === moveId);
   if (mv.tier > enrich(c).rank_index) throw new Error('Your rank is too low for that jutsu.');
   if (st.pst < mv.stamina) throw new Error('Not enough stamina.');
@@ -111,13 +141,17 @@ export function mockAct(c, b, moveId) {
   }
   st.pst = Math.min(st.pstmax, st.pst + 3); st.pch = Math.min(st.pchmax, st.pch + 2); st.turn++;
   let result = null;
-  if (status === 'won') {
+  if (status === 'won' && st.exam) {
+    if (st.exam.round < st.exam.rounds) result = { exam_round: st.exam.round, exam_rounds: st.exam.rounds, next: true };
+    else { const ryo = { Genin: 200, Chunin: 600, Jonin: 1500 }[st.exam.to]; c.rank = st.exam.to; c.ryo += ryo; c.energy = 100; c.energy_at = Date.now(); result = { promoted: st.exam.to, ryo, exam_round: st.exam.round, exam_rounds: st.exam.rounds }; }
+  } else if (status === 'won') {
     const before = c.level, cap = LCAP[RANKS.indexOf(c.rank)];
     c.xp += m.xp; c.ryo += m.ryo;
     while (c.level < cap && c.xp >= c.level * 100) { c.xp -= c.level * 100; c.level++; }
     if (c.level >= cap) c.xp = Math.min(c.xp, c.level * 100);
     if (c.level > before) { c.energy = 100; c.energy_at = Date.now(); }
     result = { xp: m.xp, ryo: m.ryo, level: c.level, leveled: c.level - before, capped: c.level >= cap };
+  } else if (status === 'lost' && st.exam) { lastExamFail = Date.now(); result = { ryo_lost: 0 };
   } else if (status === 'lost') { const lost = Math.min(c.ryo, Math.round(m.ryo * 0.2)); c.ryo -= lost; result = { ryo_lost: lost }; }
   b.status = status;
   return { id: b.id, status, state: st, events: ev, result };

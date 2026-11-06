@@ -1,8 +1,8 @@
 // The live village: movement, camera, other players, chat, interactions.
 import * as net from './net.js';
-import { buildWorld, blocked, T, MW, MH } from './world.js';
+import { buildWorld, blocked, T, MW, MH, BUILDINGS } from './world.js';
 import { ninjaSprite, emblem, VILLAGES } from './sprites.js';
-import { openMissionBoard, openTraining, runBattle } from './battle.js';
+import { openMissionBoard, openTraining, runBattle, openExamHall } from './battle.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -38,15 +38,13 @@ export async function enterWorld(app, char, hooks) {
       </div>
     </div>
     <div class="vname"><span class="em"></span>${esc(v.name)} Village</div>
-    <div class="prompt" id="prompt" hidden></div>
+    <button class="prompt" id="prompt" hidden></button>
     <div class="chat" id="chat">
       <div class="chat-tabs"><button data-ch="village" class="on">Village</button><button data-ch="world">World</button><button class="chat-close" id="chatClose" aria-label="Close chat">✕</button></div>
       <div class="chat-log" id="log"></div>
       <form class="chat-form" id="chatForm"><input id="chatIn" maxlength="120" placeholder="${isTouch ? 'Say something…' : 'Press Enter to chat'}" autocomplete="off"><button class="btn small primary" type="submit">Send</button></form>
     </div>
     <button class="chat-toggle btn icon" id="chatToggle" aria-label="Open chat">💬<i id="unread" hidden></i></button>
-    <div class="stick" id="stick" ${isTouch ? '' : 'hidden'}><div class="knob"></div></div>
-    <button class="act btn primary" id="act" ${isTouch ? '' : 'hidden'}>A</button>
     <div class="menu scroll" id="menu" hidden>
       <button class="btn ghost" id="mProfile">My Ninja & training</button>
       <button class="btn ghost" id="mOut">Sign out</button>
@@ -75,38 +73,70 @@ export async function enterWorld(app, char, hooks) {
   }
   resize(); addEventListener('resize', resize);
 
-  // ---------- input ----------
-  const keys = new Set();
+  // ---------- input: click / tap to move ----------
   const typing = () => document.activeElement && document.activeElement.tagName === 'INPUT';
   const onKey = (e) => {
     if (typing()) { if (e.key === 'Escape') document.activeElement.blur(); return; }
     if (root.querySelector('.ov')) { if (e.key === 'Escape') { const o = root.querySelector('.ov:not(.battle)'); o && o.remove(); } return; }
-    const k = e.key.toLowerCase();
-    if (e.type === 'keydown') {
-      if (k === 'enter') { e.preventDefault(); openChat(); chatIn.focus(); return; }
-      if (k === 'e' || k === ' ') { e.preventDefault(); interact(); return; }
-      if (k === 'escape') { closeModal(); menu.hidden = true; }
-      keys.add(k);
-    } else keys.delete(k);
-    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+    if (e.type !== 'keydown') return;
+    if (e.key === 'Enter') { e.preventDefault(); openChat(); chatIn.focus(); }
+    if (e.key === 'Escape') { closeModal(); menu.hidden = true; }
   };
-  addEventListener('keydown', onKey); addEventListener('keyup', onKey);
-  addEventListener('blur', () => keys.clear());
-  // joystick
-  const stick = root.querySelector('#stick'), knob = stick.querySelector('.knob');
-  const joy = { x: 0, y: 0, id: null };
-  stick.addEventListener('pointerdown', (e) => { joy.id = e.pointerId; stick.setPointerCapture(e.pointerId); moveJoy(e); });
-  stick.addEventListener('pointermove', (e) => { if (e.pointerId === joy.id) moveJoy(e); });
-  const endJoy = () => { joy.id = null; joy.x = joy.y = 0; knob.style.transform = ''; };
-  stick.addEventListener('pointerup', endJoy); stick.addEventListener('pointercancel', endJoy);
-  function moveJoy(e) {
-    const r = stick.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    let dx = e.clientX - cx, dy = e.clientY - cy; const max = r.width / 2 - 14, d = Math.hypot(dx, dy);
-    if (d > max) { dx = (dx / d) * max; dy = (dy / d) * max; }
-    knob.style.transform = `translate(${dx}px, ${dy}px)`;
-    joy.x = dx / max; joy.y = dy / max;
+  addEventListener('keydown', onKey);
+  let path = [], dest = null, pendingSpot = null;
+  const walkable = (tx, ty) => tx >= 0 && ty >= 0 && tx < MW && ty < MH && !world.solid[ty * MW + tx];
+  function findPath(sx, sy, gx, gy) {
+    const S = sy * MW + sx, G = gy * MW + gx;
+    if (S === G) return [];
+    const g = new Map([[S, 0]]), from = new Map(), open = [[0, S]], seen = new Set();
+    const hfn = (i) => { const x = i % MW, y = (i / MW) | 0, dx = Math.abs(x - gx), dy = Math.abs(y - gy); return Math.max(dx, dy) + 0.41 * Math.min(dx, dy); };
+    while (open.length) {
+      let bi = 0; for (let i = 1; i < open.length; i++) if (open[i][0] < open[bi][0]) bi = i;
+      const [, cur] = open.splice(bi, 1)[0];
+      if (cur === G) break;
+      if (seen.has(cur)) continue; seen.add(cur);
+      const cx = cur % MW, cy = (cur / MW) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const nx = cx + dx, ny = cy + dy;
+        if (!walkable(nx, ny)) continue;
+        if (dx && dy && (!walkable(cx + dx, cy) || !walkable(cx, cy + dy))) continue;
+        const n = ny * MW + nx, cost = g.get(cur) + (dx && dy ? 1.41 : 1);
+        if (cost < (g.has(n) ? g.get(n) : Infinity)) { g.set(n, cost); from.set(n, cur); open.push([cost + hfn(n), n]); }
+      }
+      if (seen.size > 3000) break;
+    }
+    if (!from.has(G)) return null;
+    const out = []; let c = G;
+    while (c !== S) { out.push({ x: (c % MW) * T + 8, y: ((c / MW) | 0) * T + 12 }); c = from.get(c); }
+    return out.reverse();
   }
-  root.querySelector('#act').onclick = () => interact();
+  function nearestWalkable(tx, ty) {
+    for (let r = 0; r < 6; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++)
+      if ((Math.abs(dx) === r || Math.abs(dy) === r) && walkable(tx + dx, ty + dy)) return [tx + dx, ty + dy];
+    return null;
+  }
+  function goTo(wx, wy, spot = null) {
+    const st = [Math.floor(me.x / T), Math.floor((me.y - 2) / T)];
+    const start = walkable(st[0], st[1]) ? st : nearestWalkable(st[0], st[1]);
+    let gt = [Math.floor(wx / T), Math.floor(wy / T)];
+    if (!walkable(gt[0], gt[1])) { gt = nearestWalkable(gt[0], gt[1]); if (!gt) return; wx = gt[0] * T + 8; wy = gt[1] * T + 12; }
+    if (!start) return;
+    const p = findPath(start[0], start[1], gt[0], gt[1]);
+    if (!p) return;
+    p.push({ x: wx, y: wy });
+    path = p; dest = { x: wx, y: wy, t: 0 }; pendingSpot = spot;
+  }
+  function spotAt(wx, wy) {
+    for (const b of BUILDINGS) {
+      if (!b.name) continue;
+      const roof = b.big ? 3 : 2;
+      if (wx >= b.x * T && wx < (b.x + b.w) * T && wy >= (b.y - roof) * T && wy < (b.y + b.h) * T + 6) return world.spots.find((s) => s.id === b.id);
+    }
+    for (const s of world.spots) if (Math.hypot(s.x - wx, s.y - wy) < 18) return s;
+    const gate = world.spots.find((s) => s.id === 'gate');
+    if (gate && Math.abs(wx - gate.x) < 48 && wy > gate.y - 30) return gate;
+    return null;
+  }
 
   // tap on another player -> card
   view.addEventListener('click', (e) => {
@@ -114,6 +144,10 @@ export async function enterWorld(app, char, hooks) {
     for (const o of others.values()) {
       if (Math.abs(wx - o.x) < 10 && wy < o.y + 2 && wy > o.y - 28) { playerCard(o.meta); return; }
     }
+    if (root.querySelector('.ov') || !modal.hidden) return;
+    const sp = spotAt(wx, wy);
+    if (sp) { if (Math.hypot(sp.x - me.x, sp.y - me.y) < 22) { interact(sp); return; } goTo(sp.x, sp.y, sp); }
+    else goTo(wx, wy);
   });
 
   // ---------- chat ----------
@@ -150,7 +184,7 @@ export async function enterWorld(app, char, hooks) {
     chatIn.value = '';
     if (!isTouch) chatIn.blur();
   };
-  addMsg({ sys: true, text: `Welcome to ${v.name}. ` + (isTouch ? 'Use the stick to move and A to interact.' : 'Arrows or WASD to move, E to interact, Enter to chat.') });
+  addMsg({ sys: true, text: `Welcome to ${v.name}. ${isTouch ? 'Tap' : 'Click'} the ground to walk, and ${isTouch ? 'tap' : 'click'} a building to go inside.` + (isTouch ? '' : ' Press Enter to chat.') });
 
   // ---------- menu / modal ----------
   const menu = root.querySelector('#menu'), modal = root.querySelector('#modal');
@@ -159,21 +193,26 @@ export async function enterWorld(app, char, hooks) {
   root.querySelector('#mOut').onclick = async () => { await leave(); net.signOut(); };
   root.querySelector('#mProfile').onclick = () => { menu.hidden = true; train(); };
   root.querySelector('#trainBtn').onclick = () => train();
-  function train() { openTraining(root, () => char, (c) => { Object.assign(char, c); refreshPlate(); }); }
+  function train(tab = 'stats') { openTraining(root, () => char, (c) => { Object.assign(char, c); refreshPlate(); }, tab); }
   function refreshPlate() {
     root.querySelector('#plateSub').textContent = `Lv ${char.level} · ${char.rank}`;
     root.querySelector('#ptsBadge').hidden = !(char.energy + Math.floor((Date.now() - (char._loadedAt || Date.now())) / 9000) >= (char.energy_max || 100));
     me.level = char.level; me.rank = char.rank;
   }
-  if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char };
-  function startBattle(mid) {
-    keys.clear();
+  if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char, exam: () => startExam(), hall: () => openExamHall(root, char, startExam), click: (x, y) => { const sp = spotAt(x, y); sp ? goTo(sp.x, sp.y, sp) : goTo(x, y); }, me };
+  function startExam() { startBattle(null, () => net.startExam()); }
+  function startBattle(mid, starter = null) {
+    path = []; dest = null;
     runBattle(root, char, mid, async (r) => {
       try { Object.assign(char, await net.loadCharacter(), { _loadedAt: Date.now() }); } catch {}
       refreshPlate(); room?.track(meta());
+      if (r && r.result && r.result.promoted) {
+        const m = { id: me.id, name: me.name, village: me.village, text: `passed the exam and is now a ${r.result.promoted}! 🎉`, ch: 'world' };
+        worldRoom?.send('chat', m); addMsg(m); bubbles.set(me.id, { text: `I'm a ${r.result.promoted} now!`, until: performance.now() + 5000 });
+      }
       if (r && r.status === 'won' && r.result && r.result.leveled) room?.send('chat', { id: me.id, name: me.name, village: me.village, text: `reached level ${char.level}! 🎉`, ch: 'village' });
-      if (r && r.train) train();
-    });
+      if (r && r.train) train(r.result && r.result.promoted ? 'jutsu' : 'stats');
+    }, starter);
   }
   function showModal(html, onReady) {
     modal.querySelector('.modal').innerHTML = html + `<button class="btn primary" data-close>OK</button>`;
@@ -190,15 +229,16 @@ export async function enterWorld(app, char, hooks) {
     });
   }
   const SPOT_TEXT = {
-    academy: ['Academy', 'Sensei Hiro nods at you. "Rank exams open here soon. Keep training, and come back when you\'re ready to test for Genin."'],
     shop: ['Tool Shop', 'Kunai, shuriken and scrolls are on their way. The shopkeeper is still unpacking crates.'],
     arena: ['Arena', 'Player duels and village wars will be fought here.'],
     gate: ['Village Gate', 'Beyond the gate lie the Wilds. The guards won\'t let Academy students out alone… yet.'],
   };
-  function interact() {
+  function interact(target) {
     if (root.querySelector('.ov')) return;
-    const s = nearSpot(); if (!s) return;
+    const s = target || nearSpot(); if (!s) return;
+    path = []; dest = null; pendingSpot = null;
     if (s.id === 'missions') { openMissionBoard(root, char, startBattle); return; }
+    if (s.id === 'academy') { openExamHall(root, char, startExam); return; }
     const [title, text] = SPOT_TEXT[s.id] || [s.name, ''];
     showModal(`<h3>${title}</h3><p>${text}</p>`);
   }
@@ -234,25 +274,16 @@ export async function enterWorld(app, char, hooks) {
   function step(now) {
     if (!alive) return;
     const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
-    // movement
-    let mx = 0, my = 0;
+    // movement: follow the clicked path
     const frozen = !!root.querySelector('.ov') || !modal.hidden;
-    if (!typing() && !frozen) {
-      if (keys.has('arrowleft') || keys.has('a')) mx -= 1;
-      if (keys.has('arrowright') || keys.has('d')) mx += 1;
-      if (keys.has('arrowup') || keys.has('w')) my -= 1;
-      if (keys.has('arrowdown') || keys.has('s')) my += 1;
-    }
-    if (!frozen && joy.id !== null && Math.hypot(joy.x, joy.y) > 0.25) { mx = joy.x; my = joy.y; }
-    const mag = Math.hypot(mx, my);
-    me.moving = mag > 0;
-    if (me.moving) {
-      mx /= Math.max(1, mag); my /= Math.max(1, mag);
-      const nx = me.x + mx * SPEED * dt, ny = me.y + my * SPEED * dt;
-      if (!blocked(world, nx, me.y)) me.x = nx;
-      if (!blocked(world, me.x, ny)) me.y = ny;
-      me.dir = Math.abs(mx) > Math.abs(my) ? (mx < 0 ? 1 : 2) : (my < 0 ? 3 : 0);
-      me.anim += dt;
+    me.moving = false;
+    if (!frozen && path.length) {
+      const wp = path[0], dx = wp.x - me.x, dy = wp.y - me.y, d = Math.hypot(dx, dy), stepLen = SPEED * dt;
+      if (d <= stepLen) { me.x = wp.x; me.y = wp.y; path.shift(); }
+      else { me.x += (dx / d) * stepLen; me.y += (dy / d) * stepLen; }
+      if (d > 0.5) me.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : (dy < 0 ? 3 : 0);
+      me.moving = true; me.anim += dt;
+      if (!path.length) { dest = null; if (pendingSpot) { const sp = pendingSpot; pendingSpot = null; interact(sp); } }
     } else me.anim = 0;
     // network send
     if (room && now - lastSend > (me.moving ? 100 : 1000)) {
@@ -269,7 +300,7 @@ export async function enterWorld(app, char, hooks) {
     }
     // prompt
     const s = nearSpot();
-    if (s) { promptEl.hidden = false; promptEl.textContent = (isTouch ? 'Tap A: ' : 'Press E: ') + s.name; } else promptEl.hidden = true;
+    if (s && !path.length) { promptEl.hidden = false; const tx = 'Enter ' + s.name; if (promptEl.textContent !== tx) promptEl.textContent = tx; promptEl.onclick = () => interact(s); } else promptEl.hidden = true;
     draw();
     requestAnimationFrame(step);
   }
@@ -309,6 +340,15 @@ export async function enterWorld(app, char, hooks) {
     };
     for (const o of others.values()) drawNinja(o, o.meta.look, false);
     drawNinja(me, me.look, true);
+    if (dest) {
+      dest.t += 1; const pulse = 3 + ((dest.t >> 3) % 3), dx2 = Math.round((dest.x - camX) * sc), dy2 = Math.round((dest.y - camY) * sc);
+      list.push({ y: -1e9, draw: () => {
+        ctx.fillStyle = 'rgba(255,244,220,.85)';
+        ctx.fillRect(dx2 - pulse * sc, dy2 - sc, sc, sc * 2); ctx.fillRect(dx2 + (pulse - 1) * sc, dy2 - sc, sc, sc * 2);
+        ctx.fillRect(dx2 - sc, dy2 - (pulse - 1) * sc, sc * 2, sc); ctx.fillRect(dx2 - sc, dy2 + (pulse - 2) * sc, sc * 2, sc);
+        ctx.fillStyle = '#c43c32'; ctx.fillRect(dx2 - sc, dy2 - sc, sc * 2, sc * 2);
+      } });
+    }
     list.sort((a, b) => a.y - b.y);
     for (const d of list) d.draw();
     // labels + bubbles (screen space, crisp text)
@@ -341,7 +381,7 @@ export async function enterWorld(app, char, hooks) {
 
   async function leave() {
     alive = false;
-    removeEventListener('keydown', onKey); removeEventListener('keyup', onKey); removeEventListener('resize', resize);
+    removeEventListener('keydown', onKey); removeEventListener('resize', resize);
     document.body.classList.remove('in-world');
     try { await net.savePosition(me.x, me.y); } catch {}
     room?.leave(); worldRoom?.leave();
