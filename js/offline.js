@@ -58,7 +58,8 @@ export function enrich(c) {
   const energy = Math.min(100, c.energy + Math.floor((Date.now() - c.energy_at) / 9000));
   c.jutsu = c.jutsu || {};
   for (const k in c.jutsu) c.jutsu[k].next = jnext(c.jutsu[k].level, k);
-  return { ...c, energy, energy_max: 100, energy_regen_sec: 9, hp_max: 80 + c.level * 10 + c.strength * 4 + c.willpower,
+  const bonus = new URLSearchParams(location.search).has('bonus') ? { place: 1, mult: 2 } : null;
+  return { ...c, energy, energy_max: 100, energy_regen_sec: bonus ? 4.5 : 9, arena_bonus: bonus, hp_max: 80 + c.level * 10 + c.strength * 4 + c.willpower,
     stamina_max: 40 + c.level * 3 + c.strength * 2 + c.agility * 2, chakra_max: 40 + c.level * 3 + c.intelligence * 2 + c.willpower * 2,
     stat_cap: SCAP[ri], level_cap: LCAP[ri], rank_index: ri, train_energy: 10, train_prog: c.train_prog || {},
     point_cost: { strength: pointCost(c.strength), agility: pointCost(c.agility), intelligence: pointCost(c.intelligence), willpower: pointCost(c.willpower) } };
@@ -204,4 +205,18 @@ export function mockDuelOp(c, body) {
     return JSON.parse(JSON.stringify(duel));
   }
   return duel;
+}
+
+// ---------- offline arena boards ----------
+const NAMES = ['Ren', 'Mika', 'Sora', 'Kaito', 'Yumi', 'Haru', 'Aki', 'Nori', 'Tama', 'Riku', 'Suzu', 'Ken'];
+const fakeLook = (i) => ({ hairStyle: i % 5, hair: (i * 3) % 8, skin: i % 6, outfit: (i * 5) % 8, band: i % 3, bandSpot: i % 3 });
+export function mockBoard(period, rank, c) {
+  const n = period === 'month' ? 12 : rank === 'Jonin' ? 0 : 8, mult = period === 'month' ? 9 : 1;
+  const rows = Array.from({ length: n }, (_, i) => ({ place: i + 1, points: (n - i) * 15 * mult, name: NAMES[i], village: ['pine', 'dune', 'tide'][i % 3], level: 6 + i, look: fakeLook(i), me: false }));
+  if (c && c.rank === rank && n > 4) { rows[3] = { ...rows[3], name: c.name, village: c.village, look: c.appearance, me: true }; }
+  const d = new Date(); d.setHours(24, 0, 0, 0);
+  return { rows, me: rows.find((r) => r.me) || null, ends_at: d.toISOString(), period, rank };
+}
+export function mockChampions() {
+  return { Genin: { name: 'Mika', village: 'tide', look: fakeLook(1), points: 345, level: 12 }, Chunin: { name: 'Kaito', village: 'dune', look: fakeLook(3), points: 1210, level: 27 } };
 }

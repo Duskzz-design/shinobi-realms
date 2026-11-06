@@ -118,7 +118,8 @@ export async function openTraining(root, getChar, setChar, startTab = 'stats') {
       <p class="sub">${c.xp} / ${need} XP · 💰 ${c.ryo} ryo · 🏆 ${c.arena_points || 0} Arena</p>
       <div class="pools"><span>❤️ <b>${c.hp_max}</b> HP</span><span>💪 <b>${c.stamina_max}</b> Stamina</span><span>💧 <b>${c.chakra_max}</b> Chakra</span></div>
       <div class="energy"><b>⚡ Energy ${e} / ${c.energy_max}</b><div class="ebar"><i style="width:${e}%"></i></div>
-        <small>${e >= c.energy_max ? 'Full! Spend it on training.' : `+1 every ${c.energy_regen_sec}s · full in ${fmt((c.energy_max - e) * c.energy_regen_sec)}`}</small></div>
+        <small>${e >= c.energy_max ? 'Full! Spend it on training.' : `+1 every ${c.energy_regen_sec}s · full in ${fmt(Math.ceil((c.energy_max - e) * c.energy_regen_sec))}`}</small>
+        ${c.arena_bonus ? `<small class="ebonus">🏆 Arena bonus: refilling ${c.arena_bonus.mult}× faster today (#${c.arena_bonus.place} yesterday)</small>` : ''}</div>
       <div class="ttabs"><button data-tab="stats" class="${tab === 'stats' ? 'on' : ''}">General stats</button><button data-tab="jutsu" class="${tab === 'jutsu' ? 'on' : ''}">Jutsu</button></div>
       <div class="tstyles">${tab === 'stats' ? statRows : jutsuRows}</div>
       <button class="btn ghost" data-x>Close</button>`;

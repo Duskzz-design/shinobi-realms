@@ -333,3 +333,19 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .b-top .tmr.them { box-shadow: 0 0 0 2px #ff8f7a; opacity: .85; } .b-top .tmr.low { background: var(--red); animation: pop .5s steps(2) infinite alternate; }
 .b-top .tmr:not([hidden]) + .turn { margin-left: 8px; }
 .pcard + [data-duel] { width: 100%; margin: 6px 0; }
+.board.arena { max-width: 560px; }
+.ar-bonus { background: #fff8e6; box-shadow: 0 0 0 3px var(--gold); padding: 8px 10px; margin: 4px 2px 10px; font-size: 15px; }
+.ar-bonus small { display: block; color: var(--ink2); margin-top: 4px; }
+.ar-tiers { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 2px; } .ar-tiers span { background: #24160e; color: #ffe07a; padding: 2px 8px; font-size: 13px; }
+.ar-mybonus { background: #e2f6d8; box-shadow: 0 0 0 3px var(--green); padding: 8px 10px; margin: 4px 2px 10px; font-size: 15px; }
+.ar-ranks { display: flex; gap: 4px; margin: 6px 0; } .ar-ranks button { flex: 1; border: 0; padding: 7px; font-family: var(--body); font-weight: 700; background: #e6d2a8; cursor: pointer; color: var(--ink); }
+.ar-ranks button.on { background: #24160e; color: #ffe07a; }
+.ar-list { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; min-height: 80px; }
+.ar-row { display: grid; grid-template-columns: 34px 22px 1fr auto auto; align-items: center; gap: 8px; background: #fffaf0; box-shadow: 0 0 0 2px #d8c49a; padding: 4px 8px; }
+.ar-row.bz { box-shadow: 0 0 0 2px var(--gold); } .ar-row.me { background: #fff1b8; box-shadow: 0 0 0 3px var(--red); }
+.ar-row .pl { font-family: var(--title); font-size: 11px; text-align: center; } .ar-row .pl:not(:empty) { line-height: 1; } .ar-row.top .pl { font-size: 20px; } .ar-row canvas { width: 18px; height: 26px; image-rendering: pixelated; }
+.ar-row .nm { display: flex; flex-direction: column; align-items: flex-start; text-align: left; min-width: 0; } .ar-row .nm b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ar-row .nm small { font-size: 12px; }
+.ar-row .arp { font-family: var(--title); font-size: 11px; color: var(--wood); } .ar-row .bt { font-size: 11px; font-weight: 700; background: #24160e; color: #ffe07a; padding: 1px 5px; }
+.ar-cut { text-align: center; font-size: 12px; color: var(--ink2); border-top: 2px dashed #c9a86a; padding-top: 3px; margin-top: 4px; }
+.ar-me { text-align: center; font-size: 15px; margin: 4px 0; } .ar-how { text-align: center; margin-top: 8px; } .ar-empty { text-align: center; padding: 16px 0; }
+.ebonus { display: block; color: var(--green); font-weight: 700; margin-top: 3px; }

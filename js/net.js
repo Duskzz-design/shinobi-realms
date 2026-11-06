@@ -246,3 +246,13 @@ export async function myActiveDuel() {
   const { data } = await sb.from('duels').select('*').eq('status', 'active').gt('deadline', new Date(Date.now() - 5 * 60000).toISOString()).order('created_at', { ascending: false }).limit(1);
   return (data || [])[0] || null;
 }
+
+// ---------- arena leaderboards ----------
+export async function arenaBoard(period, rank) {
+  if (OFFLINE) { const o = await import('./offline.js'); return o.mockBoard(period, rank, mockChar()); }
+  const { data, error } = await sb.rpc('arena_board', { p_period: period, p_rank: rank }); if (error) throw rpcErr(error); return data;
+}
+export async function arenaChampions() {
+  if (OFFLINE) { const o = await import('./offline.js'); return o.mockChampions(); }
+  const { data, error } = await sb.rpc('arena_champions'); if (error) throw rpcErr(error); return data || {};
+}

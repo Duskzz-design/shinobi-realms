@@ -10,6 +10,8 @@ const THEMES = {
   tide: { g1: '#7cc87a', g2: '#6ebb6d', g3: '#8ad688', path: '#e8d4a8', pathD: '#d4bd8c', stone: '#d4d8dc', stoneD: '#b4bac2', roof: '#2f7fc4', roofD: '#1d4f80', edge: 'sea', water: '#3a8fd0', waterL: '#7cbfee', accent: '#2f7fc4', flower: ['#ffffff', '#9fd8ff', '#ffd36b'] },
 };
 
+// champion statues outside the Arena (tile x, y): Genin, Chunin, Jonin
+export const STATUES = [{ rank: 'Genin', x: 14, y: 32 }, { rank: 'Chunin', x: 16, y: 32 }, { rank: 'Jonin', x: 18, y: 32 }];
 export const BUILDINGS = [
   { id: 'academy', name: 'Academy', x: 19, y: 3, w: 10, h: 6, big: true },
   { id: 'missions', name: 'Mission Hall', x: 33, y: 12, w: 8, h: 5 },
@@ -74,6 +76,7 @@ export function buildWorld(village) {
   // gate
   props.push({ kind: 'gate', x: 21 * T, y: (MH - 1) * T - 1 });
   S(21, MH - 2); S(26, MH - 2); S(21, MH - 1); S(26, MH - 1);
+  for (const st of STATUES) S(st.x, st.y);
   // lamps along roads
   for (const [x, y] of [[20, 11], [27, 11], [17, 15], [30, 15], [17, 20], [30, 20], [22, 27], [25, 27], [10, 16], [38, 19]]) {
     if (!solid[y * MW + x]) { S(x, y); props.push({ kind: 'lamp', x: x * T + 8, y: y * T + 14 }); }

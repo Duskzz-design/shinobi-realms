@@ -1,6 +1,7 @@
 // The live village: movement, camera, other players, chat, interactions.
 import * as net from './net.js';
-import { buildWorld, blocked, T, MW, MH, BUILDINGS } from './world.js';
+import { buildWorld, blocked, T, MW, MH, BUILDINGS, STATUES } from './world.js';
+import { openArena, statueSprite } from './arenaui.js';
 import { ninjaSprite, emblem, VILLAGES } from './sprites.js';
 import { openMissionBoard, openTraining, runBattle, openExamHall } from './battle.js';
 import { setupDuels } from './duelui.js';
@@ -146,6 +147,7 @@ export async function enterWorld(app, char, hooks) {
       if (Math.abs(wx - o.x) < 10 && wy < o.y + 2 && wy > o.y - 28) { playerCard(o.meta); return; }
     }
     if (root.querySelector('.ov') || !modal.hidden) return;
+    for (const st of STATUES) { const bx = st.x * T + 8, by = (st.y + 1) * T; if (Math.abs(wx - bx) < 12 && wy < by + 2 && wy > by - 42) { statueCard(st); return; } }
     const sp = spotAt(wx, wy);
     if (sp) { if (Math.hypot(sp.x - me.x, sp.y - me.y) < 22) { interact(sp); return; } goTo(sp.x, sp.y, sp); }
     else goTo(wx, wy);
@@ -197,7 +199,7 @@ export async function enterWorld(app, char, hooks) {
   function train(tab = 'stats') { openTraining(root, () => char, (c) => { Object.assign(char, c); refreshPlate(); }, tab); }
   function refreshPlate() {
     root.querySelector('#plateSub').textContent = `Lv ${char.level} · ${char.rank}`;
-    root.querySelector('#ptsBadge').hidden = !(char.energy + Math.floor((Date.now() - (char._loadedAt || Date.now())) / 9000) >= (char.energy_max || 100));
+    root.querySelector('#ptsBadge').hidden = !(char.energy + Math.floor((Date.now() - (char._loadedAt || Date.now())) / 1000 / (char.energy_regen_sec || 9)) >= (char.energy_max || 100));
     me.level = char.level; me.rank = char.rank;
   }
   if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char, exam: () => startExam(), hall: () => openExamHall(root, char, startExam), click: (x, y) => { const sp = spotAt(x, y); sp ? goTo(sp.x, sp.y, sp) : goTo(x, y); }, me };
@@ -207,7 +209,7 @@ export async function enterWorld(app, char, hooks) {
     stopWalking: () => { path = []; dest = null; closeModal(); root.querySelectorAll('.ov').forEach((o) => o.remove()); },
     onEnd: async (r, d) => {
       try { Object.assign(char, await net.loadCharacter(), { _loadedAt: Date.now() }); } catch {}
-      refreshPlate();
+      refreshPlate(); loadChampions();
       if (r && r.status === 'won') { const foe = d.a === char.user_id ? d.b_name : d.a_name; const m = { id: me.id, name: me.name, village: me.village, text: `won a duel against ${foe}! ⚔️`, ch: 'village' }; room?.send('chat', m); addMsg(m); }
     },
   });
@@ -232,6 +234,16 @@ export async function enterWorld(app, char, hooks) {
   }
   function closeModal() { modal.hidden = true; }
   modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+  let champions = {};
+  const loadChampions = () => net.arenaChampions().then((c) => (champions = c || {})).catch(() => {});
+  loadChampions(); const champTimer = setInterval(loadChampions, 120000);
+  function statueCard(st) {
+    const ch = champions[st.rank], vv = ch ? VILLAGES[ch.village] || v : v;
+    showModal(ch ? `<div class="pcard"><canvas width="66" height="120"></canvas><div><p class="soon">🏆 ${st.rank} Champion</p><h3>${esc(ch.name)}</h3><p style="color:${vv.dark}"><b>${vv.name}</b></p><p>Level ${ch.level} · <b>${ch.points}</b> Arena points</p></div></div><p class="sub">The ${st.rank} with the most Arena points of all time. Win duels to take their place on this pedestal.</p>`
+      : `<h3>🏆 ${st.rank} Champion</h3><p>This pedestal is empty. The first ${st.rank} to win Arena points gets their statue here!</p>`, (el) => {
+      const c = el.querySelector('canvas'); if (!c) return; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; const img = statueSprite(ch.look); x.drawImage(img, 0, 0, img.width * 3, img.height * 3);
+    });
+  }
   function playerCard(m) {
     const vv = VILLAGES[m.village] || v;
     showModal(`<div class="pcard"><canvas width="64" height="80"></canvas><div><h3>${esc(m.name)}</h3><p style="color:${vv.dark}"><b>${vv.name}</b></p><p>${esc(m.rank || 'Academy Student')} · Level ${m.level || 1}</p></div></div><button class="btn primary" data-duel>⚔️ Challenge to a duel</button>`, (el) => {
@@ -242,7 +254,6 @@ export async function enterWorld(app, char, hooks) {
   }
   const SPOT_TEXT = {
     shop: ['Tool Shop', 'Kunai, shuriken and scrolls are on their way. The shopkeeper is still unpacking crates.'],
-    arena: ['Arena', 'Player duels and village wars will be fought here.'],
     gate: ['Village Gate', 'Beyond the gate lie the Wilds. The guards won\'t let Academy students out alone… yet.'],
   };
   function interact(target) {
@@ -251,6 +262,7 @@ export async function enterWorld(app, char, hooks) {
     path = []; dest = null; pendingSpot = null;
     if (s.id === 'missions') { openMissionBoard(root, char, startBattle); return; }
     if (s.id === 'academy') { openExamHall(root, char, startExam); return; }
+    if (s.id === 'arena') { openArena(root, char); return; }
     const [title, text] = SPOT_TEXT[s.id] || [s.name, ''];
     showModal(`<h3>${title}</h3><p>${text}</p>`);
   }
@@ -341,6 +353,11 @@ export async function enterWorld(app, char, hooks) {
       if (x > camX + viewW || y > camY + viewH || x + p.img.img.width < camX || y + p.img.img.height < camY) continue;
       list.push({ y: p.y, draw: () => ctx.drawImage(p.img.img, Math.round((x - camX) * sc), Math.round((y - camY) * sc), p.img.img.width * sc, p.img.img.height * sc) });
     }
+    for (const st of STATUES) {
+      const ch = champions[st.rank], img = statueSprite(ch ? ch.look : null), bx = st.x * T + 8, by = (st.y + 1) * T - 1;
+      list.push({ y: by, draw: () => ctx.drawImage(img, Math.round((bx - img.width / 2 - camX) * sc), Math.round((by - img.height - camY) * sc), img.width * sc, img.height * sc),
+        label: { x: bx, y: by - img.height - 2, name: st.rank, statue: true } });
+    }
     const drawNinja = (n, look, isMe) => {
       const frame = n.moving || (n.anim > 0) ? [1, 0, 2, 0][Math.floor(n.anim * 8) % 4] : 0;
       const spr = ninjaSprite(look || {}, n.dir || 0, frame);
@@ -372,7 +389,7 @@ export async function enterWorld(app, char, hooks) {
       const L = d.label, sx = Math.round((L.x - camX) * sc), sy = Math.round((L.y - camY) * sc);
       const w = ctx.measureText(L.name).width + 8;
       ctx.fillStyle = 'rgba(36,22,14,.62)'; ctx.fillRect(sx - w / 2, sy - fsz - 2, w, fsz + 4);
-      ctx.fillStyle = L.me ? '#ffe07a' : '#fff4dc'; ctx.fillText(L.name, sx, sy + 1);
+      ctx.fillStyle = L.me || L.statue ? '#ffe07a' : '#fff4dc'; ctx.fillText(L.name, sx, sy + 1);
       const b = bubbles.get(L.id);
       if (b && b.until > now) drawBubble(sx, sy - fsz - 6, b.text, fsz);
     }
@@ -396,7 +413,7 @@ export async function enterWorld(app, char, hooks) {
     removeEventListener('keydown', onKey); removeEventListener('resize', resize);
     document.body.classList.remove('in-world');
     try { await net.savePosition(me.x, me.y); } catch {}
-    room?.leave(); worldRoom?.leave(); duels.stop();
+    room?.leave(); worldRoom?.leave(); duels.stop(); clearInterval(champTimer);
   }
   addEventListener('pagehide', () => { room?.leave(); }, { once: true });
   requestAnimationFrame(step);
