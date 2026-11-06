@@ -270,3 +270,15 @@ export async function claimArenaReward() {
   if (OFFLINE) return new URLSearchParams(location.search).has('bonus') ? { place: 1, rank: 'Genin', ryo: 300, mult: 1.5 } : null;
   const { data, error } = await sb.rpc('claim_arena_reward'); if (error) return null; return data;
 }
+// ---------- world quests ----------
+export async function getQuestData() {
+  if (OFFLINE) { const o = await import('./offline.js'); return { lines: o.QUEST_LINES, steps: o.QUEST_STEPS }; }
+  const [l, s] = await Promise.all([sb.from('quest_lines').select('*').order('sort'), sb.from('quest_steps').select('*').order('step')]);
+  if (l.error) throw rpcErr(l.error); if (s.error) throw rpcErr(s.error);
+  return { lines: l.data, steps: s.data };
+}
+export async function startQuest(line) {
+  if (OFFLINE) { const o = await import('./offline.js'); mockBattle = o.mockStartQuest(mockChar(), line); return clone(mockBattle); }
+  const { data, error } = await sb.rpc('start_quest', { p_line: line }); if (error) throw rpcErr(error);
+  return battleCall({ op: 'get', battle: data.id });
+}

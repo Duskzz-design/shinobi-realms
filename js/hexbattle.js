@@ -7,7 +7,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const clone = (x) => JSON.parse(JSON.stringify(x));
-const GRADE_COL = { D: '#3a8a4a', C: '#2f7fc4', B: '#9a5ad0', A: '#e8742c', S: '#c43c32', X: '#b8860b', L: '#2a9d8f' };
+const GRADE_COL = { D: '#3a8a4a', C: '#2f7fc4', B: '#9a5ad0', A: '#e8742c', S: '#c43c32', X: '#b8860b', L: '#2a9d8f', Q: '#7a4a2a' };
 const RANKS = G.RANKS;
 export const STYLE_INFO = {
   ninjutsu: { label: 'Ninjutsu', color: '#e8742c', icon: '🔥' }, genjutsu: { label: 'Genjutsu', color: '#9a5ad0', icon: '🌀' },
@@ -31,7 +31,7 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
     my: 'a', state: S0, exam: S0.exam,
     head: `<span class="grade" style="background:${GRADE_COL[S0.mission.grade]}">${S0.exam ? '★' : S0.mission.grade}</span><b>${esc(S0.mission.name)}</b>${S0.exam ? `<span class="rnd">Round ${S0.exam.round}/${S0.exam.rounds}</span>` : ''}`,
     act: (a) => net.battleAct(battle.id, a),
-    intro: S0.lesson ? `<b>${esc(S0.mission.name)}.</b> ${esc(S0.mission.description || '')}` : S0.exam && S0.exam.round === 1 ? `<b>${esc(S0.mission.name)}.</b> Move with blue hexes, use rocks as cover, and strike from range. Good luck!` : null,
+    intro: S0.lesson || S0.quest ? `<b>${esc(S0.mission.name)}.</b> ${esc(S0.mission.description || '')}` : S0.exam && S0.exam.round === 1 ? `<b>${esc(S0.mission.name)}.</b> Move with blue hexes, use rocks as cover, and strike from range. Good luck!` : null,
     result: (res, finish) => missionResult(root, char, res, S0, battle, onEnd, finish),
     fled: () => onEnd({ status: 'fled' }),
   });
@@ -347,7 +347,8 @@ function missionResult(root, char, res, S0, battle, onEnd, finish) {
     else body = `<h3 class="${won ? 'win' : 'lose'}">${won ? 'Mission complete!' : 'Defeated…'}</h3>
       ${won ? `<p class="big">+${r.xp} XP &nbsp; +${r.ryo} ryo</p>
         ${r.leveled ? `<p class="lvl">⬆ Level up! You are now level ${r.level}.<br>Your HP, stamina and chakra grew, and your energy is full!</p>` : ''}
-        ${r.capped ? `<p class="cap">You've reached the highest level for your rank. Take the rank exam at the Academy to keep growing.</p>` : ''}`
+        ${r.capped ? `<p class="cap">You've reached the highest level for your rank. Take the rank exam at the Academy to keep growing.</p>` : ''}
+        ${r.quest ? (r.quest.done ? `<p class="lvl">🗺️ Quest line complete! The boss lair is now open to you.</p>` : `<p class="lvl">🗺️ Quest progress saved${r.quest.count ? ` (${r.quest.count} done)` : ': next step unlocked'}.</p>`) : ''}`
         : `<p>You were carried back to the village to recover.${r.ryo_lost ? ` You dropped ${r.ryo_lost} ryo.` : ''}</p><p class="sub">Tip: keep out of melee foes' reach, hide behind rocks from ranged foes, and Focus when low on chakra.</p>`}${ups}
       <div class="row"><button class="btn ${won && r.leveled ? 'primary' : 'ghost'}" data-t>Train</button><button class="btn ${won && r.leveled ? 'ghost' : 'primary'}" data-back>Back to village</button></div>`;
     const box = h(`<div class="b-result"><div class="scroll">${body}</div></div>`);

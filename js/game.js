@@ -2,6 +2,7 @@
 import * as net from './net.js';
 import { buildWorld, blocked, T, MW, MH, BUILDINGS, STATUES } from './world.js';
 import { openArena, statueSprite } from './arenaui.js';
+import { openWorldMap } from './worldmap.js';
 import { ninjaSprite, emblem, VILLAGES } from './sprites.js';
 import { openMissionBoard, openTraining, runBattle, openExamHall } from './battle.js';
 import { setupDuels } from './duelui.js';
@@ -202,9 +203,17 @@ export async function enterWorld(app, char, hooks) {
     root.querySelector('#ptsBadge').hidden = !(char.energy + Math.floor((Date.now() - (char._loadedAt || Date.now())) / 1000 / (char.energy_regen_sec || 9)) >= (char.energy_max || 100));
     me.level = char.level; me.rank = char.rank;
   }
-  if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char, exam: () => startExam(), hall: () => openExamHall(root, char, startExam, startLesson), lesson: (id) => startLesson(id), click: (x, y) => { const sp = spotAt(x, y); sp ? goTo(sp.x, sp.y, sp) : goTo(x, y); }, me };
+  if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char, exam: () => startExam(), hall: () => openExamHall(root, char, startExam, startLesson), map: () => worldMap(), lesson: (id) => startLesson(id), click: (x, y) => { const sp = spotAt(x, y); sp ? goTo(sp.x, sp.y, sp) : goTo(x, y); }, me };
   function startExam() { startBattle(null, () => net.startExam()); }
   function startLesson(id) { startBattle(null, () => net.startLesson(id)); }
+  function worldMap() {
+    path = []; dest = null;
+    openWorldMap(root, char, {
+      onQuest: (line) => startBattle(null, () => net.startQuest(line), (r) => { if (!r || !r.train) worldMap(); }),
+      onLair: (line, close) => { showModal('<h3>⚔️ Boss lair</h3><p>Team boss fights open in the next update. You have found the way in!</p>'); },
+      onHome: () => {},
+    });
+  }
   const duels = setupDuels(root, char, {
     canStart: () => !root.querySelector('.ov.battle'),
     stopWalking: () => { path = []; dest = null; closeModal(); root.querySelectorAll('.ov').forEach((o) => o.remove()); },
@@ -220,7 +229,7 @@ export async function enterWorld(app, char, hooks) {
     try { Object.assign(char, await net.loadCharacter(), { _loadedAt: Date.now() }); refreshPlate(); } catch {}
     showModal(`<div class="dp-ico">🏆</div><h3>Arena reward!</h3><p>You finished <b>#${r.place}</b> on yesterday's ${esc(r.rank)} board.</p><p class="big">+${r.ryo} ryo</p><p>Your energy refills <b>${r.mult}× faster</b> all day today.</p>`);
   });
-  function startBattle(mid, starter = null) {
+  function startBattle(mid, starter = null, after = null) {
     path = []; dest = null;
     runBattle(root, char, mid, async (r) => {
       try { Object.assign(char, await net.loadCharacter(), { _loadedAt: Date.now() }); } catch {}
@@ -231,6 +240,7 @@ export async function enterWorld(app, char, hooks) {
       }
       if (r && r.status === 'won' && r.result && r.result.leveled) room?.send('chat', { id: me.id, name: me.name, village: me.village, text: `reached level ${char.level}! 🎉`, ch: 'village' });
       if (r && r.train) train(r.result && r.result.promoted ? 'jutsu' : 'stats');
+      if (after) after(r);
     }, starter);
   }
   function showModal(html, onReady) {
@@ -260,7 +270,6 @@ export async function enterWorld(app, char, hooks) {
   }
   const SPOT_TEXT = {
     shop: ['Tool Shop', 'Kunai, shuriken and scrolls are on their way. The shopkeeper is still unpacking crates.'],
-    gate: ['Village Gate', 'Beyond the gate lie the Wilds. The guards won\'t let Academy students out alone… yet.'],
   };
   function interact(target) {
     if (root.querySelector('.ov')) return;
@@ -269,6 +278,7 @@ export async function enterWorld(app, char, hooks) {
     if (s.id === 'missions') { openMissionBoard(root, char, startBattle); return; }
     if (s.id === 'academy') { openExamHall(root, char, startExam, startLesson); return; }
     if (s.id === 'arena') { openArena(root, char); return; }
+    if (s.id === 'gate') { worldMap(); return; }
     const [title, text] = SPOT_TEXT[s.id] || [s.name, ''];
     showModal(`<h3>${title}</h3><p>${text}</p>`);
   }

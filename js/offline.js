@@ -148,6 +148,7 @@ function finish(c, b, win) {
     if (c.level >= cap) c.xp = Math.min(c.xp, c.level * 100);
     if (c.level > before) { c.energy = 100; c.energy_at = Date.now(); }
     r = { xp: m.xp, ryo: m.ryo, level: c.level, leveled: c.level - before, capped: c.level >= cap };
+    if (st.quest) r.quest = questAdvance(c, st.quest);
   } else if (st.exam) { lastExamFail = Date.now(); r = { ryo_lost: 0 }; }
   else { const lost = Math.min(c.ryo, Math.round(m.ryo * 0.2)); c.ryo -= lost; r = { ryo_lost: lost }; }
   return { ...r, jutsu_up: ups };
@@ -244,4 +245,42 @@ export function mockStartLesson(c, id) {
     enemy: { name: L.enemy_name, kind: 'ninja', level: L.enemy_level, look: L.enemy_look, element: el },
     mission: { id: L.id, name: L.name, grade: 'L', xp: L.xp, ryo: L.ryo, description: L.description }, lesson: true };
   return hexInit(c, { id: 'b' + Date.now(), status: 'active', state: st, m: { ...L, kind: 'lesson' } });
+}
+
+// ---------- offline quests (mirror of the server tables) ----------
+export const QUEST_LINES = [
+  { id: 'iron', name: 'The Iron Bandits', description: '', min_rank: 2, lair: 'stronghold', boss_name: 'Warlord Gorou', reward: 'riches', sort: 1 },
+  { id: 'serpent', name: "The Serpent's Coil", description: '', min_rank: 2, lair: 'serpent_cave', boss_name: 'Venomfang the Cave Wyrm', reward: 'scroll', sort: 2 },
+  { id: 'shrine', name: 'Shadow of the Fallen Shrine', description: '', min_rank: 3, lair: 'shadow_fortress', boss_name: 'The Hollow Shogun', reward: 'title', sort: 3 },
+];
+const QS = (line, step, kind, title, story, location, mission_id, need) => ({ line, step, kind, title, story, location, mission_id, need });
+export const QUEST_STEPS = [
+  QS('iron', 1, 'fight', 'Ambush on the Road', 'Merchants on the Bandit Road keep vanishing. Ride with the next caravan and catch the ambushers in the act.', 'bandit_road', 'qa1', 1),
+  QS('iron', 2, 'hunt', 'Thin Their Ranks', 'The scout talked: a raider camp guards the road. Defeat 3 Bandit Raiders.', 'bandit_road', 'qa2', 3),
+  QS('iron', 3, 'fight', 'The Watchtower Lieutenant', 'The raiders answer to a lieutenant hiding in the Old Watchtower.', 'watchtower', 'qa3', 1),
+  QS('serpent', 1, 'hunt', 'Gather Moonherbs', 'Defeat 3 Marsh Vipers and gather the Moonherbs they guard.', 'misty_marsh', 'qb1', 3),
+  QS('serpent', 2, 'fight', 'The Swamp Witch', 'A witch has been breeding the vipers. Find her deep in the marsh.', 'misty_marsh', 'qb2', 1),
+  QS('serpent', 3, 'fight', 'The Coil Cultist', 'Defeat the cult leader in the Whispering Woods.', 'whispering_woods', 'qb3', 1),
+  QS('shrine', 1, 'fight', 'Restless Spirits', 'Lights burn at the ruined shrine every night.', 'ruined_shrine', 'qc1', 1),
+  QS('shrine', 2, 'hunt', 'Ash Wolves', 'Defeat 3 Ash Wolves blocking the pass.', 'ashen_peak', 'qc2', 3),
+  QS('shrine', 3, 'fight', "The Shogun's Herald", 'The herald guards the Shadow Fortress gate.', 'ashen_peak', 'qc3', 1),
+];
+const QM = { qa1: ['Bandit Scout', 'ninja', 17, 673, 79, 14, 'ranged', null], qa2: ['Bandit Raider', 'ninja', 16, 331, 80, 14, 'ninja', 'earth'], qa3: ['Lieutenant Senzo', 'ninja', 21, 866, 86, 18, 'ninja', 'wind'],
+  qb1: ['Marsh Viper', 'beast_snake', 16, 334, 75, 14, 'snake', null], qb2: ['Swamp Witch Mirei', 'ninja', 19, 732, 84, 16, 'ranged', 'water'], qb3: ['Cult Leader Jabami', 'ninja', 23, 955, 92, 20, 'ninja', 'fire'],
+  qc1: ['Shrine Wraith', 'ninja', 31, 2152, 154, 28, 'ninja', 'lightning'], qc2: ['Ash Wolf', 'beast_wolf', 31, 1107, 170, 28, 'beast', null], qc3: ['Herald Kurogane', 'ninja', 35, 2995, 174, 32, 'ranged', 'wind'] };
+export function mockStartQuest(c, line) {
+  const x = enrich(c), L = QUEST_LINES.find((l) => l.id === line); if (x.rank_index < L.min_rank) throw new Error('Only Chunin or higher may take this quest.');
+  const p = (c.quests || {})[line] || {}, cur = p.step || 1, qs = QUEST_STEPS.find((s) => s.line === line && s.step === cur), [n, kind, lv, hp, atk, def, kit, el] = QM[qs.mission_id];
+  const look = kind === 'ninja' ? { hairStyle: lv % 5, hair: lv % 8, skin: lv % 6, outfit: 4, band: 2, bandSpot: 0 } : { tint: '#5a5050' };
+  const m = { id: qs.mission_id, xp: 200, ryo: 150, kind: 'quest' };
+  const st = { php: x.hp_max, pmax: x.hp_max, pst: x.stamina_max, pstmax: x.stamina_max, pch: x.chakra_max, pchmax: x.chakra_max,
+    foe: { hp, atk, def, kit, element: el, level: lv }, enemy: { name: n, kind, level: lv, look, element: el },
+    mission: { id: m.id, name: qs.title, grade: 'Q', xp: m.xp, ryo: m.ryo, description: qs.story }, quest: { line, step: cur, need: qs.need, count: p.count || 0, kind: qs.kind } };
+  return hexInit(c, { id: 'b' + Date.now(), status: 'active', state: st, m });
+}
+function questAdvance(c, q) {
+  c.quests = c.quests || {}; const p = c.quests[q.line] || { step: 1, count: 0 }; if ((p.step || 1) !== q.step) return null;
+  const max = Math.max(...QUEST_STEPS.filter((s) => s.line === q.line).map((s) => s.step)); let cnt = (p.count || 0) + 1, cur = p.step || 1, done = false;
+  if (cnt >= q.need) { cur++; cnt = 0; } if (cur > max) { done = true; cur = max; }
+  c.quests[q.line] = { step: cur, count: cnt, done }; return { ...c.quests[q.line], line: q.line };
 }
