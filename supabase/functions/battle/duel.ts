@@ -32,9 +32,11 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
   if (body.op === 'duel_challenge') {
     const target = String(body.target || '');
     if (target === uid) throw new Error('You cannot duel yourself.');
-    const { data: cs } = await admin.from('characters').select('user_id,name,rank').in('user_id', [uid, target]);
+    const { data: cs } = await admin.from('characters').select('user_id,name,rank,asleep_since').in('user_id', [uid, target]);
     const me = (cs || []).find((c: any) => c.user_id === uid), them = (cs || []).find((c: any) => c.user_id === target);
     if (!me || !them) throw new Error('That ninja could not be found.');
+    if (me.asleep_since) throw new Error('You are asleep. Wake up first.');
+    if (them.asleep_since) throw new Error(`${them.name} is asleep and can't be challenged.`);
     if (me.rank === 'Academy Student') throw new Error('Academy students cannot duel. Graduate to Genin first, and practise in the Academy sparring lessons.');
     if (them.rank === 'Academy Student') throw new Error(`${them.name} is still an Academy student and cannot duel yet.`);
     const kind = body.kind === 'kage' ? 'kage' : body.kind === 'war' ? 'war' : 'duel';
@@ -85,6 +87,7 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
     const [{ data: ca }, { data: cb }, { data: ja }, { data: jb }] = await Promise.all([
       admin.from('characters').select('*').eq('user_id', d.a).single(), admin.from('characters').select('*').eq('user_id', d.b).single(),
       admin.from('character_jutsu').select('move_id,level').eq('user_id', d.a), admin.from('character_jutsu').select('move_id,level').eq('user_id', d.b)]);
+    if (ca.asleep_since || cb.asleep_since) { await save(d, { status: 'cancelled' }); throw new Error('Sleeping ninja cannot duel.'); }
     if (ca.rank === 'Academy Student' || cb.rank === 'Academy Student') { await save(d, { status: 'cancelled' }); throw new Error('Academy students cannot duel.'); }
     const jl = (rows: any[]) => Object.fromEntries((rows || []).map((r) => [r.move_id, r.level]));
     const s = G.newDuel(seed(), ca, jl(ja), cb, jl(jb));

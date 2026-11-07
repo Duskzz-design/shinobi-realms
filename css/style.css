@@ -447,3 +447,23 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .wm-terr small { color: var(--ink2); } .wm-terr .wm-war { color: var(--red); } .wm-terr .btn { align-self: flex-start; }
 
 .board.kage > [data-x], .board.warcamp > [data-x] { display: block; margin: 12px auto 0; }
+
+/* sleep */
+.sleep-bar { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 10px; background: #1e2a4a; color: #e8eeff; padding: 8px 12px; box-shadow: 0 0 0 3px #0e1426; max-width: min(640px, calc(100vw - 20px)); font-size: 15px; }
+.sleep-bar[hidden] { display: none; }
+.world.asleep #view { filter: brightness(.72) saturate(.7) hue-rotate(-10deg); }
+@media (max-width: 600px) { .sleep-bar { top: 58px; font-size: 13px; } }
+/* war battlefield */
+.wfield { background: #24160e; display: flex; flex-direction: column; }
+.wf-top { display: flex; align-items: center; gap: 8px; padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top)); background: var(--wood); color: #fff4dc; font-size: 16px; flex-wrap: wrap; }
+.wf-top > b { margin-right: auto; }
+.wf-score { display: flex; align-items: center; gap: 6px; font-weight: 700; } .wf-score i { font-style: normal; color: #fff; padding: 2px 8px; box-shadow: 0 0 0 2px #24160e; } .wf-score em { font-style: normal; font-size: 13px; opacity: .85; }
+.wf-stage { flex: 1; min-height: 0; display: grid; place-items: center; padding: 6px; }
+.wf-stage canvas { image-rendering: pixelated; box-shadow: 0 0 0 3px #4e2c12; touch-action: none; cursor: pointer; }
+.wf-hint { background: var(--paper); padding: 8px 12px; padding-bottom: max(8px, env(safe-area-inset-bottom)); font-size: 15px; text-align: center; }
+.wf-card { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; background: var(--paper); box-shadow: 0 0 0 3px var(--ink), 0 6px 0 rgba(0,0,0,.3); padding: 10px 34px 10px 12px; min-width: 240px; }
+.wf-card[hidden] { display: none; }
+.wf-card canvas { width: 36px; height: 52px; } .wf-card div { display: flex; flex-direction: column; gap: 3px; } .wf-card small { font-size: 13px; } .wf-card .sub { margin: 4px 0 0; font-size: 14px; }
+.wf-card .btn { margin-top: 4px; align-self: flex-start; }
+.wf-cx { position: absolute; right: 6px; top: 6px; border: 0; background: none; font-size: 16px; cursor: pointer; color: var(--ink); }
+.sleep-bar .btn { white-space: nowrap; }

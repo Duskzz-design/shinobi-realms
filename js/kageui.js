@@ -60,16 +60,17 @@ export function openKageTower(root, char, hooks = {}, startTab = 'wars') {
     const v = mine(), k = v.kage, vv = VILLAGES[v.id], me = data.me;
     let seat;
     if (!k) seat = `<p>The Kage's seat is <b>empty</b>.</p>${me.rank === 'Jonin' ? '<button class="btn primary" data-claim>👑 Take the seat</button>' : '<p class="sub">Any Jonin can claim it.</p>'}`;
-    else if (k.id === me.id) seat = `<p class="kg-you">👑 <b>You are the ${esc(vv.short)} Kage.</b> Spend the treasury on upgrades and lead the village to war.</p><p class="sub">Any Jonin of your village may challenge you once a day while you're online. Declining or ignoring a challenge gives up the seat.</p>`;
+    else if (k.id === me.id) seat = `<p class="kg-you">👑 <b>You are the ${esc(vv.short)} Kage.</b> Spend the treasury on upgrades and lead the village to war.</p><p class="sub">Any other Jonin of your village may challenge you once a day while you're awake and online. Declining or ignoring a challenge gives up the seat. Sleeping protects you, but 7 days asleep in a row gives up the seat.</p>`;
     else {
       const wait = v.challenge_at && new Date(v.challenge_at) > new Date();
       let btn = '';
       if (me.rank !== 'Jonin') btn = '<p class="sub">Only a Jonin can challenge the Kage.</p>';
-      else if (k.away) btn = `<p class="sub">${esc(k.name)} hasn't been seen for 7 days.</p><button class="btn primary" data-claim>👑 Take the empty seat</button>`;
+      else if (k.away) btn = `<p class="sub">${esc(k.name)} has been ${k.asleep ? 'asleep' : 'away'} for 7 days, so the seat is open.</p><button class="btn primary" data-claim>👑 Take the seat</button>`;
+      else if (k.asleep) btn = '<p class="sub">💤 The Kage is asleep and can\'t be challenged. A Kage asleep for 7 days in a row loses the seat.</p>';
       else if (wait) btn = `<p class="sub">The seat was challenged recently. Next challenge in <b>${left(v.challenge_at)}</b>.</p>`;
       else if (!k.online) btn = '<p class="sub">The Kage can only be challenged while they are in the village.</p><button class="btn primary" disabled>⚔️ Challenge (offline)</button>';
       else btn = '<button class="btn primary" data-challenge>⚔️ Challenge for the seat</button><p class="sub">A live duel. Win and the seat is yours.</p>';
-      seat = `<div class="kg-kage"><canvas width="54" height="78" data-look='${esc(JSON.stringify(k.look || {}))}'></canvas><div><p class="soon">👑 ${esc(vv.short)} Kage</p><h4>${esc(k.name)}</h4><p>Level ${k.level} · ${k.online ? '<span class="on">● in the village</span>' : '<span class="off">○ away</span>'}</p></div></div>${btn}`;
+      seat = `<div class="kg-kage"><canvas width="54" height="78" data-look='${esc(JSON.stringify(k.look || {}))}'></canvas><div><p class="soon">👑 ${esc(vv.short)} Kage</p><h4>${esc(k.name)}</h4><p>Level ${k.level} · ${k.asleep ? '<span class="off">💤 asleep</span>' : k.online ? '<span class="on">● in the village</span>' : '<span class="off">○ away</span>'}</p></div></div>${btn}`;
     }
     const kage = isKage();
     const ups = UPGRADES.map((u) => {

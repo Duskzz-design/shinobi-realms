@@ -5,7 +5,7 @@ import { openArena, statueSprite } from './arenaui.js';
 import { openWorldMap } from './worldmap.js';
 import { openLair } from './raidui.js';
 import { openKageTower } from './kageui.js';
-import { openWarCamp } from './warui.js';
+import { openWarField } from './warfield.js';
 import { ninjaSprite, emblem, VILLAGES } from './sprites.js';
 import { openMissionBoard, openTraining, runBattle, openExamHall } from './battle.js';
 import { setupDuels } from './duelui.js';
@@ -44,6 +44,7 @@ export async function enterWorld(app, char, hooks) {
       </div>
     </div>
     <div class="vname"><span class="em"></span>${esc(v.name)} Village</div>
+    <div class="sleep-bar" id="sleepBar" hidden>💤 <span>You are asleep: nobody can challenge or attack you. You can chat and look around, but not fight or train.</span><button class="btn small primary" id="wakeBtn">☀️ Wake up</button></div>
     <button class="prompt" id="prompt" hidden></button>
     <div class="chat" id="chat">
       <div class="chat-tabs"><button data-ch="village" class="on">Village</button><button data-ch="world">World</button><button class="chat-close" id="chatClose" aria-label="Close chat">✕</button></div>
@@ -53,6 +54,7 @@ export async function enterWorld(app, char, hooks) {
     <button class="chat-toggle btn icon" id="chatToggle" aria-label="Open chat">💬<i id="unread" hidden></i></button>
     <div class="menu scroll" id="menu" hidden>
       <button class="btn ghost" id="mProfile">My Ninja & training</button>
+      <button class="btn ghost" id="mSleep">💤 Go to sleep</button>
       <button class="btn ghost" id="mOut">Sign out</button>
       <button class="btn ghost" id="mClose">Close</button>
     </div>
@@ -199,6 +201,20 @@ export async function enterWorld(app, char, hooks) {
   root.querySelector('#mClose').onclick = () => (menu.hidden = true);
   root.querySelector('#mOut').onclick = async () => { await leave(); net.signOut(); };
   root.querySelector('#mProfile').onclick = () => { menu.hidden = true; train(); };
+  async function toggleSleep(on) {
+    try { Object.assign(char, await net.setSleep(on), { _loadedAt: Date.now() }); } catch (e) { showModal(`<h3>💤 Sleep</h3><p>${esc(e.message)}</p>`); return; }
+    menu.hidden = true; refreshSleep(); room?.track(meta());
+    bubbles.set(me.id, { text: on ? 'Zzz… 💤' : 'Good morning! ☀️', until: performance.now() + 4000 });
+  }
+  function refreshSleep() {
+    const z = !!char.asleep_since;
+    root.querySelector('#sleepBar').hidden = !z;
+    root.querySelector('#mSleep').textContent = z ? '☀️ Wake up' : '💤 Go to sleep';
+    root.classList.toggle('asleep', z);
+  }
+  root.querySelector('#mSleep').onclick = () => toggleSleep(!char.asleep_since);
+  root.querySelector('#wakeBtn').onclick = () => toggleSleep(false);
+  setTimeout(refreshSleep, 0);
   root.querySelector('#trainBtn').onclick = () => train();
   function train(tab = 'stats') { openTraining(root, () => char, (c) => { Object.assign(char, c); refreshPlate(); }, tab); }
   function refreshPlate() {
@@ -212,7 +228,8 @@ export async function enterWorld(app, char, hooks) {
   let warReturn = null; // reopen the war camp after a war duel
   function warCamp(war, name) {
     path = []; dest = null; warReturn = { war, name };
-    openWarCamp(root, char, war, name, { challenge: (p, warId) => duels.challenge(p, 'war', warId), onClose: () => { warReturn = null; worldMap(war.territory); } });
+    if (char.asleep_since) { showModal('<h3>💤 You are asleep</h3><p>Wake up (☀️ in the menu) to join the war.</p>'); return; }
+    openWarField(root, char, war, name, { challenge: (p, warId) => duels.challenge(p, 'war', warId), onClose: () => { warReturn = null; worldMap(war.territory); } });
   }
   async function warAt(territoryId) {
     try { const v = await net.villageInfo(); const t = v.territories.find((x) => x.id === territoryId); if (t && t.war) warCamp(t.war, t.name); else worldMap(territoryId); } catch { worldMap(territoryId); }
@@ -284,7 +301,7 @@ export async function enterWorld(app, char, hooks) {
   }
   function playerCard(m) {
     const vv = VILLAGES[m.village] || v;
-    showModal(`<div class="pcard"><canvas width="64" height="80"></canvas><div><h3>${esc(m.name)}</h3>${m.title ? `<p class="ttl">🏆 ${esc(m.title)}</p>` : ''}<p style="color:${vv.dark}"><b>${vv.name}</b></p><p>${esc(m.rank || 'Academy Student')} · Level ${m.level || 1}</p></div></div>${char.rank === 'Academy Student' ? '<p class="soon">Academy students can\'t duel. Practise in the sparring lessons at the Academy, then graduate.</p>' : (m.rank || 'Academy Student') === 'Academy Student' ? '<p class="soon">Academy students can\'t be challenged.</p>' : '<button class="btn primary" data-duel>⚔️ Challenge to a duel</button>'}`, (el) => {
+    showModal(`<div class="pcard"><canvas width="64" height="80"></canvas><div><h3>${esc(m.name)}</h3>${m.title ? `<p class="ttl">🏆 ${esc(m.title)}</p>` : ''}<p style="color:${vv.dark}"><b>${vv.name}</b></p><p>${esc(m.rank || 'Academy Student')} · Level ${m.level || 1}</p>${m.asleep ? '<p>💤 <b>Asleep</b></p>' : ''}</div></div>${m.asleep ? '<p class="soon">This ninja is asleep and can\'t be challenged.</p>' : char.asleep_since ? '<p class="soon">You are asleep. Wake up to duel.</p>' : char.rank === 'Academy Student' ? '<p class="soon">Academy students can\'t duel. Practise in the sparring lessons at the Academy, then graduate.</p>' : (m.rank || 'Academy Student') === 'Academy Student' ? '<p class="soon">Academy students can\'t be challenged.</p>' : '<button class="btn primary" data-duel>⚔️ Challenge to a duel</button>'}`, (el) => {
       const c = el.querySelector('canvas').getContext('2d'); c.imageSmoothingEnabled = false;
       c.drawImage(ninjaSprite(m.look || {}, 0, 0), 0, 0, 18, 26, 5, 2, 54, 78);
       const db = el.querySelector('[data-duel]'); if (db) db.onclick = () => { closeModal(); duels.challenge(m); };
@@ -310,7 +327,7 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, worldRoom = null, lastSend = 0, lastTrack = 0, lastSave = performance.now();
-  const meta = () => ({ id: me.id, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
+  const meta = () => ({ id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   const onEvent = (ev, p) => {
     if (!p || p.id === me.id) return;
     if (ev === 'mv') { const o = others.get(p.id); if (o) { o.tx = p.x; o.ty = p.y; o.dir = p.dir; o.moving = !!p.m; o.last = performance.now(); } }
@@ -404,7 +421,7 @@ export async function enterWorld(app, char, hooks) {
       list.push({ y: n.y, draw: () => {
         ctx.fillStyle = 'rgba(30,20,10,.28)'; ctx.fillRect(Math.round((n.x - 6 - camX) * sc), Math.round((n.y - 1 - camY) * sc), 12 * sc, 2 * sc);
         ctx.drawImage(spr, Math.round((x - camX) * sc), Math.round((y - camY) * sc), spr.width * sc, spr.height * sc);
-      }, label: { x: n.x, y: n.y - 28, name: n.name || n.meta?.name, me: isMe, id: n.id || n.meta?.id } });
+      }, label: { x: n.x, y: n.y - 28, name: ((isMe ? !!char.asleep_since : n.meta?.asleep) ? '💤 ' : '') + (n.name || n.meta?.name), me: isMe, id: n.id || n.meta?.id } });
     };
     for (const o of others.values()) drawNinja(o, o.meta.look, false);
     drawNinja(me, me.look, true);

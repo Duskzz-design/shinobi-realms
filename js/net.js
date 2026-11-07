@@ -317,3 +317,9 @@ export const warDeclare = (territory) => vrpc('war_declare', { p_territory: terr
 export const warStatus = (war) => vrpc('war_status', { p_war: war });
 export const warHold = (war) => vrpc('war_hold', { p_war: war });
 export const warLeave = (war) => vrpc('war_leave', { p_war: war }).catch(() => {});
+
+// ---------- sleep ----------
+export async function setSleep(on) {
+  if (OFFLINE) { const c = mockChar(); c.asleep_since = on ? new Date().toISOString() : null; saveMock(c); return loadCharacter(); }
+  const { data, error } = await sb.rpc('set_sleep', { p_on: !!on }); if (error) throw rpcErr(error); return data;
+}

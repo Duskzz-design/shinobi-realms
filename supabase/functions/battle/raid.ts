@@ -19,6 +19,7 @@ export async function raidOp(admin: any, uid: string, body: any, seed: () => num
   const eligible = async (line: string) => {
     const [{ data: c }, { data: ql }] = await Promise.all([admin.from('characters').select('*').eq('user_id', uid).single(), admin.from('quest_lines').select('*').eq('id', line).single()]);
     if (!c || !ql) throw new Error('Unknown lair.');
+    if (c.asleep_since) throw new Error('You are asleep. Wake up first.');
     if (G.RANKS.indexOf(c.rank) < ql.min_rank) throw new Error(`Only ${G.RANKS[ql.min_rank]}s and above may enter.`);
     if (!(c.quests && c.quests[line] && c.quests[line].done)) throw new Error(`Finish the quest line "${ql.name}" first.`);
     return c;
@@ -66,6 +67,8 @@ export async function raidOp(admin: any, uid: string, body: any, seed: () => num
   if (body.op === 'raid_start') {
     const r = await load(body.raid);
     if (r.leader !== uid) throw new Error('Only the team leader can start.');
+    { const { data: zz } = await admin.from('characters').select('name').in('user_id', r.members.map((m: any) => m.id)).not('asleep_since', 'is', null);
+      if ((zz || []).length) throw new Error(`${zz[0].name} is asleep.`); }
     if (r.status !== 'lobby') throw new Error('Already started.');
     const ids = r.members.map((m: any) => m.id);
     const [{ data: cs }, { data: js }] = await Promise.all([admin.from('characters').select('*').in('user_id', ids), admin.from('character_jutsu').select('user_id,move_id,level').in('user_id', ids)]);
