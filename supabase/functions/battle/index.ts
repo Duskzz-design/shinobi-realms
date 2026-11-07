@@ -26,7 +26,7 @@ async function initEngine(battleId: string, uid: string) {
   return b;
 }
 // items used in a fight are taken from the inventory when it ends
-export async function useUp(u: any) {
+async function useUp(u: any) {
   if (u && u.uid && u.usedItems && Object.keys(u.usedItems).length) await admin.rpc('consume_items', { p_user: u.uid, p_used: u.usedItems });
 }
 const view = (b: any, events: any[] = [], result: any = null) => ({ id: b.id, status: b.status, state: { ...b.state, engine: pub(b.state.engine), used: undefined }, events, result });

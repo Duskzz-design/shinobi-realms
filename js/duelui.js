@@ -62,7 +62,13 @@ export function setupDuels(root, char, hooks) {
       sub: d.kind === 'war' ? (d.a === myId ? 'You strike first when the fight begins.' : `${esc(d.a_name)} strikes first when the fight begins.`) : 'The faster ninja (higher Agility) strikes first.',
       deadline: new Date(d.deadline).getTime(),
       status: () => (prepRow.ready || {})[other] ? `✅ <b>${foe}</b> is ready.` : `⏳ ${foe} is choosing…`,
-      onReady: async () => { try { const r = await net.duelReady(d.id); if (r && r.status === 'active') start(r); } catch (e) { toast(e.message); } },
+      // keep nudging the server until the fight begins (the other player may still be choosing)
+      onReady: async () => {
+        for (let i = 0; i < 40 && prepFor === d.id && inDuel !== d.id; i++) {
+          try { const r = await net.duelReady(d.id); if (r && r.status === 'active') return start(r); if (r && !['prep', 'active'].includes(r.status)) return; } catch {}
+          await new Promise((z) => setTimeout(z, 3000));
+        }
+      },
     });
   }
   function onRow(d) {

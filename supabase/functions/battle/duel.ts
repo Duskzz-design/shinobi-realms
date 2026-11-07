@@ -105,7 +105,7 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
     const d = await load(body.duel);
     if (d.status !== 'prep') return d;
     const ready = { ...(d.ready || {}), [sideOf(d)]: true };
-    if (!(ready.a && ready.b) && Date.now() < new Date(d.deadline).getTime()) return save(d, { ready });
+    if (!(ready.a && ready.b) && Date.now() < new Date(d.deadline).getTime()) return save(d, { ready, seq: d.seq + 1 });
     const [{ data: ca }, { data: cb }, { data: ja }, { data: jb }] = await Promise.all([
       admin.from('characters').select('*').eq('user_id', d.a).single(), admin.from('characters').select('*').eq('user_id', d.b).single(),
       admin.from('character_jutsu').select('move_id,level').eq('user_id', d.a), admin.from('character_jutsu').select('move_id,level').eq('user_id', d.b)]);

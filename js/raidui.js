@@ -36,7 +36,13 @@ export function openLair(root, char, line, onEnd) {
       title: `Boss fight: ${line.boss_name}`, sub: 'Your team is gathering. The fight begins when everyone is ready, or in 60 seconds.',
       deadline: new Date(r.deadline).getTime(),
       status: () => `${mine.members.filter((m) => (mine.ready || {})[m.id]).length}/${mine.members.length} ready`,
-      onReady: async () => { lo = null; try { const x = await net.raidReady(r.id); if (x && x.status === 'active') begin(x); } catch (e) { toast(e.message); } },
+      onReady: async () => {
+        lo = null;
+        for (let i = 0; i < 40 && alive; i++) {
+          try { const x = await net.raidReady(r.id); if (x && x.status === 'active') return begin(x); if (x && !['prep', 'active'].includes(x.status)) return; } catch {}
+          await new Promise((z) => setTimeout(z, 3000));
+        }
+      },
     });
   }
   function begin(r) {
