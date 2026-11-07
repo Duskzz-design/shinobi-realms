@@ -25,6 +25,10 @@ async function initEngine(battleId: string, uid: string) {
   await admin.from('battles').update({ state: b.state, updated_at: new Date().toISOString() }).eq('id', b.id);
   return b;
 }
+// items used in a fight are taken from the inventory when it ends
+export async function useUp(u: any) {
+  if (u && u.uid && u.usedItems && Object.keys(u.usedItems).length) await admin.rpc('consume_items', { p_user: u.uid, p_used: u.usedItems });
+}
 const view = (b: any, events: any[] = [], result: any = null) => ({ id: b.id, status: b.status, state: { ...b.state, engine: pub(b.state.engine), used: undefined }, events, result });
 
 Deno.serve(async (req) => {
@@ -47,7 +51,7 @@ Deno.serve(async (req) => {
       if (b.status !== 'active') throw new Error('This fight is over.');
       const s = b.state.engine; s.seed = seed();
       const a = body.action || {};
-      const action = a.t === 'move' ? { t: 'move', to: [a.to[0] | 0, a.to[1] | 0] } : a.t === 'use' ? { t: 'use', move: String(a.move), at: a.at ? [a.at[0] | 0, a.at[1] | 0] : null } : a.t === 'flee' ? { t: 'flee' } : { t: 'end' };
+      const action = a.t === 'move' ? { t: 'move', to: [a.to[0] | 0, a.to[1] | 0] } : a.t === 'use' ? { t: 'use', move: String(a.move), at: a.at ? [a.at[0] | 0, a.at[1] | 0] : null } : a.t === 'item' ? { t: 'item', item: String(a.item) } : a.t === 'flee' ? { t: 'flee' } : { t: 'end' };
       // a fight that ended but was never settled (e.g. a dropped connection) is settled now
       const events: any[] = s.status === 'over' ? [] : G.act(s, 'a', action);
       if (action.t === 'use' && events.length) b.state.used[action.move] = (b.state.used[action.move] || 0) + 1;
@@ -58,6 +62,7 @@ Deno.serve(async (req) => {
         const win = s.winner === 'a', p = s.units.a;
         status = action.t === 'flee' && events.length && !win ? 'fled' : win ? 'won' : 'lost';
         Object.assign(b.state, { php: p.hp, pst: p.st, pch: p.ch });
+        await useUp(p);
         await admin.from('battles').update({ state: b.state }).eq('id', b.id);
         if (status !== 'fled') {
           const { data, error } = await admin.rpc('battle_finish', { p_battle: b.id, p_win: win, p_used: b.state.used });

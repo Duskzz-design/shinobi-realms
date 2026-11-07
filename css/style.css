@@ -467,3 +467,28 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .wf-card .btn { margin-top: 4px; align-self: flex-start; }
 .wf-cx { position: absolute; right: 6px; top: 6px; border: 0; background: none; font-size: 16px; cursor: pointer; color: var(--ink); }
 .sleep-bar .btn { white-space: nowrap; }
+/* loadout */
+.loadout-wrap { z-index: 40; }
+.board.loadout { text-align: left; width: min(640px, 100%); }
+.board.loadout h3 { text-align: center; }
+.board.loadout h4 { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; } .board.loadout h4 b { color: var(--red); } .board.loadout h4 small { font-family: var(--body); font-size: 12px; color: var(--ink2); }
+.lo-timer { position: relative; height: 22px; background: #e6d2a8; box-shadow: 0 0 0 2px var(--ink); margin: 6px 3px 4px; }
+.lo-timer i { position: absolute; inset: 0 auto 0 0; background: var(--gold); transition: width .5s linear; } .lo-timer span { position: relative; display: block; text-align: center; font-weight: 700; line-height: 22px; }
+.lo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; margin: 4px 3px; }
+.lo-j { text-align: left; border: 0; background: #fffaf0; box-shadow: 0 0 0 2px #d8c49a; border-left: 6px solid var(--c, #7a4a2a); padding: 6px 8px; cursor: pointer; font-family: var(--body); color: var(--ink); display: flex; flex-direction: column; gap: 2px; opacity: .72; }
+.lo-j b { font-size: 14px; } .lo-j small { font-size: 12px; color: var(--ink2); } .lo-j em { font-style: normal; color: var(--wood); }
+.lo-j.on { opacity: 1; background: #fff1b8; box-shadow: 0 0 0 3px var(--ink); } .lo-j.on b::after { content: ' ✓'; color: var(--green); }
+.lo-j.it { border-left-color: #2f7fc4; } .lo-j:disabled { opacity: .4; cursor: default; }
+.lo-lock { background: #2b1d3a; color: #e6dcff; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; font-size: 14px; } .lo-lock small { font-size: 12px; opacity: .8; }
+.lo-status { text-align: center; margin: 10px 0 4px; }
+.lo-go { display: block; margin: 10px auto 2px; }
+/* items in the fight bar */
+.hx-items { display: inline-flex; gap: 4px; } .hx-it b { font-size: 12px; margin-left: 2px; }
+/* shop */
+.board.shop { text-align: left; } .board.shop h3, .board.shop > [data-x] { text-align: center; } .board.shop > [data-x] { display: block; margin: 12px auto 0; }
+.sh-ryo { text-align: center; background: #24160e; color: #ffe07a; padding: 6px; margin: 6px 3px 10px; font-size: 16px; }
+.sh-list { display: flex; flex-direction: column; gap: 6px; margin: 4px 3px; }
+.sh-it { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; align-items: center; background: #fffaf0; box-shadow: 0 0 0 2px #d8c49a; padding: 8px; }
+.sh-it .ic { font-size: 26px; text-align: center; } .sh-it .nm { display: flex; flex-direction: column; gap: 2px; } .sh-it small { font-size: 13px; color: var(--ink2); }
+.sh-it .buy { display: flex; flex-direction: column; gap: 4px; }
+@media (max-width: 480px) { .sh-it { grid-template-columns: 30px 1fr; } .sh-it .buy { grid-column: 1 / -1; flex-direction: row; } .lo-grid { grid-template-columns: 1fr 1fr; } }

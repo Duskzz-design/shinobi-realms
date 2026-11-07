@@ -1,6 +1,7 @@
 // Duel challenges: send, receive, wait, and launch the live duel screen.
 import * as net from './net.js';
 import { runDuel } from './hexbattle.js';
+import { openLoadout } from './loadout.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -9,7 +10,7 @@ function toast(msg, kind = 'err') { const t = h(`<div class="toast ${kind}">${es
 // hooks: { canStart() -> bool, onEnd(res, duel), stopWalking() }
 export function setupDuels(root, char, hooks) {
   const myId = char.user_id;
-  let pop = null, popDuel = null, inDuel = null, stop = null;
+  let pop = null, popDuel = null, inDuel = null, stop = null, prepFor = null, prepLo = null, prepRow = null;
   const closePop = () => { if (pop) pop.remove(); pop = null; popDuel = null; };
   function countdown(el, until, onZero) {
     const t = setInterval(() => {
@@ -33,7 +34,7 @@ export function setupDuels(root, char, hooks) {
     el.querySelector('[data-yes]').onclick = async (e) => {
       if (!hooks.canStart()) { toast('Finish what you are doing first.'); return; }
       e.target.disabled = true; e.target.textContent = 'Starting…';
-      try { start(await net.duelAccept(d.id)); } catch (err) { toast(err.message); closePop(); }
+      try { const r = await net.duelAccept(d.id); r.status === 'prep' ? prep(r) : start(r); } catch (err) { toast(err.message); closePop(); }
     };
   }
   function showWaiting(d) {
@@ -45,13 +46,29 @@ export function setupDuels(root, char, hooks) {
   }
   function start(d) {
     if (inDuel === d.id) return;
+    if (prepLo && prepFor === d.id) { prepLo.close(); prepLo = null; }
     closePop(); inDuel = d.id; hooks.stopWalking();
-    if (d.kind === 'war') toast(d.a === myId ? `Ambush! You strike first, powered up for 2 turns.` : `${d.a_name} ambushed you! They strike first.`, d.a === myId ? 'ok' : 'err');
     runDuel(root, char, d, (res) => { inDuel = null; hooks.onEnd(res, d); });
+  }
+  // both fighters get 60 seconds to choose jutsu and items; the server starts the fight when both are ready or time is up
+  function prep(d) {
+    prepRow = d;
+    if (prepFor === d.id) return;
+    closePop(); prepFor = d.id; hooks.stopWalking();
+    const foe = d.a === myId ? d.b_name : d.a_name, side = d.a === myId ? 'a' : 'b', other = side === 'a' ? 'b' : 'a';
+    if (d.kind === 'war') toast(d.a === myId ? `You ambush ${foe}! You will strike first.` : `${d.a_name} ambushed you! They will strike first.`, d.a === myId ? 'ok' : 'err');
+    prepLo = openLoadout(root, char, {
+      title: d.kind === 'war' ? `Ambush: vs ${foe}` : d.kind === 'kage' ? `Kage challenge: vs ${foe}` : `Duel: vs ${foe}`,
+      sub: d.kind === 'war' ? (d.a === myId ? 'You strike first when the fight begins.' : `${esc(d.a_name)} strikes first when the fight begins.`) : 'The faster ninja (higher Agility) strikes first.',
+      deadline: new Date(d.deadline).getTime(),
+      status: () => (prepRow.ready || {})[other] ? `✅ <b>${foe}</b> is ready.` : `⏳ ${foe} is choosing…`,
+      onReady: async () => { try { const r = await net.duelReady(d.id); if (r && r.status === 'active') start(r); } catch (e) { toast(e.message); } },
+    });
   }
   function onRow(d) {
     if (!d || !d.id) return;
     if (d.status === 'pending' && d.b === myId) return showInvite(d);
+    if (d.status === 'prep' && (d.a === myId || d.b === myId) && !inDuel) return prep(d);
     if (d.status === 'active' && !inDuel && (d.a === myId || d.b === myId) && d.seq <= 2) return start(d);
     if (['declined', 'cancelled', 'expired'].includes(d.status) && popDuel === d.id) {
       closePop();
@@ -66,7 +83,7 @@ export function setupDuels(root, char, hooks) {
   return {
     async challenge(target, kind = 'duel', war = null) {
       if (inDuel) return;
-      try { const d = await net.duelChallenge(target.id, kind, war); d.status === 'active' ? start(d) : showWaiting(d); } catch (e) { toast(e.message); }
+      try { const d = await net.duelChallenge(target.id, kind, war); d.status === 'prep' ? prep(d) : d.status === 'active' ? start(d) : showWaiting(d); } catch (e) { toast(e.message); }
     },
     stop() { stop && stop(); closePop(); },
   };

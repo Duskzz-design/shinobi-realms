@@ -6,6 +6,8 @@ import { openWorldMap } from './worldmap.js';
 import { openLair } from './raidui.js';
 import { openKageTower } from './kageui.js';
 import { openWarField } from './warfield.js';
+import { openLoadout } from './loadout.js';
+import { openShop } from './shop.js';
 import { ninjaSprite, emblem, VILLAGES } from './sprites.js';
 import { openMissionBoard, openTraining, runBattle, openExamHall } from './battle.js';
 import { setupDuels } from './duelui.js';
@@ -270,7 +272,9 @@ export async function enterWorld(app, char, hooks) {
   });
   function startBattle(mid, starter = null, after = null) {
     path = []; dest = null;
-    runBattle(root, char, mid, async (r) => {
+    if (char.asleep_since) { showModal('<h3>💤 You are asleep</h3><p>Wake up (☀️ in the menu) to fight.</p>'); return; }
+    openLoadout(root, char, { title: 'Prepare for battle', sub: 'Choose the jutsu and items to bring. The fight starts when you are ready, or in 60 seconds.', onReady: () => fight() });
+    const fight = () => runBattle(root, char, mid, async (r) => {
       try { Object.assign(char, await net.loadCharacter(), { _loadedAt: Date.now() }); } catch {}
       refreshPlate(); room?.track(meta());
       if (r && r.result && r.result.promoted) {
@@ -319,6 +323,7 @@ export async function enterWorld(app, char, hooks) {
     if (s.id === 'arena') { openArena(root, char); return; }
     if (s.id === 'gate') { worldMap(); return; }
     if (s.id === 'kage') { kageTower(); return; }
+    if (s.id === 'shop') { openShop(root, char, () => refreshPlate()); return; }
     const [title, text] = SPOT_TEXT[s.id] || [s.name, ''];
     showModal(`<h3>${title}</h3><p>${text}</p>`);
   }

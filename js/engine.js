@@ -83,6 +83,14 @@ export const MOVES = {
   // boss scrolls (learned only from boss drops)
   serpentfang: J({ name: 'Serpent Fang', style: 'bukijutsu', scroll: true, tier: 2, ap: 3, stamina: 8, chakra: 6, range: [1, 3], power: 40, crit: 0.2, effects: [E('poison', 3, 0.8), E('armor_break', 2, 0.5)], desc: 'Boss scroll: a coiling strike that poisons and breaks armour.' }),
 };
+// consumable items: bought in the Tool Shop, 3 kinds can be packed per fight, each use costs AP
+export const ITEMS = {
+  pill_heal: { name: 'Healing Pill', icon: '💊', ap: 2, price: 120, desc: 'Heal 30% of your health.' },
+  pill_chakra: { name: 'Chakra Pill', icon: '🔷', ap: 1, price: 100, desc: 'Restore 40% of your chakra and stamina.' },
+  smoke: { name: 'Smoke Bomb', icon: '💨', ap: 2, price: 150, desc: 'Confuse every enemy next to you for 2 turns.' },
+  antidote: { name: 'Antidote', icon: '🧪', ap: 1, price: 80, desc: 'Cure burning, poison, slow, root and weaken.' },
+};
+export const ITEM_SLOTS = 3, ITEM_STACK = 10;
 export const BLOODLINES = {
   verdant: { label: 'Verdant Blood', icon: '🌳', main: 'willpower', sec: 'strength', desc: 'Living wood answers your call.' },
   frost: { label: 'Frost Blood', icon: '❄️', main: 'intelligence', sec: 'agility', desc: 'Your chakra freezes the air.' },
@@ -170,7 +178,7 @@ function mkUnit(id, spec, c, r, team) {
   const u = { id, c, r, team, boss: !!spec.boss, apBase: spec.apBase || 0, uid: spec.uid || null, name: spec.name, look: spec.look || {}, kind: spec.kind || 'ninja', level: spec.level || 1, npc: !!spec.npc,
     stats: spec.stats || {}, elements: spec.elements || (spec.element ? [spec.element] : []), bloodline: spec.bloodline || null,
     moves: spec.moves || [], jl: spec.jl || {}, atk: spec.atk || 0, def: spec.def || 0, ai: spec.ai || 'melee',
-    hpmax: spec.hpmax, stmax: spec.stmax || 0, chmax: spec.chmax || 0, effects: [], ap: 0 };
+    hpmax: spec.hpmax, stmax: spec.stmax || 0, chmax: spec.chmax || 0, effects: [], ap: 0, items: { ...(spec.items || {}) }, usedItems: {} };
   u.hp = Math.min(u.hpmax, spec.hp ?? u.hpmax); u.st = Math.min(u.stmax, spec.st ?? u.stmax); u.ch = Math.min(u.chmax, spec.ch ?? u.chmax);
   return u;
 }
@@ -271,6 +279,19 @@ export function act(s, side, a) {
     u.hp = 0; ev.push({ t: 'down', who: side }); if (!checkWipe(s, ev)) endTurn(s, ev); return ev;
   }
   if (a.t === 'end') { ev.push({ t: 'endturn', who: side }); endTurn(s, ev); return ev; }
+  if (a.t === 'item') {
+    const it = ITEMS[a.item];
+    if (!it || !(u.items && u.items[a.item] > 0)) throw new Error('You have none of that item left.');
+    if (u.ap < it.ap) throw new Error('Not enough AP.');
+    u.ap -= it.ap; u.items[a.item]--; u.usedItems = u.usedItems || {}; u.usedItems[a.item] = (u.usedItems[a.item] || 0) + 1;
+    const e = { t: 'item', who: side, item: a.item, name: it.name, hits: [] };
+    if (a.item === 'pill_heal') { const h = Math.round(u.hpmax * 0.3); u.hp = Math.min(u.hpmax, u.hp + h); e.heal = h; }
+    if (a.item === 'pill_chakra') { const g = Math.round(u.chmax * 0.4), g2 = Math.round(u.stmax * 0.4); u.ch = Math.min(u.chmax, u.ch + g); u.st = Math.min(u.stmax, u.st + g2); e.focus = g; }
+    if (a.item === 'antidote') { const bad = ['burn', 'poison', 'slow', 'root', 'weaken']; e.cured = u.effects.filter((x) => bad.includes(x.k)).map((x) => x.k); u.effects = u.effects.filter((x) => !bad.includes(x.k)); }
+    if (a.item === 'smoke') for (const f of foesOf(s, u)) if (dist([u.c, u.r], [f.c, f.r]) <= 1) { if (!(f.boss && rand(s) < 0.5)) { addStatus(f, 'confuse', 2); e.hits.push({ who: f.id, effects: ['confuse'] }); } }
+    ev.push(e);
+    return ev;
+  }
   if (a.t === 'move') {
     if (hasStatus(u, 'root')) throw new Error('You are rooted and cannot move.');
     const map = reachable(s, u, u.ap), k = key(a.to[0], a.to[1]);
@@ -405,10 +426,25 @@ export function knownMoves({ rankIndex = 0, elements = [], bloodline = null, scr
 export const RANKS = ['Academy Student', 'Genin', 'Chunin', 'Jonin'];
 export const KITS = { beast: ['claw', 'bite', 'roar'], ninja: ['strike', 'throw', 'elem', 'heavy'], snake: ['claw', 'venom', 'bite'], ranged: ['throw', 'elem', 'guard', 'strike'] };
 // c: character row; jl: {move: level}; pools: {php,pmax,pst,pstmax,pch,pchmax}
-export function playerSpec(c, jl, pools) {
+export const ALWAYS = ['focus', 'guard'];
+// the jutsu a character takes into a fight: their saved loadout, or (if none) their strongest known jutsu
+export function loadoutMoves(c) {
   const ri = Math.max(0, RANKS.indexOf(c.rank)), elements = [c.element, c.element2].filter(Boolean);
+  const known = knownMoves({ rankIndex: ri, elements, bloodline: c.bloodline, scrolls: c.scrolls || [] }).filter((m) => !ALWAYS.includes(m));
+  const slots = c.jutsu_slots || 6, saved = (c.loadout && c.loadout.jutsu) || [];
+  let pick = saved.filter((m) => known.includes(m)).slice(0, slots);
+  if (!pick.length) pick = [...known].sort((a, b) => MOVES[b].tier - MOVES[a].tier).slice(0, slots);
+  return { known, pick, slots };
+}
+export function loadoutItems(c) {
+  const owned = c.items || {}, saved = (c.loadout && c.loadout.items) || [], out = {};
+  for (const id of saved.slice(0, ITEM_SLOTS)) if (ITEMS[id] && owned[id] > 0) out[id] = owned[id];
+  return out;
+}
+export function playerSpec(c, jl, pools) {
+  const elements = [c.element, c.element2].filter(Boolean);
   return { uid: c.user_id || null, name: c.name, look: c.appearance, kind: 'ninja', level: c.level, stats: { strength: c.strength, agility: c.agility, intelligence: c.intelligence, willpower: c.willpower },
-    elements, bloodline: c.bloodline || null, moves: knownMoves({ rankIndex: ri, elements, bloodline: c.bloodline, scrolls: c.scrolls || [] }), jl: jl || {},
+    elements, bloodline: c.bloodline || null, moves: [...loadoutMoves(c).pick, ...ALWAYS], items: loadoutItems(c), jl: jl || {},
     hpmax: pools.pmax, stmax: pools.pstmax, chmax: pools.pchmax, hp: pools.php, st: pools.pst, ch: pools.pch };
 }
 // st: battle state with foe {hp,atk,def,kit,element,level} and enemy {name,kind,look}

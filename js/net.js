@@ -226,6 +226,7 @@ export const duelCancel = (duel) => duelCall({ op: 'duel_cancel', duel });
 export const duelAct = (duel, action) => duelCall({ op: 'duel_act', duel, action });
 export const duelTimeout = (duel, seq) => duelCall({ op: 'duel_timeout', duel, seq });
 export const duelGet = (duel) => duelCall({ op: 'duel_get', duel });
+export const duelReady = (duel) => duelCall({ op: 'duel_ready', duel });
 // live updates of one duel row; returns an unsubscribe function
 export function watchDuel(id, cb) {
   if (OFFLINE) { let off; import('./offline.js').then((o) => (off = o.mockWatch(id, cb))); return () => off && off(); }
@@ -288,11 +289,12 @@ export const raidCreate = (line) => raidCall({ op: 'raid_create', line });
 export const raidJoin = (raid) => raidCall({ op: 'raid_join', raid });
 export const raidLeave = (raid) => raidCall({ op: 'raid_leave', raid });
 export const raidStart = (raid) => raidCall({ op: 'raid_start', raid });
+export const raidReady = (raid) => raidCall({ op: 'raid_ready', raid });
 export const raidAct = (raid, action) => raidCall({ op: 'raid_act', raid, action });
 export const raidTimeout = (raid, seq) => raidCall({ op: 'raid_timeout', raid, seq });
 export async function raidLobbies(line) {
   if (OFFLINE) { const o = await import('./offline.js'); return o.mockLobbies(line); }
-  const { data, error } = await sb.from('raids').select('*').eq('line', line).in('status', ['lobby', 'active']).gt('updated_at', new Date(Date.now() - 30 * 60000).toISOString()).order('created_at');
+  const { data, error } = await sb.from('raids').select('*').eq('line', line).in('status', ['lobby', 'prep', 'active']).gt('updated_at', new Date(Date.now() - 30 * 60000).toISOString()).order('created_at');
   if (error) throw rpcErr(error); return data || [];
 }
 export function watchRaid(id, cb) {
@@ -322,4 +324,18 @@ export const warLeave = (war) => vrpc('war_leave', { p_war: war }).catch(() => {
 export async function setSleep(on) {
   if (OFFLINE) { const c = mockChar(); c.asleep_since = on ? new Date().toISOString() : null; saveMock(c); return loadCharacter(); }
   const { data, error } = await sb.rpc('set_sleep', { p_on: !!on }); if (error) throw rpcErr(error); return data;
+}
+
+// ---------- loadout and items ----------
+export async function setLoadout(jutsu, items) {
+  if (OFFLINE) { const c = mockChar(); c.loadout = { jutsu, items }; saveMock(c); return loadCharacter(); }
+  const { data, error } = await sb.rpc('set_loadout', { p_jutsu: jutsu, p_items: items }); if (error) throw rpcErr(error); return data;
+}
+export async function buyItem(item, qty = 1) {
+  if (OFFLINE) {
+    const G = await import('./engine.js'), c = mockChar(), it = G.ITEMS[item], have = (c.items || {})[item] || 0, n = Math.min(qty, G.ITEM_STACK - have);
+    if (n < 1) throw new Error('You can carry at most 10 of each item.'); if (c.ryo < it.price * n) throw new Error('Not enough ryo.');
+    c.ryo -= it.price * n; c.items = { ...(c.items || {}), [item]: have + n }; saveMock(c); return loadCharacter();
+  }
+  const { data, error } = await sb.rpc('buy_item', { p_item: item, p_qty: qty }); if (error) throw rpcErr(error); return data;
 }

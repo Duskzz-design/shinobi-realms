@@ -1,6 +1,6 @@
 // Live player duels. Both players call this; the row in "duels" is the shared truth and is pushed to both by realtime.
 import * as G from './engine.js';
-const TURN_MS = G.DUEL_TURN_SEC * 1000, INVITE_MS = 60000;
+const TURN_MS = G.DUEL_TURN_SEC * 1000, INVITE_MS = 60000, PREP_MS = 60000;
 const now = () => new Date();
 const iso = (d: Date) => d.toISOString();
 
@@ -21,10 +21,10 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
   const tidy = async (u: string) => {
     const old = iso(new Date(Date.now() - 5 * 60000)), inv = iso(new Date(Date.now() - INVITE_MS));
     await admin.from('duels').update({ status: 'expired' }).eq('status', 'pending').lt('created_at', inv).or(`a.eq.${u},b.eq.${u}`);
-    await admin.from('duels').update({ status: 'expired' }).eq('status', 'active').lt('deadline', old).or(`a.eq.${u},b.eq.${u}`);
+    await admin.from('duels').update({ status: 'expired' }).in('status', ['active', 'prep']).lt('deadline', old).or(`a.eq.${u},b.eq.${u}`);
   };
   const busy = async (u: string) => {
-    const { data } = await admin.from('duels').select('id').in('status', ['pending', 'active']).or(`a.eq.${u},b.eq.${u}`).limit(1);
+    const { data } = await admin.from('duels').select('id').in('status', ['pending', 'prep', 'active']).or(`a.eq.${u},b.eq.${u}`).limit(1);
     return (data || []).length > 0;
   };
   const sideOf = (d: any) => (d.a === uid ? 'a' : 'b');
@@ -72,16 +72,9 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
       await admin.from('villages').update({ last_challenge: iso(now()) }).eq('id', me2.village);
     }
     if (kind === 'war') {
-      // ambush: no invite. The attacker moves first with a Power-up boost for their first two turns.
-      const [{ data: ca }, { data: cb }, { data: ja }, { data: jb }] = await Promise.all([
-        admin.from('characters').select('*').eq('user_id', uid).single(), admin.from('characters').select('*').eq('user_id', target).single(),
-        admin.from('character_jutsu').select('move_id,level').eq('user_id', uid), admin.from('character_jutsu').select('move_id,level').eq('user_id', target)]);
-      const jl = (rows: any[]) => Object.fromEntries((rows || []).map((r) => [r.move_id, r.level]));
-      const s = G.newBattle({ seed: seed(), a: G.playerSpec(ca, jl(ja), G.poolsOf(ca)), b: G.playerSpec(cb, jl(jb), G.poolsOf(cb)), aStarts: true });
-      s.units.a.effects.push({ k: 'atk_up', turns: 2 });
-      delete (s as any).seed;
-      const { data: d, error } = await admin.from('duels').insert({ a: uid, b: target, a_name: me.name, b_name: them.name, kind, war, status: 'active', seq: 1,
-        state: { engine: s, events: [{ t: 'ambush', who: 'a' }], arena: { a: ca.arena_points, b: cb.arena_points } }, deadline: iso(new Date(Date.now() + TURN_MS)) }).select().single();
+      // ambush: no invite. Both get 60 seconds to pick a loadout, then the attacker acts first.
+      const { data: d, error } = await admin.from('duels').insert({ a: uid, b: target, a_name: me.name, b_name: them.name, kind, war, status: 'prep', seq: 0, ready: {},
+        deadline: iso(new Date(Date.now() + PREP_MS)) }).select().single();
       if (error) throw new Error(error.message);
       return d;
     }
@@ -105,10 +98,22 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
       admin.from('character_jutsu').select('move_id,level').eq('user_id', d.a), admin.from('character_jutsu').select('move_id,level').eq('user_id', d.b)]);
     if (ca.asleep_since || cb.asleep_since) { await save(d, { status: 'cancelled' }); throw new Error('Sleeping ninja cannot duel.'); }
     if (ca.rank === 'Academy Student' || cb.rank === 'Academy Student') { await save(d, { status: 'cancelled' }); throw new Error('Academy students cannot duel.'); }
+    return save(d, { status: 'prep', ready: {}, deadline: iso(new Date(Date.now() + PREP_MS)) });
+  }
+  // loadout time is over for me (or for both): when both are ready, or the minute is up, the fight begins
+  if (body.op === 'duel_ready') {
+    const d = await load(body.duel);
+    if (d.status !== 'prep') return d;
+    const ready = { ...(d.ready || {}), [sideOf(d)]: true };
+    if (!(ready.a && ready.b) && Date.now() < new Date(d.deadline).getTime()) return save(d, { ready });
+    const [{ data: ca }, { data: cb }, { data: ja }, { data: jb }] = await Promise.all([
+      admin.from('characters').select('*').eq('user_id', d.a).single(), admin.from('characters').select('*').eq('user_id', d.b).single(),
+      admin.from('character_jutsu').select('move_id,level').eq('user_id', d.a), admin.from('character_jutsu').select('move_id,level').eq('user_id', d.b)]);
     const jl = (rows: any[]) => Object.fromEntries((rows || []).map((r) => [r.move_id, r.level]));
-    const s = G.newDuel(seed(), ca, jl(ja), cb, jl(jb));
+    // war ambush: the attacker (a) acts first; other duels: the faster ninja acts first
+    const s = G.newBattle({ seed: seed(), a: G.playerSpec(ca, jl(ja), G.poolsOf(ca)), b: G.playerSpec(cb, jl(jb), G.poolsOf(cb)), aStarts: d.kind === 'war' ? true : ca.agility >= cb.agility });
     delete (s as any).seed;
-    return save(d, { status: 'active', state: { engine: s, events: [], arena: { a: ca.arena_points, b: cb.arena_points } }, seq: 1, deadline: iso(new Date(Date.now() + TURN_MS)) });
+    return save(d, { status: 'active', ready, state: { engine: s, events: d.kind === 'war' ? [{ t: 'ambush', who: 'a' }] : [], arena: { a: ca.arena_points, b: cb.arena_points } }, seq: 1, deadline: iso(new Date(Date.now() + TURN_MS)) });
   }
   if (body.op === 'duel_act' || body.op === 'duel_timeout') {
     const d = await load(body.duel);
@@ -126,7 +131,7 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
       else events.push(...G.act(s, late, { t: 'end' }));
     } else {
       const me = sideOf(d), a = body.action || {};
-      const action = a.t === 'move' ? { t: 'move', to: [a.to[0] | 0, a.to[1] | 0] } : a.t === 'use' ? { t: 'use', move: String(a.move), at: a.at ? [a.at[0] | 0, a.at[1] | 0] : null } : a.t === 'flee' ? { t: 'flee' } : { t: 'end' };
+      const action = a.t === 'move' ? { t: 'move', to: [a.to[0] | 0, a.to[1] | 0] } : a.t === 'use' ? { t: 'use', move: String(a.move), at: a.at ? [a.at[0] | 0, a.at[1] | 0] : null } : a.t === 'item' ? { t: 'item', item: String(a.item) } : a.t === 'flee' ? { t: 'flee' } : { t: 'end' };
       if (action.t !== 'flee' && s.side !== me) throw new Error('Wait for your turn.');
       if (action.t === 'flee') { s.side = me; reason = 'forfeit'; }
       const before = s.side;
@@ -140,6 +145,7 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
     if (sideChanged) patch.deadline = iso(new Date(Date.now() + TURN_MS));
     let out = await save(d, patch);
     if (s.status === 'over') {
+      for (const u of Object.values(s.units)) if ((u as any).uid && Object.keys((u as any).usedItems || {}).length) await admin.rpc('consume_items', { p_user: (u as any).uid, p_used: (u as any).usedItems });
       const winner = s.winner === 'a' ? d.a : d.b;
       const { data: pts, error } = await admin.rpc('duel_finish', { p_duel: d.id, p_winner: winner, p_reason: reason || 'ko' });
       if (error) throw new Error(error.message);

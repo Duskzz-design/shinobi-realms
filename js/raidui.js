@@ -2,6 +2,7 @@
 import * as net from './net.js';
 import * as G from './engine.js';
 import { runRaid } from './hexbattle.js';
+import { openLoadout } from './loadout.js';
 import { LOCATIONS } from './worldmap.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -25,9 +26,21 @@ export function openLair(root, char, line, onEnd) {
   el.querySelector('[data-x]').onclick = close;
   function watch(r) {
     mine = r; unsub && unsub();
-    unsub = net.watchRaid(r.id, (u) => { mine = u; if (u.status === 'active') begin(u); else if (!u.members.some((m) => m.id === myId) || u.status === 'closed') { mine = null; unsub && unsub(); refresh(); } else render(); });
+    unsub = net.watchRaid(r.id, (u) => { mine = u; if (u.status === 'active') begin(u); else if (u.status === 'prep') prep(u); else if (!u.members.some((m) => m.id === myId) || u.status === 'closed') { mine = null; unsub && unsub(); refresh(); } else render(); });
+  }
+  let lo = null, prepped = false;
+  function prep(r) {
+    mine = r; if (prepped) return; prepped = true;
+    el.style.display = 'none';
+    lo = openLoadout(root, char, {
+      title: `Boss fight: ${line.boss_name}`, sub: 'Your team is gathering. The fight begins when everyone is ready, or in 60 seconds.',
+      deadline: new Date(r.deadline).getTime(),
+      status: () => `${mine.members.filter((m) => (mine.ready || {})[m.id]).length}/${mine.members.length} ready`,
+      onReady: async () => { lo = null; try { const x = await net.raidReady(r.id); if (x && x.status === 'active') begin(x); } catch (e) { toast(e.message); } },
+    });
   }
   function begin(r) {
+    if (lo) { lo.close(); lo = null; }
     if (!alive) return; alive = false; unsub && unsub(); clearInterval(poll); el.remove();
     runRaid(root, char, r, line.boss_name, (res) => onEnd && onEnd(res));
   }
@@ -35,6 +48,7 @@ export function openLair(root, char, line, onEnd) {
     try { list = await net.raidLobbies(line.id); } catch (e) { body.innerHTML = `<p>${esc(e.message)}</p>`; return; }
     const m = list.find((r) => r.members.some((x) => x.id === myId) && ['lobby', 'active'].includes(r.status));
     if (m && m.status === 'active') return begin(m);
+    if (m && m.status === 'prep') { watch(m); return prep(m); }
     if (m && (!mine || mine.id !== m.id)) watch(m);
     if (!m && mine) mine = null;
     render();
@@ -48,7 +62,7 @@ export function openLair(root, char, line, onEnd) {
         <p class="sub">${lead ? (n < 3 ? `You can start now with ${n}, or wait for more. Players who finished this quest line can join from the lair.` : 'Full team! Start when ready.') : 'Waiting for the leader to start…'}</p>
         <div class="row">${lead ? `<button class="btn primary" data-start ${busy ? 'disabled' : ''}>⚔️ Start the fight (${n} player${n > 1 ? 's' : ''})</button>` : ''}<button class="btn ghost" data-leave>Leave team</button></div>`;
       const st = body.querySelector('[data-start]');
-      if (st) st.onclick = async () => { busy = true; render(); try { begin(await net.raidStart(mine.id)); } catch (e) { toast(e.message); busy = false; render(); } };
+      if (st) st.onclick = async () => { busy = true; render(); try { const x = await net.raidStart(mine.id); x.status === 'prep' ? prep(x) : begin(x); } catch (e) { toast(e.message); busy = false; render(); } };
       body.querySelector('[data-leave]').onclick = async () => { try { await net.raidLeave(mine.id); } catch {} unsub && unsub(); mine = null; refresh(); };
       return;
     }

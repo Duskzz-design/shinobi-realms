@@ -54,7 +54,7 @@ export function battleView(root, char, cfg) {
     <div class="hx-info"></div>
     <div class="b-tabs"></div>
     <div class="hx-moves"></div>
-    <div class="hx-bar"><button class="btn small ghost" data-u="guard">🛡️ Guard <small>1 AP</small></button><button class="btn small ghost" data-u="focus">🧘 Focus <small>2 AP</small></button>
+    <div class="hx-bar"><button class="btn small ghost" data-u="guard">🛡️ Guard <small>1 AP</small></button><button class="btn small ghost" data-u="focus">🧘 Focus <small>2 AP</small></button><span class="hx-items"></span>
       <button class="btn small primary" data-end>End turn ▶</button><button class="btn small ghost" data-flee>🏃</button></div>
   </div>`);
   root.appendChild(el);
@@ -99,13 +99,18 @@ export function battleView(root, char, cfg) {
     const st = styles();
     el.querySelector('.b-tabs').innerHTML = st.map((k) => `<button data-tab="${k}" class="${k === tab ? 'on' : ''}" style="--c:${STYLE_INFO[k].color}">${STYLE_INFO[k].icon} <span>${STYLE_INFO[k].label}</span></button>`).join('');
     const p = me();
-    const locked = Object.keys(G.MOVES).filter((id) => { const m = G.MOVES[id]; return m.style === tab && !p.moves.includes(id) && m.style !== 'bloodline' && (m.style !== 'ninjutsu' || p.elements.includes(m.element)); });
+    const locked = [];
     el.querySelector('.hx-moves').innerHTML = mine().filter((id) => G.MOVES[id].style === tab).concat(locked).map(moveBtn).join('');
     el.querySelectorAll('[data-tab]').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; panel(); }));
     el.querySelectorAll('.hx-moves [data-m]').forEach((b) => (b.onclick = () => pick(b.dataset.m)));
     const myTurn = eng.side === MY && !busy;
     el.querySelectorAll('.hx-bar [data-u]').forEach((b) => { const m = G.MOVES[b.dataset.u]; b.disabled = !myTurn || p.ap < m.ap; b.classList.toggle('sel', sel === b.dataset.u); });
     el.querySelector('[data-end]').disabled = !myTurn; el.querySelector('[data-flee]').disabled = busy && !cfg.duel;
+    const its = el.querySelector('.hx-items');
+    if (its) {
+      its.innerHTML = Object.entries(p.items || {}).filter(([, n]) => n > 0).map(([id, n]) => { const it = G.ITEMS[id]; return it ? `<button class="btn small ghost hx-it" data-i="${id}" title="${esc(it.name)}: ${esc(it.desc)}" ${!myTurn || p.ap < it.ap ? 'disabled' : ''}>${it.icon}<b>×${n}</b> <small>${it.ap} AP</small></button>` : ''; }).join('');
+      its.querySelectorAll('[data-i]').forEach((b) => (b.onclick = () => { if (busy || eng.side !== MY) return; sel = null; send({ t: 'item', item: b.dataset.i }); }));
+    }
     cards();
   }
   function say(html) { info.innerHTML = html; }
@@ -224,6 +229,16 @@ export function battleView(root, char, cfg) {
           (hit.effects || []).forEach((k, i) => setTimeout(() => float(hit.who, G.STATUS[k].icon + ' ' + G.STATUS[k].label, '#e0a0ff', 26 + i * 10), 200 + i * 160));
         }
         cards(); await pause(ev.hits?.length ? 620 : 300);
+      } else if (ev.t === 'item') {
+        const u = unit(ev.who), it = G.ITEMS[ev.item] || { icon: '🎒' };
+        say(`${ev.who === MY ? 'You use' : esc(name) + ' uses'} <b>${it.icon} ${esc(ev.name)}</b>!`);
+        if (u.items && u.items[ev.item] > 0) u.items[ev.item]--;
+        fx.flash = { at: [u.c, u.r], r: ev.item === 'smoke' ? 1 : 0, col: ev.item === 'smoke' ? '#c9ccd4' : '#7ce08a', life: 18 };
+        if (ev.heal) { u.hp = Math.min(u.hpmax, u.hp + ev.heal); float(ev.who, `+${ev.heal}`, '#7ce08a'); }
+        if (ev.focus) float(ev.who, `+${ev.focus} 💪💧`, '#7cc4ec');
+        if (ev.cured && ev.cured.length) float(ev.who, '✨ Cured', '#9fe0a0', 14);
+        for (const hit of ev.hits || []) (hit.effects || []).forEach((k) => float(hit.who, G.STATUS[k].icon + ' ' + G.STATUS[k].label, '#e0a0ff', 20));
+        cards(); panel(); await pause(450);
       } else if (ev.t === 'dot') {
         const u = unit(ev.who); u.hp = Math.max(0, u.hp - ev.dmg); float(ev.who, `${G.STATUS[ev.k].icon} ${ev.dmg}`, '#ff9a63'); cards(); await pause(420);
       } else if (ev.t === 'heal') { const u = unit(ev.who); u.hp = Math.min(u.hpmax, u.hp + ev.amount); float(ev.who, `💚 +${ev.amount}`, '#7ce08a'); cards(); await pause(380);
