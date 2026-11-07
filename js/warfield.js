@@ -79,7 +79,7 @@ export function openWarField(root, char, war, terrName, hooks = {}) {
     const foes = [...others.values()].filter((o) => o.meta.side && o.meta.side !== mySide);
     hint.innerHTML = over ? `This war is over.${w.winner ? ` ${esc(VILLAGES[w.winner].name)} holds ${esc(terrName)}.` : ''}`
       : !mySide ? 'Your village is not in this war. You can watch only.'
-      : foes.length ? 'Tap an enemy ninja, then <b>⚔️ Attack</b>. Each win scores <b>+10</b> for your side.'
+      : foes.length ? 'Click the <b>⚔️</b> above an enemy to ambush them: you strike first, powered up. Each win scores <b>+10</b> for your side.'
       : mySide === 'attacker' ? `No defenders here. While you hold the field, ${esc(A.short)} gains <b>+5 every 10 minutes</b>.`
       : 'No attackers here right now. Tap the ground to walk around.';
   }
@@ -110,10 +110,20 @@ export function openWarField(root, char, war, terrName, hooks = {}) {
   // click / tap: an enemy opens the attack card, anywhere else walks there
   cv.addEventListener('pointerdown', (e) => {
     const r = cv.getBoundingClientRect(), k = cv.width / r.width / sc, wx = (e.clientX - r.left) * k, wy = (e.clientY - r.top) * k;
+    const px = wx * sc, py = wy * sc, pad = 6 * (cv.width / r.width);
+    const hit = swords.find((b) => px >= b.x - pad && px <= b.x + b.w + pad && py >= b.y - pad && py <= b.y + b.h + pad);
+    if (hit) return attack(hit.m);
     for (const o of others.values()) if (Math.abs(wx - o.x) < 11 && wy < o.y + 3 && wy > o.y - 28) return showCard(o.meta);
     card.hidden = true;
     me.tx = Math.max(8, Math.min(MW * T - 8, wx)); me.ty = Math.max(14, Math.min(MH * T - 4, wy));
   });
+  let swords = [], attacking = false;
+  const canAttack = (m) => mySide && m.side && m.side !== mySide && !m.asleep && !char.asleep_since && st && st.war.status === 'active' && new Date(st.war.ends_at) > new Date();
+  function attack(m) {
+    if (attacking) return; attacking = true; setTimeout(() => (attacking = false), 2500);
+    card.hidden = true;
+    hooks.challenge ? hooks.challenge({ id: m.id, name: m.name }, war.id) : toast('Duels are not available here.');
+  }
   function showCard(m) {
     const vv = VILLAGES[m.village] || {}, enemy = mySide && m.side && m.side !== mySide;
     const over = !st || st.war.status !== 'active' || new Date(st.war.ends_at) <= new Date();
@@ -122,7 +132,7 @@ export function openWarField(root, char, war, terrName, hooks = {}) {
     else if (m.asleep) act = '<p class="sub">💤 Asleep: can\'t be attacked.</p>';
     else if (char.asleep_since) act = '<p class="sub">You are asleep. Wake up to fight.</p>';
     else if (over) act = '<p class="sub">The war is over.</p>';
-    else act = '<button class="btn primary" data-atk>⚔️ Attack</button>';
+    else act = '<p class="sub">Click the <b>⚔️</b> above their head to attack.</p>';
     card.innerHTML = `<canvas width="36" height="52"></canvas><div><b>${esc(m.name)}</b><small style="color:${vv.dark}">${esc(vv.short || '')} · ${esc(m.rank)} · Lv ${m.level}</small>${act}</div><button class="wf-cx" data-cx>✕</button>`;
     card.hidden = false;
     const c = card.querySelector('canvas').getContext('2d'); c.imageSmoothingEnabled = false; c.drawImage(ninjaSprite(m.look || {}, 0, 0), 0, 0, 18, 26, 0, 0, 36, 52);
@@ -153,7 +163,7 @@ export function openWarField(root, char, war, terrName, hooks = {}) {
     else { banner(ctx, 14, MH * T / 2 - 20, A.color, sc); banner(ctx, 14, MH * T / 2 + 40, A.color, sc);
       if (D) { banner(ctx, MW * T - 28, MH * T / 2 - 20, D.color, sc); banner(ctx, MW * T - 28, MH * T / 2 + 40, D.color, sc); } }
     const list = [...others.values()].map((o) => ({ n: o, m: o.meta, me: false })).concat([{ n: me, m: meta(), me: true }]).sort((a, b) => a.n.y - b.n.y);
-    const fsz = Math.max(10, Math.round(sc * 3.2));
+    const fsz = Math.max(10, Math.round(sc * 3.2)); swords = [];
     for (const { n, m, me: isMe } of list) {
       const frame = n.moving ? [1, 0, 2, 0][Math.floor(n.anim * 8) % 4] : 0, spr = ninjaSprite(m.look || {}, n.dir || 0, frame);
       ctx.fillStyle = 'rgba(30,20,10,.3)'; ctx.fillRect((n.x - 6) * sc, (n.y - 1) * sc, 12 * sc, 2 * sc);
@@ -162,9 +172,17 @@ export function openWarField(root, char, war, terrName, hooks = {}) {
       ctx.globalAlpha = 1;
       const enemy = mySide && m.side && m.side !== mySide;
       ctx.font = `${fsz}px 'Pixelify Sans', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-      const label = (m.asleep ? '💤 ' : enemy ? '⚔️ ' : '') + m.name, w = ctx.measureText(label).width + 8, sx = n.x * sc, sy = (n.y - 28) * sc;
+      const label = (m.asleep ? '💤 ' : '') + m.name, w = ctx.measureText(label).width + 8, sx = n.x * sc, sy = (n.y - 28) * sc;
       ctx.fillStyle = enemy ? 'rgba(160,30,24,.85)' : isMe ? 'rgba(36,22,14,.8)' : 'rgba(36,22,14,.6)'; ctx.fillRect(sx - w / 2, sy - fsz - 2, w, fsz + 4);
       ctx.fillStyle = isMe ? '#ffe07a' : '#fff4dc'; ctx.fillText(label, sx, sy + 1);
+      if (!isMe && canAttack(m)) { // the clickable crossed swords above an enemy's head
+        const bs = Math.round(fsz * 1.9), bx = Math.round(sx - bs / 2), by = Math.round(sy - fsz - 6 - bs), pulse = 1 + 0.08 * Math.sin(performance.now() / 160);
+        ctx.save(); ctx.translate(bx + bs / 2, by + bs / 2); ctx.scale(pulse, pulse);
+        ctx.fillStyle = '#24160e'; ctx.fillRect(-bs / 2 - 2, -bs / 2 - 2, bs + 4, bs + 4); ctx.fillStyle = '#c43c32'; ctx.fillRect(-bs / 2, -bs / 2, bs, bs);
+        ctx.fillStyle = '#f2c14a'; ctx.fillRect(-bs / 2, bs / 2 - 3, bs, 3);
+        ctx.font = `${Math.round(bs * 0.7)}px sans-serif`; ctx.textBaseline = 'middle'; ctx.fillText('⚔️', 0, 1); ctx.restore();
+        swords.push({ x: bx, y: by, w: bs, h: bs, m });
+      }
     }
     if (me.tx != null) { ctx.fillStyle = '#c43c32'; ctx.fillRect((me.tx - 1) * sc, (me.ty - 1) * sc, 2 * sc, 2 * sc); }
   }

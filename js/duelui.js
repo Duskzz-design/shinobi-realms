@@ -46,6 +46,7 @@ export function setupDuels(root, char, hooks) {
   function start(d) {
     if (inDuel === d.id) return;
     closePop(); inDuel = d.id; hooks.stopWalking();
+    if (d.kind === 'war') toast(d.a === myId ? `Ambush! You strike first, powered up for 2 turns.` : `${d.a_name} ambushed you! They strike first.`, d.a === myId ? 'ok' : 'err');
     runDuel(root, char, d, (res) => { inDuel = null; hooks.onEnd(res, d); });
   }
   function onRow(d) {
@@ -65,7 +66,7 @@ export function setupDuels(root, char, hooks) {
   return {
     async challenge(target, kind = 'duel', war = null) {
       if (inDuel) return;
-      try { showWaiting(await net.duelChallenge(target.id, kind, war)); } catch (e) { toast(e.message); }
+      try { const d = await net.duelChallenge(target.id, kind, war); d.status === 'active' ? start(d) : showWaiting(d); } catch (e) { toast(e.message); }
     },
     stop() { stop && stop(); closePop(); },
   };

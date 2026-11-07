@@ -60,6 +60,8 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
       const mv = full.find((c: any) => c.user_id === uid)?.village, tv = full.find((c: any) => c.user_id === target)?.village;
       const sides = [w.attacker, w.defender];
       if (!sides.includes(mv) || !sides.includes(tv) || mv === tv) throw new Error('War duels are between the attacking and defending villages.');
+      const { data: here } = await admin.from('war_presence').select('user_id').eq('war', w.id).in('user_id', [uid, target]).gt('seen_at', iso(new Date(Date.now() - 2 * 60e3)));
+      if ((here || []).length < 2) throw new Error(`${them.name} has left the battlefield.`);
       war = w.id;
     }
     await tidy(uid); await tidy(target);
@@ -68,6 +70,20 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
     if (kind === 'kage') {
       const { data: me2 } = await admin.from('characters').select('village').eq('user_id', uid).single();
       await admin.from('villages').update({ last_challenge: iso(now()) }).eq('id', me2.village);
+    }
+    if (kind === 'war') {
+      // ambush: no invite. The attacker moves first with a Power-up boost for their first two turns.
+      const [{ data: ca }, { data: cb }, { data: ja }, { data: jb }] = await Promise.all([
+        admin.from('characters').select('*').eq('user_id', uid).single(), admin.from('characters').select('*').eq('user_id', target).single(),
+        admin.from('character_jutsu').select('move_id,level').eq('user_id', uid), admin.from('character_jutsu').select('move_id,level').eq('user_id', target)]);
+      const jl = (rows: any[]) => Object.fromEntries((rows || []).map((r) => [r.move_id, r.level]));
+      const s = G.newBattle({ seed: seed(), a: G.playerSpec(ca, jl(ja), G.poolsOf(ca)), b: G.playerSpec(cb, jl(jb), G.poolsOf(cb)), aStarts: true });
+      s.units.a.effects.push({ k: 'atk_up', turns: 2 });
+      delete (s as any).seed;
+      const { data: d, error } = await admin.from('duels').insert({ a: uid, b: target, a_name: me.name, b_name: them.name, kind, war, status: 'active', seq: 1,
+        state: { engine: s, events: [{ t: 'ambush', who: 'a' }], arena: { a: ca.arena_points, b: cb.arena_points } }, deadline: iso(new Date(Date.now() + TURN_MS)) }).select().single();
+      if (error) throw new Error(error.message);
+      return d;
     }
     const { data: d, error } = await admin.from('duels').insert({ a: uid, b: target, a_name: me.name, b_name: them.name, kind, war, deadline: iso(new Date(Date.now() + INVITE_MS)) }).select().single();
     if (error) throw new Error(error.message);
