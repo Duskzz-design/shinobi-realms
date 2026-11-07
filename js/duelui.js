@@ -23,7 +23,10 @@ export function setupDuels(root, char, hooks) {
   function showInvite(d) {
     if (inDuel) return;
     popDuel = d.id;
-    const el = popup(`<div class="dp-ico">⚔️</div><h3>${esc(d.a_name)} challenges you!</h3><p>A live duel on the hex battlefield. 60 seconds per turn. The winner earns Arena points.</p>
+    const what = d.kind === 'kage' ? `<p><b>A challenge for the Kage's seat!</b> If you lose, or decline, or don't answer in time, ${esc(d.a_name)} becomes Kage.</p>`
+      : d.kind === 'war' ? '<p><b>A war duel!</b> The winner scores +10 war points for their village. 60 seconds per turn.</p>'
+      : '<p>A live duel on the hex battlefield. 60 seconds per turn. The winner earns Arena points.</p>';
+    const el = popup(`<div class="dp-ico">${d.kind === 'kage' ? '👑' : '⚔️'}</div><h3>${esc(d.a_name)} challenges you!</h3>${what}
       <p class="sub">Answer within <b class="cd">60s</b></p><div class="row"><button class="btn ghost" data-no>Decline</button><button class="btn primary" data-yes>Accept ⚔️</button></div>`);
     countdown(el.querySelector('.cd'), new Date(d.created_at || Date.now()).getTime() + 60000, closePop);
     el.querySelector('[data-no]').onclick = () => { net.duelCancel(d.id).catch(() => {}); closePop(); };
@@ -60,9 +63,9 @@ export function setupDuels(root, char, hooks) {
   net.myActiveDuel().then((d) => d && start(d)).catch(() => {});
 
   return {
-    async challenge(target) {
+    async challenge(target, kind = 'duel', war = null) {
       if (inDuel) return;
-      try { showWaiting(await net.duelChallenge(target.id)); } catch (e) { toast(e.message); }
+      try { showWaiting(await net.duelChallenge(target.id, kind, war)); } catch (e) { toast(e.message); }
     },
     stop() { stop && stop(); closePop(); },
   };

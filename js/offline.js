@@ -324,3 +324,78 @@ export function mockRaidOp(c, body) {
   }
   return raid;
 }
+
+// ---------- village wars (offline mirror of the village_* / war_* functions) ----------
+const VCOST = [300, 600, 1000, 1500, 2500];
+const TERR = [['ashen_peak', 'Ashen Peak'], ['bandit_road', 'Bandit Road'], ['misty_marsh', 'Misty Marsh'], ['watchtower', 'Old Watchtower'], ['whispering_woods', 'Whispering Woods']];
+function vstate(c) {
+  let s = JSON.parse(sessionStorage.getItem('mockVillages') || 'null');
+  if (!s) {
+    const day = 864e5, now = Date.now();
+    s = {
+      villages: {
+        dune: { score: 3120, month: 1480, treasury: 640, upgrades: { missions: 2, training: 1 }, ninjas: 41, kage: { id: 'k-dune', name: 'Kazan', level: 52, look: { hairStyle: 2, hair: 3, skin: 2, outfit: 1, band: 1, bandSpot: 0 }, online: true } },
+        pine: { score: 2870, month: 1610, treasury: 1340, upgrades: { training: 2, springs: 1 }, ninjas: 38, kage: null },
+        tide: { score: 2410, month: 1150, treasury: 420, upgrades: { library: 1 }, ninjas: 35, kage: { id: 'k-tide', name: 'Mizuha', level: 47, look: { hairStyle: 1, hair: 5, skin: 1, outfit: 3, band: 2, bandSpot: 1 }, online: false } },
+      },
+      terr: { bandit_road: { holder: 'dune', cooldown_until: null }, watchtower: { holder: 'dune', cooldown_until: new Date(now + 9 * day).toISOString() }, misty_marsh: { holder: 'tide', cooldown_until: null }, whispering_woods: { holder: 'pine', cooldown_until: new Date(now + 3 * day).toISOString() }, ashen_peak: { holder: null, cooldown_until: null } },
+      wars: [{ id: 'w1', territory: 'bandit_road', attacker: 'tide', defender: 'dune', started_at: new Date(now - 7 * 3600e3).toISOString(), ends_at: new Date(now + 17 * 3600e3).toISOString(), att_score: 85, def_score: 110, status: 'active' }],
+      over: [{ id: 'w0', territory: 'whispering_woods', attacker: 'pine', defender: 'dune', att_score: 140, def_score: 95, status: 'over', winner: 'pine', ends_at: new Date(now - 11 * day).toISOString() }],
+      top: [['Ren', 212], ['Mika', 168], ['Sora', 131], ['Haru', 96], ['Kaito', 77]],
+    };
+  }
+  return s;
+}
+const vsave = (s) => sessionStorage.setItem('mockVillages', JSON.stringify(s));
+function vinfo(c, s) {
+  const mine = c.village;
+  return {
+    mine, me: { id: c.user_id, rank: c.rank },
+    villages: ['dune', 'pine', 'tide'].map((id) => ({ id, ...s.villages[id], territories: Object.keys(s.terr).filter((t) => s.terr[t].holder === id), challenge_at: null })),
+    top: [{ name: c.name, points: 54 }, ...s.top.map(([name, points]) => ({ name, points }))].sort((a, b) => b.points - a.points),
+    my_month: 54,
+    territories: TERR.map(([id, name]) => ({ id, name, ...s.terr[id], war: s.wars.find((w) => w.territory === id && w.status === 'active') || null })),
+    recent_wars: s.over,
+  };
+}
+export function mockVillage(c, fn, args) {
+  const s = vstate(c), v = s.villages[c.village];
+  if (new URLSearchParams(location.search).has('kage') && !v.kage) v.kage = { id: c.user_id, name: c.name, level: c.level, look: c.appearance, online: true };
+  const isKage = v.kage && v.kage.id === c.user_id;
+  if (fn === 'kage_claim') { if (c.rank !== 'Jonin') throw new Error('Only a Jonin can become Kage.'); if (v.kage && !isKage) throw new Error('Your village already has a Kage. Challenge them to a duel for the seat.'); v.kage = { id: c.user_id, name: c.name, level: c.level, look: c.appearance, online: true }; }
+  if (fn === 'village_upgrade') {
+    if (!isKage) throw new Error('Only the Kage can spend the village treasury.');
+    const lv = v.upgrades[args.p_building] || 0; if (lv >= 5) throw new Error('That building is fully upgraded.');
+    if (v.treasury < VCOST[lv]) throw new Error(`Not enough in the treasury (needs ${VCOST[lv]}).`);
+    v.treasury -= VCOST[lv]; v.upgrades[args.p_building] = lv + 1;
+  }
+  if (fn === 'war_declare') {
+    if (!isKage) throw new Error('Only the Kage can declare war.');
+    const t = s.terr[args.p_territory];
+    if (t.holder === c.village) throw new Error('Your village already holds that territory.');
+    if (s.wars.some((w) => w.territory === args.p_territory)) throw new Error('There is already a war there.');
+    if (t.cooldown_until && new Date(t.cooldown_until) > new Date()) throw new Error('That territory is recovering from the last war.');
+    if (s.wars.some((w) => w.attacker === c.village)) throw new Error('Your village is already attacking somewhere. Finish that war first.');
+    if (v.treasury < 500) throw new Error('Declaring war costs 500 from the treasury.');
+    v.treasury -= 500;
+    s.wars.push({ id: 'w' + Date.now(), territory: args.p_territory, attacker: c.village, defender: t.holder, started_at: new Date().toISOString(), ends_at: new Date(Date.now() + 864e5).toISOString(), att_score: 0, def_score: 0, status: 'active' });
+  }
+  if (fn === 'war_status' || fn === 'war_hold' || fn === 'war_leave') {
+    const w = s.wars.find((x) => x.id === args.p_war) || s.over.find((x) => x.id === args.p_war);
+    const side = c.village === w.attacker ? 'attacker' : c.village === w.defender ? 'defender' : null;
+    if (fn === 'war_hold' && !side) throw new Error('Your village is not part of this war.');
+    if (fn === 'war_hold' && side === 'attacker' && !w._held) { w.att_score += 5; w._held = 1; }
+    vsave(s);
+    const L = (n, h, k, o) => ({ hairStyle: h, hair: k, skin: o % 4, outfit: o, band: 1, bandSpot: 0, _n: n });
+    const others = [
+      { id: 'p1', name: 'Kaito', level: 34, rank: 'Jonin', village: w.attacker, side: 'attacker', look: L('k', 1, 2, 3) },
+      { id: 'p2', name: 'Suzu', level: 27, rank: 'Chunin', village: w.attacker, side: 'attacker', look: L('s', 3, 6, 5) },
+      ...(w.defender ? [{ id: 'p3', name: 'Goro', level: 31, rank: 'Chunin', village: w.defender, side: 'defender', look: L('g', 0, 0, 6) },
+        { id: 'p4', name: 'Akane', level: 22, rank: 'Genin', village: w.defender, side: 'defender', look: L('a', 2, 4, 2) }] : []),
+    ];
+    if (side) others.push({ id: c.user_id, name: c.name, level: c.level, rank: c.rank, village: c.village, side, look: c.appearance });
+    return { war: w, side, now: new Date().toISOString(), present: others };
+  }
+  vsave(s);
+  return vinfo(c, s);
+}

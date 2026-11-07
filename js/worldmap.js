@@ -71,7 +71,7 @@ function lineState(char, line, steps) {
   return { done: !!p.done, step: p.step || 1, count: p.count || 0, cur, steps: st, locked: RANKS.indexOf(char.rank) < line.min_rank };
 }
 
-export async function openWorldMap(root, char, { onQuest, onLair, onHome }) {
+export async function openWorldMap(root, char, { onQuest, onLair, onHome, onWar, focus }) {
   const el = h(`<div class="ov wmap"><div class="wm-top"><b>🗺️ The Land of Five Winds</b><button class="btn small ghost" data-log>📜 Quests</button><button class="btn small primary" data-home>🏠 Home</button></div>
     <div class="wm-stage"><canvas width="${W}" height="${H}"></canvas><div class="wm-pins"></div></div><div class="wm-panel"></div></div>`);
   root.appendChild(el);
@@ -79,15 +79,17 @@ export async function openWorldMap(root, char, { onQuest, onLair, onHome }) {
   const panel = el.querySelector('.wm-panel'), pins = el.querySelector('.wm-pins');
   const close = () => el.remove();
   el.querySelector('[data-home]').onclick = () => { close(); onHome && onHome(); };
-  let data;
-  try { data = await net.getQuestData(); } catch (e) { panel.innerHTML = `<p>${esc(e.message)}</p>`; return { close }; }
+  let data, vinfo = null;
+  try { [data, vinfo] = await Promise.all([net.getQuestData(), net.villageInfo().catch(() => null)]); } catch (e) { panel.innerHTML = `<p>${esc(e.message)}</p>`; return { close }; }
+  const terr = Object.fromEntries(((vinfo && vinfo.territories) || []).map((t) => [t.id, t]));
   const states = Object.fromEntries(data.lines.map((l) => [l.id, lineState(char, l, data.steps)]));
   const activeAt = (loc) => data.lines.filter((l) => { const s = states[l.id]; return !s.locked && !s.done && s.cur && s.cur.location === loc; });
 
   for (const [id, L] of Object.entries(LOCATIONS)) {
     const home = id === char.village, act = activeAt(id).length > 0, lairOpen = L.kind === 'lair' && states[L.line] && states[L.line].done;
-    const b = h(`<button class="wm-pin k-${L.kind} ${home ? 'home' : ''} ${act ? 'active' : ''} ${lairOpen ? 'open' : ''}" style="left:${(L.x / W) * 100}%;top:${(L.y / H) * 100}%" data-loc="${id}">
-      <span class="ic">${L.icon}</span><span class="lb">${esc(L.name)}</span></button>`);
+    const t = terr[id], hv = t && t.holder ? VILLAGES[t.holder] : null;
+    const b = h(`<button class="wm-pin k-${L.kind} ${home ? 'home' : ''} ${act ? 'active' : ''} ${lairOpen ? 'open' : ''} ${t && t.war ? 'war' : ''}" style="left:${(L.x / W) * 100}%;top:${(L.y / H) * 100}%" data-loc="${id}">
+      <span class="ic">${L.icon}${t ? `<i class="flag" style="background:${hv ? hv.color : '#cfc3ad'}" title="${hv ? esc(hv.short) : 'Unclaimed'}"></i>` : ''}</span><span class="lb">${t && t.war ? '⚔️ ' : ''}${esc(L.name)}</span></button>`);
     b.onclick = () => showLoc(id);
     pins.appendChild(b);
   }
@@ -125,14 +127,25 @@ export async function openWorldMap(root, char, { onQuest, onLair, onHome }) {
         return `<div class="wm-step"><small>${esc(l.name)} · Step ${s.step}/${s.steps.length}</small><b>${c.kind === 'hunt' ? '🎯' : '⚔️'} ${esc(c.title)}</b><p>${esc(c.story)}</p>
           ${c.need > 1 ? `<div class="mini"><i style="width:${(100 * s.count) / c.need}%"></i></div><small>${s.count} / ${c.need} done</small>` : ''}
           <button class="btn primary" data-q="${l.id}">${c.kind === 'hunt' ? 'Hunt' : 'Fight'}</button></div>`; }).join('')
-        : `<p class="sub">Nothing to do here right now.${['Academy Student', 'Genin'].includes(char.rank) ? ' Quests out here are for Chunin and above.' : ' Check your quest log.'}</p>`;
+        : terr[id] ? '' : `<p class="sub">Nothing to do here right now.${['Academy Student', 'Genin'].includes(char.rank) ? ' Quests out here are for Chunin and above.' : ' Check your quest log.'}</p>`;
+    }
+    const t = terr[id];
+    if (t) {
+      const hv = t.holder ? VILLAGES[t.holder] : null, w = t.war, mineSide = w && (w.attacker === char.village || w.defender === char.village);
+      const hrs = (iso) => { const x = Math.max(0, (new Date(iso) - Date.now()) / 36e5); return x >= 24 ? `${Math.floor(x / 24)}d ${Math.floor(x % 24)}h` : `${Math.floor(x)}h ${Math.floor((x % 1) * 60)}m`; };
+      const truce = t.cooldown_until && new Date(t.cooldown_until) > new Date();
+      body = `<div class="wm-terr" style="--vc:${hv ? hv.color : '#b5a88f'}"><b>🚩 Territory: ${hv ? `held by ${esc(hv.name)}` : 'unclaimed'}</b>
+        <small>Pays its village 50 treasury a day.${truce && !w ? ` Truce for ${hrs(t.cooldown_until)}.` : ''}</small>
+        ${w ? `<span class="wm-war">⚔️ <b>${esc(VILLAGES[w.attacker].short)}</b> is attacking: <b>${w.att_score}</b> – <b>${w.def_score}</b> · ${hrs(w.ends_at)} left</span>
+          ${mineSide && char.rank !== 'Academy Student' ? `<button class="btn primary" data-war>${w.attacker === char.village ? '⚔️ Join the attack' : '🛡️ Defend it'}</button>` : mineSide ? '<small>Academy students stay safe at home during wars.</small>' : '<small>Your village is not in this war.</small>'}` : ''}</div>` + body;
     }
     panel.innerHTML = `<h3>${L.icon} ${esc(L.name)}</h3><p class="sub">${esc(L.desc)}</p>${body}`;
+    const wb = panel.querySelector('[data-war]'); if (wb) wb.onclick = () => { close(); onWar && onWar(terr[id].war, L.name); };
     const hb = panel.querySelector('[data-home2]'); if (hb) hb.onclick = () => { close(); onHome && onHome(); };
     panel.querySelectorAll('[data-q]').forEach((b) => (b.onclick = () => { close(); onQuest(b.dataset.q); }));
     panel.querySelectorAll('[data-lair]').forEach((b) => (b.onclick = () => { close(); onLair && onLair(data.lines.find((l) => l.id === L.line)); }));
   }
   const firstActive = data.lines.map((l) => states[l.id]).find((s) => !s.locked && !s.done);
-  firstActive ? showLoc(firstActive.cur.location) : showLog();
+  if (focus && LOCATIONS[focus]) showLoc(focus); else firstActive ? showLoc(firstActive.cur.location) : showLog();
   return { close };
 }

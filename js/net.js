@@ -220,7 +220,7 @@ export async function updateAppearance(appearance) {
 
 // ---------- live duels ----------
 const duelCall = async (body) => { if (OFFLINE) { const o = await import('./offline.js'); return o.mockDuelOp(mockChar(), body); } return battleCall(body); };
-export const duelChallenge = (target) => duelCall({ op: 'duel_challenge', target });
+export const duelChallenge = (target, kind = 'duel', war = null) => duelCall({ op: 'duel_challenge', target, kind, war });
 export const duelAccept = (duel) => duelCall({ op: 'duel_accept', duel });
 export const duelCancel = (duel) => duelCall({ op: 'duel_cancel', duel });
 export const duelAct = (duel, action) => duelCall({ op: 'duel_act', duel, action });
@@ -304,3 +304,16 @@ export async function setTitle(title) {
   if (OFFLINE) return loadCharacter();
   const { data, error } = await sb.rpc('set_title', { p_title: title }); if (error) throw rpcErr(error); return data;
 }
+
+// ---------- village wars ----------
+const vrpc = async (fn, args = {}) => {
+  if (OFFLINE) { const o = await import('./offline.js'); return o.mockVillage(mockChar(), fn, args); }
+  const { data, error } = await sb.rpc(fn, args); if (error) throw rpcErr(error); return data;
+};
+export const villageInfo = () => vrpc('village_info');
+export const kageClaim = () => vrpc('kage_claim');
+export const villageUpgrade = (building) => vrpc('village_upgrade', { p_building: building });
+export const warDeclare = (territory) => vrpc('war_declare', { p_territory: territory });
+export const warStatus = (war) => vrpc('war_status', { p_war: war });
+export const warHold = (war) => vrpc('war_hold', { p_war: war });
+export const warLeave = (war) => vrpc('war_leave', { p_war: war }).catch(() => {});

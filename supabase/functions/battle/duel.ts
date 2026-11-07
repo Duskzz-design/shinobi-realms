@@ -37,17 +37,45 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
     if (!me || !them) throw new Error('That ninja could not be found.');
     if (me.rank === 'Academy Student') throw new Error('Academy students cannot duel. Graduate to Genin first, and practise in the Academy sparring lessons.');
     if (them.rank === 'Academy Student') throw new Error(`${them.name} is still an Academy student and cannot duel yet.`);
+    const kind = body.kind === 'kage' ? 'kage' : body.kind === 'war' ? 'war' : 'duel';
+    let war = null;
+    if (kind === 'kage') {
+      const { data: full } = await admin.from('characters').select('user_id,village,rank,seen_at').in('user_id', [uid, target]);
+      const m2 = full.find((c: any) => c.user_id === uid), t2 = full.find((c: any) => c.user_id === target);
+      if (m2.rank !== 'Jonin') throw new Error('Only a Jonin can challenge the Kage.');
+      if (m2.village !== t2.village) throw new Error('You can only challenge your own village\'s Kage.');
+      const { data: v } = await admin.from('villages').select('*').eq('id', m2.village).single();
+      if (v.kage !== target) throw new Error(`${them.name} is not your Kage.`);
+      if (v.last_challenge && Date.now() < new Date(v.last_challenge).getTime() + 24 * 3600e3) throw new Error('The Kage was challenged recently. The seat can be challenged once every 24 hours.');
+      if (!t2.seen_at || Date.now() - new Date(t2.seen_at).getTime() > 2 * 60e3) throw new Error('The Kage is not in the village right now. Challenges only work while they are online.');
+      const { data: fights } = await admin.from('battles').select('id').eq('user_id', target).eq('status', 'active').gt('updated_at', iso(new Date(Date.now() - 10 * 60e3))).limit(1);
+      if ((fights || []).length) throw new Error('The Kage is in the middle of a fight. Try again in a few minutes.');
+    }
+    if (kind === 'war') {
+      const { data: w } = await admin.from('wars').select('*').eq('id', String(body.war || '')).single();
+      if (!w || w.status !== 'active' || new Date(w.ends_at).getTime() <= Date.now()) throw new Error('This war is over.');
+      const { data: full } = await admin.from('characters').select('user_id,village').in('user_id', [uid, target]);
+      const mv = full.find((c: any) => c.user_id === uid)?.village, tv = full.find((c: any) => c.user_id === target)?.village;
+      const sides = [w.attacker, w.defender];
+      if (!sides.includes(mv) || !sides.includes(tv) || mv === tv) throw new Error('War duels are between the attacking and defending villages.');
+      war = w.id;
+    }
     await tidy(uid); await tidy(target);
     if (await busy(uid)) throw new Error('You are already in a duel.');
     if (await busy(target)) throw new Error(`${them.name} is busy in another duel.`);
-    const { data: d, error } = await admin.from('duels').insert({ a: uid, b: target, a_name: me.name, b_name: them.name, deadline: iso(new Date(Date.now() + INVITE_MS)) }).select().single();
+    if (kind === 'kage') {
+      const { data: me2 } = await admin.from('characters').select('village').eq('user_id', uid).single();
+      await admin.from('villages').update({ last_challenge: iso(now()) }).eq('id', me2.village);
+    }
+    const { data: d, error } = await admin.from('duels').insert({ a: uid, b: target, a_name: me.name, b_name: them.name, kind, war, deadline: iso(new Date(Date.now() + INVITE_MS)) }).select().single();
     if (error) throw new Error(error.message);
     return d;
   }
   if (body.op === 'duel_cancel') {
     const d = await load(body.duel);
     if (d.status !== 'pending') return d;
-    return save(d, { status: d.b === uid ? 'declined' : 'cancelled' });
+    const late = Date.now() - new Date(d.created_at).getTime() > INVITE_MS - 2000;
+    return save(d, { status: d.b === uid ? 'declined' : late ? 'expired' : 'cancelled' });
   }
   if (body.op === 'duel_accept') {
     const d = await load(body.duel);
@@ -57,6 +85,7 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
     const [{ data: ca }, { data: cb }, { data: ja }, { data: jb }] = await Promise.all([
       admin.from('characters').select('*').eq('user_id', d.a).single(), admin.from('characters').select('*').eq('user_id', d.b).single(),
       admin.from('character_jutsu').select('move_id,level').eq('user_id', d.a), admin.from('character_jutsu').select('move_id,level').eq('user_id', d.b)]);
+    if (ca.rank === 'Academy Student' || cb.rank === 'Academy Student') { await save(d, { status: 'cancelled' }); throw new Error('Academy students cannot duel.'); }
     const jl = (rows: any[]) => Object.fromEntries((rows || []).map((r) => [r.move_id, r.level]));
     const s = G.newDuel(seed(), ca, jl(ja), cb, jl(jb));
     delete (s as any).seed;

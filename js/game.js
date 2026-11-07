@@ -4,6 +4,8 @@ import { buildWorld, blocked, T, MW, MH, BUILDINGS, STATUES } from './world.js';
 import { openArena, statueSprite } from './arenaui.js';
 import { openWorldMap } from './worldmap.js';
 import { openLair } from './raidui.js';
+import { openKageTower } from './kageui.js';
+import { openWarCamp } from './warui.js';
 import { ninjaSprite, emblem, VILLAGES } from './sprites.js';
 import { openMissionBoard, openTraining, runBattle, openExamHall } from './battle.js';
 import { setupDuels } from './duelui.js';
@@ -204,12 +206,25 @@ export async function enterWorld(app, char, hooks) {
     root.querySelector('#ptsBadge').hidden = !(char.energy + Math.floor((Date.now() - (char._loadedAt || Date.now())) / 1000 / (char.energy_regen_sec || 9)) >= (char.energy_max || 100));
     me.level = char.level; me.rank = char.rank;
   }
-  if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char, exam: () => startExam(), hall: () => openExamHall(root, char, startExam, startLesson), map: () => worldMap(), lesson: (id) => startLesson(id), click: (x, y) => { const sp = spotAt(x, y); sp ? goTo(sp.x, sp.y, sp) : goTo(x, y); }, me };
+  if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char, exam: () => startExam(), hall: () => openExamHall(root, char, startExam, startLesson), map: (f) => worldMap(f), tower: (t) => kageTower(t), war: (id) => warAt(id), lesson: (id) => startLesson(id), click: (x, y) => { const sp = spotAt(x, y); sp ? goTo(sp.x, sp.y, sp) : goTo(x, y); }, me };
   function startExam() { startBattle(null, () => net.startExam()); }
   function startLesson(id) { startBattle(null, () => net.startLesson(id)); }
-  function worldMap() {
+  let warReturn = null; // reopen the war camp after a war duel
+  function warCamp(war, name) {
+    path = []; dest = null; warReturn = { war, name };
+    openWarCamp(root, char, war, name, { challenge: (p, warId) => duels.challenge(p, 'war', warId), onClose: () => { warReturn = null; worldMap(war.territory); } });
+  }
+  async function warAt(territoryId) {
+    try { const v = await net.villageInfo(); const t = v.territories.find((x) => x.id === territoryId); if (t && t.war) warCamp(t.war, t.name); else worldMap(territoryId); } catch { worldMap(territoryId); }
+  }
+  function kageTower(tab) {
+    path = []; dest = null;
+    openKageTower(root, char, { challengeKage: (k) => duels.challenge({ id: k.id, name: k.name }, 'kage'), openWar: warAt }, tab);
+  }
+  function worldMap(focus) {
     path = []; dest = null;
     openWorldMap(root, char, {
+      focus, onWar: (war, name) => warCamp(war, name),
       onQuest: (line) => startBattle(null, () => net.startQuest(line), (r) => { if (!r || !r.train) worldMap(); }),
       onLair: (line) => openLair(root, char, line, async (r) => {
         try { Object.assign(char, await net.loadCharacter(), { _loadedAt: Date.now() }); refreshPlate(); } catch {}
@@ -225,6 +240,8 @@ export async function enterWorld(app, char, hooks) {
     onEnd: async (r, d) => {
       try { Object.assign(char, await net.loadCharacter(), { _loadedAt: Date.now() }); } catch {}
       refreshPlate(); loadChampions();
+      if (d && d.kind === 'war' && warReturn) setTimeout(() => warCamp(warReturn.war, warReturn.name), 300);
+      if (r && r.status === 'won' && d && d.kind === 'kage' && d.a === char.user_id) { const m = { id: me.id, name: me.name, village: me.village, text: 'is the new Kage! 👑', ch: 'village' }; room?.send('chat', m); addMsg(m); }
       if (r && r.status === 'won') { const foe = d.a === char.user_id ? d.b_name : d.a_name; const m = { id: me.id, name: me.name, village: me.village, text: `won a duel against ${foe}! ⚔️`, ch: 'village' }; room?.send('chat', m); addMsg(m); }
     },
   });
@@ -284,6 +301,7 @@ export async function enterWorld(app, char, hooks) {
     if (s.id === 'academy') { openExamHall(root, char, startExam, startLesson); return; }
     if (s.id === 'arena') { openArena(root, char); return; }
     if (s.id === 'gate') { worldMap(); return; }
+    if (s.id === 'kage') { kageTower(); return; }
     const [title, text] = SPOT_TEXT[s.id] || [s.name, ''];
     showModal(`<h3>${title}</h3><p>${text}</p>`);
   }

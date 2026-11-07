@@ -18,7 +18,7 @@ export const BUILDINGS = [
   { id: 'shop', name: 'Tool Shop', x: 7, y: 12, w: 8, h: 5 },
   { id: 'arena', name: 'Arena', x: 6, y: 24, w: 10, h: 7, arena: true },
   { id: 'house', x: 6, y: 4, w: 5, h: 4 }, { id: 'house', x: 12, y: 4, w: 5, h: 4 },
-  { id: 'house', x: 32, y: 4, w: 5, h: 4 }, { id: 'house', x: 39, y: 4, w: 5, h: 4 },
+  { id: 'house', x: 32, y: 4, w: 5, h: 4 }, { id: 'kage', name: 'Kage Tower', x: 38, y: 4, w: 8, h: 6, big: true, tower: true },
   { id: 'house', x: 32, y: 24, w: 5, h: 4 }, { id: 'house', x: 39, y: 22, w: 5, h: 4 },
 ];
 
@@ -228,7 +228,7 @@ function propSprite(p, th, village) {
 }
 
 function buildingSprite(b, th, village) {
-  const W = b.w * T, H = b.h * T, roofH = b.big ? 40 : 30;
+  const W = b.w * T, H = b.h * T, roofH = b.tower ? 66 : b.big ? 40 : 30;
   const [c, x] = canvas(W + 8, H + roofH);
   const R = (col, a, bb, w, h) => { x.fillStyle = col; x.fillRect(a, bb, w, h); };
   const ox = 4, base = roofH + H; // wall bottom at y=base
@@ -254,14 +254,24 @@ function buildingSprite(b, th, village) {
     R('#5a3a22', ox + W / 2 - dw / 2 - 2, base - dh - 2, dw + 4, dh + 2); R('#8a5a32', ox + W / 2 - dw / 2, base - dh, dw, dh);
     R('#c43c32', ox + W / 2 - dw / 2, base - dh, dw, 5); R('#5a3a22', ox + W / 2 - 1, base - dh + 5, 2, dh - 5);
     // roof
-    const roofCol = b.id === 'house' ? th.roof : b.id === 'academy' ? '#c43c32' : th.roof;
-    for (let i = 0; i < roofH - 6; i++) {
-      const inset = Math.max(0, roofH - 6 - i - (roofH - 6)) + Math.round((roofH - 6 - i) * 0.35);
+    const roofCol = b.id === 'house' ? th.roof : b.id === 'academy' ? '#c43c32' : b.id === 'kage' ? '#6a3a8a' : th.roof;
+    const r0 = b.tower ? 30 : 0; // towers keep the top 30px for an upper storey
+    for (let i = r0; i < roofH - 6; i++) {
+      const inset = Math.round((roofH - 6 - i) * 0.35) - (b.tower ? 10 : 0);
       R(i % 4 === 0 ? th.roofD : roofCol, ox - 4 + inset, i + 4, W + 8 - inset * 2, 1);
     }
     R(th.roofD, ox - 6, roofH - 4, W + 12, 4);
     R('#2b1a0e', ox - 6, roofH, W + 12, 1);
-    if (b.big) { R('#f2c14a', ox + W / 2 - 6, 6, 12, 4); R(th.roofD, ox + W / 2 - 2, 0, 4, 6); }
+    if (b.big && !b.tower) { R('#f2c14a', ox + W / 2 - 6, 6, 12, 4); R(th.roofD, ox + W / 2 - 2, 0, 4, 6); }
+    if (b.tower) { // upper storey + small pagoda roof + gold finial, and the village colour band
+      const cx = ox + W / 2;
+      R('#f2e2c4', cx - 26, 20, 52, 16); R('#7a4a2a', cx - 26, 20, 3, 16); R('#7a4a2a', cx + 23, 20, 3, 16); R('#7a4a2a', cx - 26, 20, 52, 2);
+      for (const dx of [-16, -4, 8]) { R('#5a3a22', cx + dx, 24, 8, 8); R('#ffd36b', cx + dx + 1, 25, 6, 6); }
+      for (let i = 0; i < 16; i++) { const w = 36 + i * 3; R(i % 4 === 0 ? th.roofD : roofCol, cx - w / 2, 4 + i, w, 1); }
+      R(th.roofD, cx - 32, 19, 64, 2); R('#2b1a0e', cx - 32, 21, 64, 1);
+      R('#f2c14a', cx - 1, 0, 2, 5); R('#f2c14a', cx - 3, 3, 6, 2);
+      R(th.accent, ox + 2, roofH + 30, W - 4, 3);
+    }
     // sign board
     if (b.name) { R('#4e2c12', ox + W / 2 - 22, roofH + 4, 44, 9); R('#f7e8c8', ox + W / 2 - 21, roofH + 5, 42, 7); R('#8a2a22', ox + W / 2 - 16, roofH + 7, 32, 3); }
     // clan banners for houses

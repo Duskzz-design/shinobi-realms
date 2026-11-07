@@ -386,3 +386,64 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .hx-allies .ally small { color: var(--wood); font-weight: 700; } .hx-allies .gbar { position: relative; height: 12px; margin: 3px 1px 1px; }
 .hx-allies .gbar span { position: absolute; inset: 0; font-size: 10px; font-weight: 700; line-height: 12px; padding-left: 4px; }
 .enr { color: var(--red); font-weight: 700; } .ttl { color: var(--wood); font-weight: 700; font-size: 14px; margin: 2px 0; }
+
+/* ---------- piece 7: Kage Tower, village wars ---------- */
+.board.kage, .board.warcamp { text-align: left; }
+.board.kage h3, .board.warcamp h3 { text-align: center; }
+.board h4 { font-family: var(--title); font-size: 10px; margin: 14px 2px 6px; color: var(--ink2); }
+.kg-board { display: flex; flex-direction: column; gap: 6px; margin: 6px 3px; }
+.kg-v { display: grid; grid-template-columns: 30px 18px 1fr auto auto; gap: 8px; align-items: center; background: #fffaf0; box-shadow: 0 0 0 3px var(--vd); border-left: 8px solid var(--vc); padding: 8px 10px; }
+.kg-v.me { background: #fff1b8; }
+.kg-v .pl { font-size: 22px; text-align: center; } .kg-v .em canvas, .kg-all i canvas { display: block; }
+.kg-v .nm { display: flex; flex-direction: column; min-width: 0; } .kg-v .nm b { font-size: 17px; } .kg-v .nm small, .kg-v .vp small, .kg-v .tr small { font-size: 12px; color: var(--ink2); }
+.kg-v .vp, .kg-v .tr { display: flex; flex-direction: column; align-items: flex-end; } .kg-v .vp b { font-family: var(--title); font-size: 12px; color: var(--vd); }
+.kg-v .tr { font-size: 14px; min-width: 52px; }
+.kg-mine { text-align: center; margin: 10px 0 6px; }
+.kg-pts, .kg-rules { background: #fff8e6; box-shadow: 0 0 0 3px var(--gold); padding: 8px 10px; margin: 8px 3px; display: flex; flex-wrap: wrap; gap: 5px; font-size: 14px; }
+.kg-pts b:first-child, .kg-rules > b { width: 100%; font-size: 15px; }
+.kg-pts span { background: #24160e; color: #fff4dc; padding: 2px 7px; } .kg-pts span b { color: #ffe07a; } .kg-pts span.hot { background: var(--red); }
+.kg-rules { flex-direction: column; gap: 3px; }
+.kg-all { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; } .kg-all span { display: flex; align-items: center; gap: 5px; background: #fffaf0; box-shadow: 0 0 0 2px #d8c49a; padding: 3px 8px; }
+.kg-seat { background: #fffaf0; box-shadow: 0 0 0 3px var(--ink); padding: 10px; margin: 6px 3px 12px; text-align: center; }
+.kg-seat .btn { margin-top: 6px; }
+.kg-kage { display: flex; gap: 12px; align-items: center; justify-content: center; text-align: left; }
+.kg-kage canvas { width: 54px; height: 78px; } .kg-kage h4 { margin: 0; font-size: 12px; color: var(--ink); } .kg-kage p { margin: 2px 0; }
+.kg-kage .on { color: var(--green); font-weight: 700; } .kg-kage .off { color: var(--ink2); }
+.kg-you { font-size: 16px; }
+.kg-tre { display: flex; justify-content: space-between; align-items: center; background: #24160e; color: #fff4dc; padding: 8px 12px; margin: 6px 3px; font-size: 16px; }
+.kg-tre b { font-family: var(--title); font-size: 14px; color: #ffe07a; }
+.kg-ups, .kg-terr { display: flex; flex-direction: column; gap: 6px; margin: 6px 3px; }
+.kg-up, .kg-t { display: grid; grid-template-columns: 30px 1fr auto auto; gap: 8px; align-items: center; background: #fffaf0; box-shadow: 0 0 0 2px #d8c49a; padding: 6px 8px; }
+.kg-t { grid-template-columns: 30px 1fr auto; }
+.kg-up .ic, .kg-t .ic { font-size: 22px; text-align: center; }
+.kg-up .nm, .kg-t .nm { display: flex; flex-direction: column; min-width: 0; } .kg-up small, .kg-t small { font-size: 13px; color: var(--ink2); }
+.kg-up .lv { display: flex; gap: 2px; } .kg-up .lv i { width: 8px; height: 14px; background: #e6d2a8; box-shadow: 0 0 0 1px var(--ink2); } .kg-up .lv i.on { background: var(--gold); }
+.kg-up .max { font-family: var(--title); font-size: 9px; color: var(--green); } .kg-up .cost { font-size: 12px; color: var(--ink2); white-space: nowrap; }
+.kg-t .war { font-size: 13px; color: var(--red); font-weight: 700; } .kg-t .cd { font-size: 13px; color: #2f7fc4; } .kg-t .open { font-size: 13px; color: var(--green); }
+.kg-top { display: flex; flex-direction: column; gap: 3px; margin: 4px 3px; }
+.kg-top div { display: grid; grid-template-columns: 26px 1fr auto; background: #fffaf0; padding: 3px 8px; box-shadow: 0 0 0 1px #d8c49a; }
+.kg-top span { font-family: var(--title); font-size: 10px; color: var(--ink2); align-self: center; } .kg-top em { font-style: normal; font-weight: 700; color: var(--wood); }
+.kg-recent { font-size: 14px; display: flex; flex-direction: column; gap: 3px; margin: 4px 3px; }
+@media (max-width: 480px) {
+  .kg-v { grid-template-columns: 26px 16px 1fr auto; } .kg-v .tr { display: none; }
+  .kg-up { grid-template-columns: 26px 1fr auto; } .kg-up .lv { grid-column: 2; grid-row: 2; }
+  .kg-t { grid-template-columns: 26px 1fr; } .kg-t .btn { grid-column: 1 / -1; }
+}
+/* war camp */
+.wc-score { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: stretch; margin: 6px 3px; }
+.wc-side { display: flex; flex-direction: column; align-items: center; background: #fffaf0; box-shadow: 0 0 0 3px var(--vc); border-top: 8px solid var(--vc); padding: 6px; }
+.wc-side small { font-size: 12px; color: var(--ink2); } .wc-side b { font-size: 17px; } .wc-side em { font-style: normal; font-family: var(--title); font-size: 20px; margin-top: 4px; }
+.wc-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; } .wc-mid b { font-family: var(--title); font-size: 14px; } .wc-mid small { font-size: 12px; color: var(--ink2); white-space: nowrap; }
+.wc-bar { display: flex; height: 10px; margin: 8px 3px; box-shadow: 0 0 0 2px var(--ink); } .wc-bar i { display: block; height: 100%; }
+.wc-note { background: #fff8e6; box-shadow: 0 0 0 3px var(--gold); padding: 8px 10px; margin: 10px 3px; } .wc-note.hold { background: #e2f6d8; box-shadow: 0 0 0 3px var(--green); }
+.wc-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } .wc-cols h4 { margin-top: 6px; }
+.wc-p { display: grid; grid-template-columns: 22px 1fr auto; gap: 6px; align-items: center; background: #fffaf0; box-shadow: 0 0 0 2px #d8c49a; padding: 4px 6px; margin: 4px 2px; }
+.wc-p.me { background: #fff1b8; } .wc-p canvas { width: 18px; height: 26px; } .wc-p .nm { display: flex; flex-direction: column; min-width: 0; } .wc-p .nm b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .wc-p small { font-size: 12px; }
+@media (max-width: 480px) { .wc-cols { grid-template-columns: 1fr; } }
+/* territories on the world map */
+.wm-pin .ic { position: relative; } .wm-pin .flag { position: absolute; right: -6px; top: -4px; width: 9px; height: 7px; box-shadow: 0 0 0 1px #24160e; }
+.wm-pin.war .lb { background: #c43c32; } .wm-pin.war .ic { animation: pinpulse 1s steps(3) infinite alternate; }
+.wm-terr { background: #fffaf0; box-shadow: 0 0 0 3px var(--ink); border-left: 8px solid var(--vc); padding: 8px 10px; margin: 10px 3px; display: flex; flex-direction: column; gap: 4px; }
+.wm-terr small { color: var(--ink2); } .wm-terr .wm-war { color: var(--red); } .wm-terr .btn { align-self: flex-start; }
+
+.board.kage > [data-x], .board.warcamp > [data-x] { display: block; margin: 12px auto 0; }
