@@ -339,3 +339,29 @@ export async function buyItem(item, qty = 1) {
   }
   const { data, error } = await sb.rpc('buy_item', { p_item: item, p_qty: qty }); if (error) throw rpcErr(error); return data;
 }
+
+// ---------- equipment and ANBU ----------
+const mockGear = async (fn, a) => {
+  const G = await import('./engine.js'), c = mockChar(); c.gear = c.gear || {}; c.owned_gear = c.owned_gear || [];
+  if (fn === 'buy') { const g = G.GEAR[a]; if (c.owned_gear.includes(a)) throw new Error('You already own that.'); if (c.ryo < g.price) throw new Error('Not enough ryo.'); c.ryo -= g.price; c.owned_gear.push(a); }
+  if (fn === 'equip') { if (a.id) c.gear[a.slot] = a.id; else delete c.gear[a.slot]; }
+  saveMock(c); return loadCharacter();
+};
+export async function buyGear(id) {
+  if (OFFLINE) return mockGear('buy', id);
+  const { data, error } = await sb.rpc('buy_gear', { p_id: id }); if (error) throw rpcErr(error); return data;
+}
+export async function equipGear(slot, id) {
+  if (OFFLINE) return mockGear('equip', { slot, id });
+  const { data, error } = await sb.rpc('equip_gear', { p_slot: slot, p_id: id || null }); if (error) throw rpcErr(error); return data;
+}
+const arpc = async (fn, args = {}) => {
+  if (OFFLINE) { const o = await import('./offline.js'); return o.mockAnbu(mockChar(), fn, args); }
+  const { data, error } = await sb.rpc(fn, args); if (error) throw rpcErr(error); return data;
+};
+export const anbuInfo = () => arpc('anbu_info');
+export const anbuCreate = (name, leader) => arpc('anbu_create', { p_name: name, p_leader: leader });
+export const anbuApply = (squad) => arpc('anbu_apply', { p_squad: squad });
+export const anbuDecide = (squad, user, accept) => arpc('anbu_decide', { p_squad: squad, p_user: user, p_accept: accept });
+export const anbuLeave = (user = null) => arpc('anbu_leave', { p_user: user });
+export const anbuDisband = (squad) => arpc('anbu_disband', { p_squad: squad });

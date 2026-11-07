@@ -131,7 +131,7 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
       else events.push(...G.act(s, late, { t: 'end' }));
     } else {
       const me = sideOf(d), a = body.action || {};
-      const action = a.t === 'move' ? { t: 'move', to: [a.to[0] | 0, a.to[1] | 0] } : a.t === 'use' ? { t: 'use', move: String(a.move), at: a.at ? [a.at[0] | 0, a.at[1] | 0] : null } : a.t === 'item' ? { t: 'item', item: String(a.item) } : a.t === 'flee' ? { t: 'flee' } : { t: 'end' };
+      const action = a.t === 'move' ? { t: 'move', to: [a.to[0] | 0, a.to[1] | 0] } : a.t === 'use' ? { t: 'use', move: String(a.move), at: a.at ? [a.at[0] | 0, a.at[1] | 0] : null } : a.t === 'item' ? { t: 'item', item: String(a.item), at: a.at ? [a.at[0] | 0, a.at[1] | 0] : null } : a.t === 'flee' ? { t: 'flee' } : { t: 'end' };
       if (action.t !== 'flee' && s.side !== me) throw new Error('Wait for your turn.');
       if (action.t === 'flee') { s.side = me; reason = 'forfeit'; }
       const before = s.side;

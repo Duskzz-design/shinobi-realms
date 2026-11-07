@@ -122,10 +122,11 @@ export function openKageTower(root, char, hooks = {}, startTab = 'wars') {
   function render() {
     if (!data) { body.innerHTML = '<div class="spinner"></div>'; return; }
     if (data.error) { body.innerHTML = `<p class="sub">${esc(data.error)}</p>`; return; }
-    const tabs = [['wars', '🏆 Village Wars'], ['village', `👑 ${VILLAGES[data.mine].short}`], ['room', '⚔️ War Room']];
+    const tabs = [['wars', '🏆 Wars'], ['village', `👑 ${VILLAGES[data.mine].short}`], ['room', '⚔️ War Room'], ['anbu', '🎭 ANBU']];
     body.innerHTML = `<div class="ttabs">${tabs.map(([k, l]) => `<button data-t="${k}" class="${k === tab ? 'on' : ''}">${l}</button>`).join('')}</div>
-      ${tab === 'wars' ? boardTab() : tab === 'village' ? villageTab() : warTab()}`;
-    body.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => { tab = b.dataset.t; render(); }));
+      ${tab === 'wars' ? boardTab() : tab === 'village' ? villageTab() : tab === 'room' ? warTab() : anbuTab()}`;
+    body.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => { tab = b.dataset.t; if (tab === 'anbu' && !anbu) loadAnbu(); render(); }));
+    if (tab === 'anbu') wireAnbu();
     body.querySelectorAll('[data-em]').forEach((s) => s.appendChild(emblem(s.dataset.em, 16)));
     body.querySelectorAll('canvas[data-look]').forEach((cv) => { const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; try { c.drawImage(ninjaSprite(JSON.parse(cv.dataset.look), 0, 0), 0, 0, 18, 26, 0, 0, 54, 78); } catch {} });
     const q = (s) => body.querySelector(s);
@@ -139,12 +140,51 @@ export function openKageTower(root, char, hooks = {}, startTab = 'wars') {
     }));
     body.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => { close(); hooks.openWar && hooks.openWar(b.dataset.go); }));
   }
+  // ---------- ANBU squads ----------
+  let anbu = null, newSquad = false;
+  async function loadAnbu() { try { anbu = await net.anbuInfo(); } catch (e) { anbu = { error: e.message }; } render(); }
+  async function anbuAct(fn, ok) { if (busy) return; busy = true; try { anbu = await fn(); ok && toast(ok, 'ok'); } catch (e) { toast(e.message); } busy = false; newSquad = false; render(); }
+  function anbuTab() {
+    if (!anbu) return '<div class="spinner"></div>';
+    if (anbu.error) return `<p class="sub">${esc(anbu.error)}</p>`;
+    const elig = ['Chunin', 'Jonin'].includes(anbu.rank);
+    const intro = `<div class="kg-rules"><b>🎭 The ANBU</b><span>Elite squads of the village. The Kage creates up to 3 squads and names a leader (Chunin or Jonin).</span>
+      <span>Chunin and Jonin apply; the squad leader accepts or declines. Up to 6 per squad.</span><span>Members can buy and wear the ANBU blade and uniform at the Tool Shop. Leave the ANBU and that gear comes off.</span></div>`;
+    const squads = anbu.squads.map((sq) => {
+      const lead = sq.leader === anbu.me, mine = anbu.my_squad === sq.id, canManage = lead || anbu.is_kage;
+      const members = sq.members.map((m) => `<div class="an-m"><canvas width="18" height="26" data-look='${esc(JSON.stringify(m.look || {}))}'></canvas><span><b>${esc(m.name)}${m.id === sq.leader ? ' <em class="tag anbu">Leader</em>' : ''}</b><small>${esc(m.rank)} · Lv ${m.level}</small></span>
+        ${canManage && m.id !== sq.leader ? `<button class="btn small ghost" data-kick="${m.id}">Remove</button>` : ''}${m.id === anbu.me && m.id !== sq.leader ? '<button class="btn small ghost" data-leave>Leave</button>' : ''}</div>`).join('');
+      const apps = canManage && sq.applications.length ? `<h4>Applications</h4>${sq.applications.map((a) => `<div class="an-m"><span><b>${esc(a.name)}</b><small>${esc(a.rank)} · Lv ${a.level}</small></span>
+        <button class="btn small primary" data-acc="${sq.id}|${a.id}">Accept</button><button class="btn small ghost" data-dec="${sq.id}|${a.id}">Decline</button></div>`).join('')}` : '';
+      let join = '';
+      if (!anbu.my_squad && elig) join = sq.applied ? '<p class="sub">⏳ You applied. Waiting for the leader.</p>' : sq.members.length >= 6 ? '<p class="sub">Squad full.</p>' : `<button class="btn small primary" data-apply="${sq.id}">Apply to join</button>`;
+      return `<div class="an-sq ${mine ? 'mine' : ''}"><div class="an-hd"><b>🎭 ${esc(sq.name)}</b><small>${sq.members.length}/6</small>${anbu.is_kage ? `<button class="btn small ghost" data-disband="${sq.id}">Disband</button>` : ''}</div>${members}${apps}${join}</div>`;
+    }).join('') || '<p class="sub">No ANBU squads yet.</p>';
+    const create = anbu.is_kage && anbu.squads.length < 3 ? (newSquad
+      ? `<div class="an-new"><h4>New squad</h4><input id="anName" maxlength="24" placeholder="Squad name, e.g. Night Owls"><select id="anLead">${anbu.candidates.map((c) => `<option value="${c.id}">${esc(c.name)} (${esc(c.rank)} · Lv ${c.level})</option>`).join('')}</select>
+          <div class="row"><button class="btn ghost" data-cancel>Cancel</button><button class="btn primary" data-create ${anbu.candidates.length ? '' : 'disabled'}>Create squad</button></div></div>`
+      : '<button class="btn primary" data-new>➕ Create an ANBU squad</button>') : '';
+    return `${intro}${!elig && !anbu.my_squad ? '<p class="sub">Only Chunin and Jonin can join the ANBU.</p>' : ''}<div class="an-list">${squads}</div>${create}`;
+  }
+  function wireAnbu() {
+    const q = (x) => body.querySelector(x);
+    body.querySelectorAll('canvas[data-look]').forEach((cv) => { const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; try { c.drawImage(ninjaSprite(JSON.parse(cv.dataset.look), 0, 0), 0, 0); } catch {} });
+    body.querySelectorAll('[data-apply]').forEach((b) => (b.onclick = () => anbuAct(() => net.anbuApply(b.dataset.apply), 'Application sent!')));
+    body.querySelectorAll('[data-acc]').forEach((b) => (b.onclick = () => { const [sq, u] = b.dataset.acc.split('|'); anbuAct(() => net.anbuDecide(sq, u, true), 'Welcome to the squad!'); }));
+    body.querySelectorAll('[data-dec]').forEach((b) => (b.onclick = () => { const [sq, u] = b.dataset.dec.split('|'); anbuAct(() => net.anbuDecide(sq, u, false)); }));
+    body.querySelectorAll('[data-kick]').forEach((b) => (b.onclick = () => anbuAct(() => net.anbuLeave(b.dataset.kick), 'Removed from the squad.')));
+    body.querySelectorAll('[data-leave]').forEach((b) => (b.onclick = () => confirmBox('Leave the ANBU?', 'Your ANBU gear will come off and can\'t be worn again until you rejoin a squad.', 'Leave', () => anbuAct(() => net.anbuLeave(), 'You left the ANBU.'))));
+    body.querySelectorAll('[data-disband]').forEach((b) => (b.onclick = () => confirmBox('Disband this squad?', 'All members leave the ANBU and their ANBU gear comes off.', 'Disband', () => anbuAct(() => net.anbuDisband(b.dataset.disband), 'Squad disbanded.'))));
+    q('[data-new]') && (q('[data-new]').onclick = () => { newSquad = true; render(); });
+    q('[data-cancel]') && (q('[data-cancel]').onclick = () => { newSquad = false; render(); });
+    q('[data-create]') && (q('[data-create]').onclick = () => anbuAct(() => net.anbuCreate(q('#anName').value, q('#anLead').value), 'ANBU squad created!'));
+  }
   function confirmBox(title, text, yes, onYes) {
     const c = h(`<div class="ov board-wrap"><div class="scroll board"><h3>${title}</h3><p>${text}</p><div class="row"><button class="btn ghost" data-n>Not yet</button><button class="btn primary" data-y>${yes}</button></div></div></div>`);
     root.appendChild(c);
     c.querySelector('[data-n]').onclick = () => c.remove();
     c.querySelector('[data-y]').onclick = () => { c.remove(); onYes(); };
   }
-  render(); load();
+  render(); load(); if (startTab === 'anbu') loadAnbu();
   return { close };
 }

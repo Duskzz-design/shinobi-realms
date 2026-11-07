@@ -86,6 +86,8 @@ export function battleView(root, char, cfg) {
     if (al) al.innerHTML = allies().map((u) => `<div class="ally ${u.hp <= 0 ? 'down' : ''} ${eng.side === u.id ? 'now' : ''}"><b>${esc(u.name)}</b>${u.elements.map(elChip).join('')}
       <div class="gbar hp ${u.hp / u.hpmax < 0.3 ? 'low' : ''}"><i style="width:${100 * u.hp / u.hpmax}%"></i><span>${u.hp <= 0 ? 'Down' : `❤️ ${u.hp}/${u.hpmax}`}</span></div>${eng.side === u.id ? '<small>Acting…</small>' : ''}</div>`).join('');
   }
+  // the selected action: a technique, or a thrown item written as 'it:<id>'
+  const defOf = (id) => { if (!id) return null; if (id.startsWith('it:')) { const it = G.ITEMS[id.slice(3)]; return it && { ...it, style: 'bukijutsu', target: it.aoe ? 'hex' : 'enemy', aoe: it.aoe || 0 }; } return G.MOVES[id]; };
   function moveBtn(id) {
     const m = G.MOVES[id], p = me(), learned = p.moves.includes(id), jl = p.jl[id] || 1;
     const afford = learned && p.ap >= m.ap && p.st >= m.stamina && p.ch >= m.chakra;
@@ -109,7 +111,12 @@ export function battleView(root, char, cfg) {
     const its = el.querySelector('.hx-items');
     if (its) {
       its.innerHTML = Object.entries(p.items || {}).filter(([, n]) => n > 0).map(([id, n]) => { const it = G.ITEMS[id]; return it ? `<button class="btn small ghost hx-it" data-i="${id}" title="${esc(it.name)}: ${esc(it.desc)}" ${!myTurn || p.ap < it.ap ? 'disabled' : ''}>${it.icon}<b>×${n}</b> <small>${it.ap} AP</small></button>` : ''; }).join('');
-      its.querySelectorAll('[data-i]').forEach((b) => (b.onclick = () => { if (busy || eng.side !== MY) return; sel = null; send({ t: 'item', item: b.dataset.i }); }));
+      its.querySelectorAll('[data-i]').forEach((b) => (b.onclick = () => {
+        if (busy || eng.side !== MY) return; const it = G.ITEMS[b.dataset.i];
+        if (it.power) { sel = sel === 'it:' + b.dataset.i ? null : 'it:' + b.dataset.i; panel(); return say(sel ? `<b>${it.icon} ${esc(it.name)}</b><br><small>${esc(it.desc)}</small><br><b>Tap ${it.aoe ? 'a hex in the orange area' : 'the enemy'}</b> to throw.` : ''); }
+        sel = null; send({ t: 'item', item: b.dataset.i });
+      }));
+      its.querySelectorAll('[data-i]').forEach((b) => b.classList.toggle('sel', sel === 'it:' + b.dataset.i));
     }
     cards();
   }
@@ -153,7 +160,11 @@ export function battleView(root, char, cfg) {
   cv.addEventListener('click', (ev) => {
     const hex = hexAt(...toCanvas(ev)); if (!hex || busy || eng.side !== MY) return;
     const p = me(), fAt = foes().find((f) => hex[0] === f.c && hex[1] === f.r), onFoe = !!fAt, onMe = hex[0] === p.c && hex[1] === p.r;
-    if (sel) {
+    if (sel && sel.startsWith('it:')) {
+      const m = defOf(sel), item = sel.slice(3);
+      if ((m.target === 'enemy' && onFoe) || m.target === 'hex') { if (G.canHitFrom(eng, m, [p.c, p.r], hex)) { sel = null; return send({ t: 'item', item, at: hex }); } return say('<span class="bad">Out of range or blocked.</span> Move closer first.'); }
+    }
+    if (sel && !sel.startsWith('it:')) {
       const m = G.MOVES[sel];
       if (m.target === 'self' || m.range[1] === 0) { if (onMe || (m.range[1] === 0 && G.dist(hex, [p.c, p.r]) <= m.aoe)) return send({ t: 'use', move: sel, at: null }); }
       else if (m.target === 'enemy' && onFoe) { if (G.canHitFrom(eng, m, [p.c, p.r], hex)) return send({ t: 'use', move: sel, at: hex }); return moveInfo(sel); }
@@ -207,7 +218,8 @@ export function battleView(root, char, cfg) {
         say(ev.who === MY ? 'You move.' : `${esc(name)} moves.`);
         for (const [c, r] of ev.path) { unit(ev.who).c = c; unit(ev.who).r = r; fx.anim[ev.who] = t; await pause(110); }
       } else if (ev.t === 'use') {
-        const u = unit(ev.who), m = u.npc ? G.ENEMY_MOVES[ev.move] : G.MOVES[ev.move], tgt = ev.at ? { c: ev.at[0], r: ev.at[1] } : u;
+        const u = unit(ev.who), m = u.npc ? G.ENEMY_MOVES[ev.move] : defOf(ev.move), tgt = ev.at ? { c: ev.at[0], r: ev.at[1] } : u;
+        if (ev.item && u.items && u.items[ev.item] > 0) u.items[ev.item]--;
         say(`${ev.who === MY ? 'You use' : esc(name) + ' uses'} <b>${esc(ev.name)}</b>!`);
         const col = ev.element ? G.ELEMENT_INFO[ev.element].color : STYLE_INFO[ev.style || 'taijutsu']?.color || '#c9ccd4';
         if (m.target === 'self') { fx.flash = { at: [u.c, u.r], r: 0, col, life: 18 }; await pause(380); }
@@ -269,7 +281,7 @@ export function battleView(root, char, cfg) {
     ctx.fillStyle = theme[2]; ctx.fillRect(0, 0, W, H);
     const p = me(), e = foe(), myTurn = eng.side === MY && !busy && p.hp > 0;
     const reach = myTurn && !sel ? G.reachable(eng, p, p.ap) : null;
-    const m = sel ? G.MOVES[sel] : null;
+    const m = defOf(sel);
     let aoe = null;
     if (m && myTurn) {
       if (m.range[1] === 0) aoe = { at: [p.c, p.r], r: m.aoe };
@@ -445,7 +457,7 @@ export function runRaid(root, char, raid, bossName, onEnd) {
       const won = res.status === 'won', r = (res.result || {}).rewards || {};
       const rw = !won ? '<p>The team was defeated. Train, regroup and try again. Defeat costs nothing.</p>'
         : r.capped ? '<p class="sub">You have already claimed this boss\'s rewards 3 times today. Thanks for helping your team!</p>'
-        : `<p class="big">+${r.xp || 0} XP &nbsp; +${r.ryo || 0} ryo</p>${r.scroll ? `<div class="blood"><div class="bico">📜</div><h4>Rare drop: ${esc(G.MOVES[r.scroll]?.name || r.scroll)} scroll!</h4><p>You learned a boss-only technique. Find it in your Bukijutsu tab.</p></div>` : ''}
+        : `<p class="big">+${r.xp || 0} XP &nbsp; +${r.ryo || 0} ryo</p>${r.scroll ? `<div class="blood"><div class="bico">📜</div><h4>Rare drop: ${esc(G.MOVES[r.scroll]?.name || r.scroll)} scroll!</h4><p>You learned a boss-only technique. Find it in your Bukijutsu tab.</p></div>` : ''}${r.gear && G.GEAR[r.gear] ? `<div class="blood"><div class="bico">${G.GEAR[r.gear].icon}</div><h4>Rare drop: ${esc(G.GEAR[r.gear].name)}!</h4><p>${esc(G.GEAR[r.gear].note || '')}. Equip it from the menu: 🎽 Equipment.</p></div>` : ''}
            ${r.title ? `<div class="blood"><div class="bico">🏆</div><h4>New title: "${esc(r.title)}"</h4><p>It now shows under your name.</p></div>` : ''}${r.leveled ? `<p class="lvl">⬆ Level up! You are now level ${r.level}.</p>` : ''}
            <p class="sub">Rewarded wins left today for this boss: ${r.claims_left ?? 0}</p>`;
       const box = h(`<div class="b-result"><div class="scroll"><h3 class="${won ? 'win' : 'lose'}">${won ? `${esc(bossName)} is defeated!` : 'Your team fell…'}</h3>${rw}

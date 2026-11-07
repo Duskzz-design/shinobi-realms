@@ -80,6 +80,7 @@ export const MOVES = {
   // Always available
   focus: J({ name: 'Focus', style: 'none', tier: 0, ap: 2, target: 'self', desc: 'Restore stamina and chakra.' }),
   guard: J({ name: 'Guard', style: 'none', tier: 0, ap: 1, target: 'self', effects: [E('def_up', 1)], desc: 'Brace: take less damage until your next turn.' }),
+  slash: J({ name: 'Sword Slash', style: 'bukijutsu', gear: true, tier: 0, ap: 2, stamina: 6, power: 0, crit: 0.1, desc: 'Strike with your equipped sword. Its power depends on the sword.' }),
   // boss scrolls (learned only from boss drops)
   serpentfang: J({ name: 'Serpent Fang', style: 'bukijutsu', scroll: true, tier: 2, ap: 3, stamina: 8, chakra: 6, range: [1, 3], power: 40, crit: 0.2, effects: [E('poison', 3, 0.8), E('armor_break', 2, 0.5)], desc: 'Boss scroll: a coiling strike that poisons and breaks armour.' }),
 };
@@ -89,7 +90,47 @@ export const ITEMS = {
   pill_chakra: { name: 'Chakra Pill', icon: '🔷', ap: 1, price: 100, desc: 'Restore 40% of your chakra and stamina.' },
   smoke: { name: 'Smoke Bomb', icon: '💨', ap: 2, price: 150, desc: 'Confuse every enemy next to you for 2 turns.' },
   antidote: { name: 'Antidote', icon: '🧪', ap: 1, price: 80, desc: 'Cure burning, poison, slow, root and weaken.' },
+  // thrown weapons: aimed like a weapon technique, then used up
+  kunai: { name: 'Kunai', icon: '🔪', ap: 1, price: 40, rank: 0, range: [1, 3], power: 12, acc: 0.95, crit: 0.1, effects: [], desc: 'A thrown blade. Range 1-3.' },
+  shuriken: { name: 'Shuriken', icon: '✴️', ap: 1, price: 30, rank: 0, range: [2, 4], power: 10, acc: 0.95, crit: 0.25, effects: [], desc: 'A throwing star that often lands a critical hit. Range 2-4.' },
+  kunai_x: { name: 'Explosive Kunai', icon: '🧨', ap: 2, price: 160, rank: 2, range: [2, 3], aoe: 1, power: 26, acc: 0.9, crit: 0.05, effects: [E('burn', 2, 0.4)], desc: 'Explodes in an area and may burn. Range 2-3.' },
+  shuriken_w: { name: 'Windmill Shuriken', icon: '🌀', ap: 2, price: 110, rank: 2, range: [2, 5], power: 30, acc: 0.92, crit: 0.15, effects: [E('armor_break', 2, 0.5)], desc: 'A huge spinning star that may break armour. Range 2-5.' },
 };
+// equipment: 1 weapon + head, chest, arms and legs. Bought once and kept.
+const GP = (o) => ({ def: 0, boost: 0, slash: 0, ...o });
+export const GEAR = {
+  tanto: GP({ slot: 'weapon', name: 'Tanto', icon: '🗡️', tier: 'basic', price: 400, boost: 0.1, slash: 20 }),
+  katana: GP({ slot: 'weapon', name: 'Katana', icon: '⚔️', tier: 'adv', price: 2500, boost: 0.2, slash: 40 }),
+  anbu_blade: GP({ slot: 'weapon', name: 'ANBU Blade', icon: '🔱', tier: 'anbu', price: 8000, boost: 0.25, slash: 48 }),
+  cleaver: GP({ slot: 'weapon', name: "Warlord's Cleaver", icon: '🪓', tier: 'boss', boss: 'iron', boost: 0.25, slash: 60, slashFx: [E('stun', 1, 0.25)], note: 'Slash may stun' }),
+  fangblade: GP({ slot: 'weapon', name: 'Venomfang Fang-Blade', icon: '🐍', tier: 'boss', boss: 'serpent', boost: 0.25, slash: 58, slashFx: [E('poison', 3, 0.6)], note: 'Slash may poison' }),
+  thunderclap: GP({ slot: 'weapon', name: 'Thunderclap Blade', icon: '⚡', tier: 'boss', boss: 'shrine', boost: 0.3, slash: 70, slashFx: [E('stun', 1, 0.3)], note: 'Slash may stun' }),
+};
+for (const [set, tier, def, price, label] of [['genin', 'basic', 4, 100, 'Genin'], ['flak', 'adv', 8, 500, 'Flak'], ['anbu', 'anbu', 10, 2000, 'ANBU']])
+  for (const [slot, nm, icon] of [['head', 'Headband', '🎽'], ['chest', 'Vest', '🦺'], ['arms', 'Bracers', '🧤'], ['legs', 'Greaves', '👖']])
+    GEAR[`${set}_${slot}`] = GP({ slot, set, name: `${label} ${nm}`, icon, tier, def, price: slot === 'chest' ? price * 2 : price });
+Object.assign(GEAR, {
+  iron_helm: GP({ slot: 'head', name: 'Iron Helm', icon: '⛑️', tier: 'boss', boss: 'iron', def: 12, stunResist: 0.3, note: 'Shrugs off 30% of stuns' }),
+  scale_bracers: GP({ slot: 'arms', name: 'Scale Bracers', icon: '🐉', tier: 'boss', boss: 'serpent', def: 12, poisonImmune: true, note: 'Immune to poison' }),
+  hollow_plate: GP({ slot: 'chest', name: 'Hollow Breastplate', icon: '🛡️', tier: 'boss', boss: 'shrine', def: 14, lightningResist: 0.15, note: 'Lightning hurts 15% less' }),
+});
+export const GEAR_SETS = { genin: { name: 'Genin Uniform', hp: 0.05 }, flak: { name: 'Flak Uniform', hp: 0.08 }, anbu: { name: 'ANBU Uniform', hp: 0.1, dodge: 0.05 } };
+export const GEAR_SLOTS = ['weapon', 'head', 'chest', 'arms', 'legs'];
+export const BOSS_DROPS = { iron: ['cleaver', 'iron_helm'], serpent: ['fangblade', 'scale_bracers'], shrine: ['thunderclap', 'hollow_plate'] };
+// who may wear a piece: basic for everyone, advanced from Chunin, ANBU for squad members, boss drops for whoever owns them
+export function canWear(id, rankIndex, anbu) { const g = GEAR[id]; if (!g) return false; return g.tier === 'anbu' ? !!anbu : g.tier === 'adv' ? rankIndex >= 2 : true; }
+// combined bonuses of what a character is wearing
+export function gearStats(c) {
+  const eq = c.gear || {}, ri = Math.max(0, RANKS.indexOf(c.rank)), out = { def: 0, hp: 0, dodge: 0, boost: 0, slash: 0, slashFx: [], weapon: null, sets: {} };
+  for (const slot of GEAR_SLOTS) {
+    const id = eq[slot], g = GEAR[id]; if (!g || g.slot !== slot || !canWear(id, ri, c.anbu || c.anbu_squad)) continue;
+    out.def += g.def; if (g.set) out.sets[g.set] = (out.sets[g.set] || 0) + 1;
+    if (slot === 'weapon') Object.assign(out, { weapon: id, boost: g.boost, slash: g.slash, slashFx: g.slashFx || [] });
+    if (g.stunResist) out.stunResist = g.stunResist; if (g.poisonImmune) out.poisonImmune = true; if (g.lightningResist) out.lightningResist = g.lightningResist;
+  }
+  for (const [set, n] of Object.entries(out.sets)) if (n >= 4) { out.hp += GEAR_SETS[set].hp || 0; out.dodge += GEAR_SETS[set].dodge || 0; out.fullSet = set; }
+  return out;
+}
 export const ITEM_SLOTS = 3, ITEM_STACK = 10;
 export const BLOODLINES = {
   verdant: { label: 'Verdant Blood', icon: '🌳', main: 'willpower', sec: 'strength', desc: 'Living wood answers your call.' },
@@ -178,7 +219,7 @@ function mkUnit(id, spec, c, r, team) {
   const u = { id, c, r, team, boss: !!spec.boss, apBase: spec.apBase || 0, uid: spec.uid || null, name: spec.name, look: spec.look || {}, kind: spec.kind || 'ninja', level: spec.level || 1, npc: !!spec.npc,
     stats: spec.stats || {}, elements: spec.elements || (spec.element ? [spec.element] : []), bloodline: spec.bloodline || null,
     moves: spec.moves || [], jl: spec.jl || {}, atk: spec.atk || 0, def: spec.def || 0, ai: spec.ai || 'melee',
-    hpmax: spec.hpmax, stmax: spec.stmax || 0, chmax: spec.chmax || 0, effects: [], ap: 0, items: { ...(spec.items || {}) }, usedItems: {} };
+    hpmax: spec.hpmax, stmax: spec.stmax || 0, chmax: spec.chmax || 0, effects: [], ap: 0, items: { ...(spec.items || {}) }, usedItems: {}, gear: spec.gear || null };
   u.hp = Math.min(u.hpmax, spec.hp ?? u.hpmax); u.st = Math.min(u.stmax, spec.st ?? u.stmax); u.ch = Math.min(u.chmax, spec.ch ?? u.chmax);
   return u;
 }
@@ -247,8 +288,8 @@ function statsFor(u, m) {
   if (m.style === 'bloodline') { const b = BLOODLINES[m.bloodline]; return [u.stats[b.main] || 0, u.stats[b.sec] || 0]; }
   const p = STYLE_STATS[m.style]; return p ? [u.stats[p[0]] || 0, u.stats[p[1]] || 0] : [0, 0];
 }
-export function defenceOf(u) { return u.npc ? u.def : 3 + u.level * 1.5 + (u.stats.strength || 0) * 0.6; }
-export function dodgeOf(u) { return u.npc ? 0.05 : Math.min(0.25, (u.stats.agility || 0) * 0.004); }
+export function defenceOf(u) { return u.npc ? u.def : 3 + u.level * 1.5 + (u.stats.strength || 0) * 0.6 + (u.gear ? u.gear.def : 0); }
+export function dodgeOf(u) { return u.npc ? 0.05 : Math.min(0.3, (u.stats.agility || 0) * 0.004 + (u.gear ? u.gear.dodge : 0)); }
 // expected / rolled damage of move m from u to t
 export function damage(s, u, t, m, roll = true) {
   let base;
@@ -256,6 +297,7 @@ export function damage(s, u, t, m, roll = true) {
   else {
     const [a, b] = statsFor(u, m), jl = u.jl[m.id || m.key] || 1;
     base = m.power * (1 + jl * 0.08) * (1 + (a + b * 0.5) / 40) * (1 + u.level * 0.02) * (roll ? 0.9 + rand(s) * 0.2 : 1);
+    if (m.style === 'bukijutsu' && u.gear && u.gear.boost) base *= 1 + u.gear.boost; // a sword sharpens every weapon technique
   }
   const el = m.element || (u.npc && m === ENEMY_MOVES.elem ? u.elements[0] : null);
   let mult = elementMult(el, t.elements[0]);
@@ -263,11 +305,40 @@ export function damage(s, u, t, m, roll = true) {
   if (hasStatus(u, 'weaken')) mult *= 0.75;
   if (hasStatus(t, 'armor_break')) mult *= 1.25;
   if (hasStatus(t, 'def_up')) mult *= 0.65;
+  if (el === 'lightning' && t.gear && t.gear.lightningResist) mult *= 1 - t.gear.lightningResist;
   return { dmg: Math.max(1, Math.round(base * mult - defenceOf(t) * 0.5)), mult: elementMult(el, t.elements[0]) };
 }
 
 // ---------- actions ----------
 // action: {t:'move', to:[c,r]} | {t:'use', move, at:[c,r]} | {t:'end'} | {t:'flee'}
+// roll every hit of a technique (or thrown weapon) on its targets; returns true if someone went down
+function strike(s, u, m, moveId, targets, e) {
+  let downed = false;
+  for (const foe of targets) {
+    const acc = m.acc + (hasStatus(u, 'focus_up') ? 0.1 : 0) - (hasStatus(u, 'confuse') ? 0.4 : 0) - dodgeOf(foe);
+    const hit = rand(s) < acc;
+    const h = { who: foe.id, hit, dodge: !hit && rand(s) < 0.5 };
+    if (hit) {
+      const critC = (m.crit || 0) + (u.npc ? 0 : (u.stats.agility || 0) * 0.002) + (hasStatus(u, 'focus_up') ? 0.15 : 0);
+      const { dmg, mult } = damage(s, u, foe, m);
+      const crit = rand(s) < critC, d = crit ? Math.round(dmg * 1.6) : dmg;
+      foe.hp = Math.max(0, foe.hp - d); Object.assign(h, { dmg: d, crit, mult });
+      const effs = [...(m.effects || [])]; if (u.npc && moveId === 'elem' && ELEM_RIDER[u.elements[0]]) effs.push(ELEM_RIDER[u.elements[0]]);
+      h.effects = [];
+      for (const x of effs) {
+        if (foe.boss && (x.k === 'stun' || x.k === 'root') && rand(s) < 0.5) continue; // bosses shrug off half of all stuns and roots
+        if (foe.gear && foe.gear.poisonImmune && x.k === 'poison') continue;
+        if (foe.gear && foe.gear.stunResist && x.k === 'stun' && rand(s) < foe.gear.stunResist) continue;
+        const chance = x.chance + (!u.npc && x.chance < 1 ? (u.stats.willpower || 0) * 0.003 : 0);
+        if (rand(s) < chance) { addStatus(foe, x.k, x.turns); h.effects.push(x.k); }
+      }
+      if (foe.boss && !foe.enraged && foe.hp > 0 && foe.hp < foe.hpmax / 2) { foe.enraged = true; addStatus(foe, 'atk_up', 99); h.enrage = true; }
+      if (foe.hp <= 0) downed = true;
+    }
+    e.hits.push(h);
+  }
+  return downed;
+}
 export function act(s, side, a) {
   const ev = [];
   if (s.status !== 'active') throw new Error('This fight is over.');
@@ -283,6 +354,18 @@ export function act(s, side, a) {
     const it = ITEMS[a.item];
     if (!it || !(u.items && u.items[a.item] > 0)) throw new Error('You have none of that item left.');
     if (u.ap < it.ap) throw new Error('Not enough AP.');
+    if (it.power) { // thrown weapon
+      const m = { ...it, id: 'it:' + a.item, style: 'bukijutsu', target: it.aoe ? 'hex' : 'enemy' }, target = a.at;
+      if (!target) throw new Error('Choose a target.');
+      if (!canHitFrom(s, m, [u.c, u.r], target)) throw new Error(inRange(m, [u.c, u.r], target) ? 'A rock is in the way.' : 'Out of range.');
+      const foes = foesOf(s, u), tgt = foes.find((f) => f.c === target[0] && f.r === target[1]);
+      if (!it.aoe && !tgt) throw new Error('No enemy there.');
+      u.ap -= it.ap; u.items[a.item]--; u.usedItems = u.usedItems || {}; u.usedItems[a.item] = (u.usedItems[a.item] || 0) + 1;
+      const e = { t: 'use', who: side, move: 'it:' + a.item, item: a.item, name: it.name, style: 'bukijutsu', element: null, at: target, aoe: it.aoe || 0, hits: [] };
+      ev.push(e);
+      if (strike(s, u, m, m.id, it.aoe ? foes.filter((f) => dist(target, [f.c, f.r]) <= it.aoe) : [tgt], e)) { for (const h of e.hits) if (s.units[h.who].hp <= 0) ev.push({ t: 'down', who: h.who }); checkWipe(s, ev); }
+      return ev;
+    }
     u.ap -= it.ap; u.items[a.item]--; u.usedItems = u.usedItems || {}; u.usedItems[a.item] = (u.usedItems[a.item] || 0) + 1;
     const e = { t: 'item', who: side, item: a.item, name: it.name, hits: [] };
     if (a.item === 'pill_heal') { const h = Math.round(u.hpmax * 0.3); u.hp = Math.min(u.hpmax, u.hp + h); e.heal = h; }
@@ -304,6 +387,7 @@ export function act(s, side, a) {
   if (a.t === 'use') {
     const err = canUse(s, u, a.move); if (err) throw new Error(err);
     const m = { ...moveDef(u, a.move), id: a.move };
+    if (a.move === 'slash') { if (!u.gear || !u.gear.slash) throw new Error('Equip a sword first.'); m.power = u.gear.slash; m.effects = u.gear.slashFx || []; }
     let target = a.at;
     if (m.target === 'self') target = [u.c, u.r];
     if (m.target === 'hex' && m.range[1] === 0) target = [u.c, u.r];
@@ -319,29 +403,7 @@ export function act(s, side, a) {
     if (m.heal) { const h = Math.round(u.hpmax * m.heal); u.hp = Math.min(u.hpmax, u.hp + h); e.heal = h; }
     if (m.target === 'self') { for (const x of m.effects) addStatus(u, x.k, x.turns + 1); e.self = m.effects.map((x) => x.k); }
     else {
-      const targets = m.aoe ? foes.filter((f) => dist(target, [f.c, f.r]) <= m.aoe) : [tgt];
-      let downed = false;
-      for (const foe of targets) {
-        const acc = m.acc + (hasStatus(u, 'focus_up') ? 0.1 : 0) - (hasStatus(u, 'confuse') ? 0.4 : 0) - dodgeOf(foe);
-        const hit = rand(s) < acc;
-        const h = { who: foe.id, hit, dodge: !hit && rand(s) < 0.5 };
-        if (hit) {
-          const critC = (m.crit || 0) + (u.npc ? 0 : (u.stats.agility || 0) * 0.002) + (hasStatus(u, 'focus_up') ? 0.15 : 0);
-          const { dmg, mult } = damage(s, u, foe, m);
-          const crit = rand(s) < critC, d = crit ? Math.round(dmg * 1.6) : dmg;
-          foe.hp = Math.max(0, foe.hp - d); Object.assign(h, { dmg: d, crit, mult });
-          const effs = [...m.effects]; if (u.npc && a.move === 'elem' && ELEM_RIDER[u.elements[0]]) effs.push(ELEM_RIDER[u.elements[0]]);
-          h.effects = [];
-          for (const x of effs) {
-            if (foe.boss && (x.k === 'stun' || x.k === 'root') && rand(s) < 0.5) continue; // bosses shrug off half of all stuns and roots
-            const chance = x.chance + (!u.npc && x.chance < 1 ? (u.stats.willpower || 0) * 0.003 : 0);
-            if (rand(s) < chance) { addStatus(foe, x.k, x.turns); h.effects.push(x.k); }
-          }
-          if (foe.boss && !foe.enraged && foe.hp > 0 && foe.hp < foe.hpmax / 2) { foe.enraged = true; addStatus(foe, 'atk_up', 99); h.enrage = true; }
-          if (foe.hp <= 0) downed = true;
-        }
-        e.hits.push(h);
-      }
+      const downed = strike(s, u, m, a.move, m.aoe ? foes.filter((f) => dist(target, [f.c, f.r]) <= m.aoe) : [tgt], e);
       if (downed) { for (const h of e.hits) if (s.units[h.who].hp <= 0) ev.push({ t: 'down', who: h.who }); if (checkWipe(s, ev)) return ev; }
     }
     return ev;
@@ -413,6 +475,7 @@ const pick = (a, b) => (!a || b.score > a.score ? b : a);
 // ---------- what a player knows ----------
 export function knownMoves({ rankIndex = 0, elements = [], bloodline = null, scrolls = [] }) {
   return Object.entries(MOVES).filter(([id, m]) => {
+    if (m.gear) return false;
     if (m.scroll) return scrolls.includes(id);
     if (m.style === 'none') return true;
     if (m.style === 'bloodline') return m.bloodline === bloodline && (m.tier === 0 || rankIndex >= 2);
@@ -443,9 +506,10 @@ export function loadoutItems(c) {
 }
 export function playerSpec(c, jl, pools) {
   const elements = [c.element, c.element2].filter(Boolean);
+  const g = gearStats(c), hpx = 1 + g.hp;
   return { uid: c.user_id || null, name: c.name, look: c.appearance, kind: 'ninja', level: c.level, stats: { strength: c.strength, agility: c.agility, intelligence: c.intelligence, willpower: c.willpower },
-    elements, bloodline: c.bloodline || null, moves: [...loadoutMoves(c).pick, ...ALWAYS], items: loadoutItems(c), jl: jl || {},
-    hpmax: pools.pmax, stmax: pools.pstmax, chmax: pools.pchmax, hp: pools.php, st: pools.pst, ch: pools.pch };
+    elements, bloodline: c.bloodline || null, moves: [...loadoutMoves(c).pick, ...(g.weapon ? ['slash'] : []), ...ALWAYS], items: loadoutItems(c), jl: jl || {}, gear: g,
+    hpmax: Math.round(pools.pmax * hpx), stmax: pools.pstmax, chmax: pools.pchmax, hp: Math.round(pools.php * hpx), st: pools.pst, ch: pools.pch };
 }
 // st: battle state with foe {hp,atk,def,kit,element,level} and enemy {name,kind,look}
 export function enemySpec(st) {

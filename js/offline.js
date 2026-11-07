@@ -399,3 +399,23 @@ export function mockVillage(c, fn, args) {
   vsave(s);
   return vinfo(c, s);
 }
+
+// ---------- ANBU squads (offline mirror) ----------
+export function mockAnbu(c, fn, a) {
+  let st = JSON.parse(sessionStorage.getItem('mockAnbu') || 'null');
+  const L = (h, k, o) => ({ hairStyle: h, hair: k, skin: o % 4, outfit: o, band: 1, bandSpot: 0 });
+  if (!st) st = { squads: [{ id: 'sq1', name: 'Night Owls', leader: 'p9', members: [{ id: 'p9', name: 'Kaito', rank: 'Jonin', level: 38, look: L(1, 2, 3) }, { id: 'p8', name: 'Suzu', rank: 'Chunin', level: 27, look: L(3, 6, 5) }], applications: [{ id: 'p7', name: 'Goro', rank: 'Chunin', level: 24 }], applied: false }] };
+  const isKage = new URLSearchParams(location.search).has('kage');
+  const me = { id: c.user_id, name: c.name, rank: c.rank, level: c.level, look: c.appearance };
+  let mine = st.squads.find((s) => s.members.some((m) => m.id === c.user_id));
+  if (fn === 'anbu_create') { const leader = a.p_leader === c.user_id ? me : { id: a.p_leader, name: 'Haru', rank: 'Jonin', level: 33, look: L(2, 4, 2) }; st.squads.push({ id: 'sq' + Date.now(), name: a.p_name, leader: leader.id, members: [leader], applications: [] }); }
+  if (fn === 'anbu_apply') st.squads.find((s) => s.id === a.p_squad).applied = true;
+  if (fn === 'anbu_decide') { const s = st.squads.find((x) => x.id === a.p_squad), ap = s.applications.find((x) => x.id === a.p_user); s.applications = s.applications.filter((x) => x !== ap); if (a.p_accept) s.members.push({ ...ap, look: L(0, 0, 6) }); }
+  if (fn === 'anbu_leave' && mine) mine.members = mine.members.filter((m) => m.id !== (a.p_user || c.user_id));
+  if (fn === 'anbu_disband') st.squads = st.squads.filter((s) => s.id !== a.p_squad);
+  sessionStorage.setItem('mockAnbu', JSON.stringify(st));
+  mine = st.squads.find((s) => s.members.some((m) => m.id === c.user_id));
+  return { me: c.user_id, my_squad: mine ? mine.id : null, is_kage: isKage, rank: c.rank,
+    squads: st.squads.map((s) => ({ ...s, applications: s.leader === c.user_id || isKage ? s.applications : [] })),
+    candidates: isKage ? [{ id: c.user_id, name: c.name, rank: c.rank, level: c.level }, { id: 'p5', name: 'Haru', rank: 'Jonin', level: 33 }, { id: 'p6', name: 'Mika', rank: 'Chunin', level: 22 }] : [] };
+}

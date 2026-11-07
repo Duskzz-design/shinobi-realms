@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       if (b.status !== 'active') throw new Error('This fight is over.');
       const s = b.state.engine; s.seed = seed();
       const a = body.action || {};
-      const action = a.t === 'move' ? { t: 'move', to: [a.to[0] | 0, a.to[1] | 0] } : a.t === 'use' ? { t: 'use', move: String(a.move), at: a.at ? [a.at[0] | 0, a.at[1] | 0] : null } : a.t === 'item' ? { t: 'item', item: String(a.item) } : a.t === 'flee' ? { t: 'flee' } : { t: 'end' };
+      const action = a.t === 'move' ? { t: 'move', to: [a.to[0] | 0, a.to[1] | 0] } : a.t === 'use' ? { t: 'use', move: String(a.move), at: a.at ? [a.at[0] | 0, a.at[1] | 0] : null } : a.t === 'item' ? { t: 'item', item: String(a.item), at: a.at ? [a.at[0] | 0, a.at[1] | 0] : null } : a.t === 'flee' ? { t: 'flee' } : { t: 'end' };
       // a fight that ended but was never settled (e.g. a dropped connection) is settled now
       const events: any[] = s.status === 'over' ? [] : G.act(s, 'a', action);
       if (action.t === 'use' && events.length) b.state.used[action.move] = (b.state.used[action.move] || 0) + 1;

@@ -122,7 +122,7 @@ export async function raidOp(admin: any, uid: string, body: any, seed: () => num
       events.push(...G.act(s, late, misses[late] >= 3 ? { t: 'flee' } : { t: 'end' }));
     } else {
       if (!myUnit) throw new Error('You are not in this fight.');
-      const action = a.t === 'move' ? { t: 'move', to: [a.to[0] | 0, a.to[1] | 0] } : a.t === 'use' ? { t: 'use', move: String(a.move), at: a.at ? [a.at[0] | 0, a.at[1] | 0] : null } : a.t === 'item' ? { t: 'item', item: String(a.item) } : a.t === 'flee' ? { t: 'flee' } : { t: 'end' };
+      const action = a.t === 'move' ? { t: 'move', to: [a.to[0] | 0, a.to[1] | 0] } : a.t === 'use' ? { t: 'use', move: String(a.move), at: a.at ? [a.at[0] | 0, a.at[1] | 0] : null } : a.t === 'item' ? { t: 'item', item: String(a.item), at: a.at ? [a.at[0] | 0, a.at[1] | 0] : null } : a.t === 'flee' ? { t: 'flee' } : { t: 'end' };
       if (action.t === 'flee') {
         if (myUnit.hp <= 0) return r;
         if (s.side !== myUnit.id) { myUnit.hp = 0; events.push({ t: 'flee', who: myUnit.id }, { t: 'down', who: myUnit.id }); if (!Object.values(s.units).some((u: any) => u.team === 'A' && u.hp > 0)) { s.status = 'over'; s.winner = 'B'; events.push({ t: 'end', winner: 'B' }); } }
