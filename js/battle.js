@@ -111,7 +111,7 @@ export async function openTraining(root, getChar, setChar, startTab = 'stats') {
     const tgt = c.element2_target, prog2 = c.element2_prog || 0;
     const elemBox = `<div class="elbox"><b>Chakra nature</b> ${els.map(chip).join(' ')}
       <small>${els.map((k) => `${EI[k].label} beats ${beats(k)}, weak to ${weakTo(k)}.`).join(' ')} Fire › Wind › Lightning › Earth › Water › Fire.</small>
-      ${c.bloodline ? `<small class="bl">${G.BLOODLINES[c.bloodline].icon} <b>${G.BLOODLINES[c.bloodline].label}</b>: ${G.BLOODLINES[c.bloodline].desc}</small>` : ''}
+      ${c.bloodline ? `<small class="bl">${G.BLOODLINES[c.bloodline].icon} <b>${G.BLOODLINES[c.bloodline].label}</b>: ${G.BLOODLINES[c.bloodline].desc} <b>Passive:</b> ${G.BLOODLINES[c.bloodline].passive}</small>` : ''}
       ${c.element2 ? '' : c.rank_index < 2 ? `<small class="nx">🔒 Learn a second element at Chunin rank.</small>` : `<div class="el2"><small>Train a second element (1000 energy):</small>
         <div class="el2b">${G.ELEMENTS.filter((k) => k !== c.element).map((k) => `<button class="btn small ${tgt === k ? 'primary' : 'ghost'}" data-el="${k}" ${e < 10 || busy ? 'disabled' : ''}>${EI[k].icon} ${EI[k].label}${tgt === k ? `<br><small>${prog2}/1000</small>` : ''}</button>`).join('')}</div>
         <small class="nx">Each tap spends ⚡10. Switching element restarts progress.</small></div>`}</div>`;
@@ -123,7 +123,7 @@ export async function openTraining(root, getChar, setChar, startTab = 'stats') {
         const effs = m.effects.map((x) => G.STATUS[x.k].icon).join('');
         return `<div class="tst jt ${locked ? 'locked' : ''}"><div class="tinfo"><b>${locked ? '🔒 ' : ''}${m.element ? EI[m.element].icon + ' ' : ''}${esc(m.name)} ${locked ? '' : `<span>Lv ${j.level}</span>`}</b>
           <small>${TIER[m.tier]} · ${m.ap} AP · ${rng}${m.aoe ? ' · Area' : ''}${m.power ? ' · Power ' + m.power : ''} · ${cost(m)} ${effs}</small><small>${esc(m.desc)}</small>
-          ${locked ? `<small class="nx">Unlocks at ${RANKS[sk === 'bloodline' ? 2 : m.tier]} rank</small>` : `<div class="mini"><i style="width:${maxed ? 100 : 100 * j.xp / j.next}%;background:${st.color}"></i></div>
+          ${locked ? `<small class="nx">Unlocks at ${RANKS[m.tier]} rank</small>` : `<div class="mini"><i style="width:${maxed ? 100 : 100 * j.xp / j.next}%;background:${st.color}"></i></div>
           <small class="nx">${maxed ? 'Mastered' : `${j.xp} / ${j.next} XP to level ${j.level + 1}`}</small>`}</div>
           ${locked ? '' : `<div class="tbtns"><button class="btn small primary" data-j="${id}" data-n="1" ${maxed || e < 10 || busy ? 'disabled' : ''}>${maxed ? 'Mastered' : 'Train<br><small>⚡10</small>'}</button>
           ${maxed ? '' : `<button class="btn small ghost" data-j="${id}" data-n="99" ${e < 10 || busy ? 'disabled' : ''}>Max<br><small>⚡${Math.floor(e / 10) * 10}</small></button>`}</div>`}</div>`;

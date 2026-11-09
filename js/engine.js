@@ -66,22 +66,28 @@ export const MOVES = {
   tide: J({ name: 'Healing Tide', style: 'ninjutsu', element: 'water', tier: 1, ap: 3, chakra: 16, target: 'self', heal: 0.22, effects: [E('regen', 2)], desc: 'Heal 22% now, then a little each turn.' }),
   prison: J({ name: 'Water Prison', style: 'ninjutsu', element: 'water', tier: 2, ap: 3, chakra: 18, range: [1, 3], power: 22, effects: [E('root', 2), E('stun', 1, 0.5)], desc: 'Trap them in a sphere of water.' }),
   wave: J({ name: 'Great Wave', style: 'ninjutsu', element: 'water', tier: 3, ap: 4, chakra: 26, range: [1, 4], aoe: 1, target: 'hex', power: 50, effects: [E('weaken', 2, 0.7)], desc: 'A crashing wave that weakens all it hits.' }),
-  // Bloodlines (main/secondary set per bloodline below)
-  thornbind: J({ name: 'Thorn Bind', style: 'bloodline', bloodline: 'verdant', tier: 0, ap: 3, chakra: 12, range: [1, 4], power: 22, effects: [E('root', 2), E('poison', 2, 0.5)], desc: 'Living roots seize and poison.' }),
-  barkskin: J({ name: 'Bark Skin', style: 'bloodline', bloodline: 'verdant', tier: 0, ap: 2, chakra: 14, target: 'self', heal: 0.12, effects: [E('def_up', 2), E('regen', 3)], desc: 'Wooden armour that slowly heals you.' }),
-  forest: J({ name: 'Thorn Forest', style: 'bloodline', bloodline: 'verdant', tier: 2, ap: 4, chakra: 26, range: [1, 4], aoe: 1, target: 'hex', power: 48, effects: [E('root', 2, 0.8)], desc: 'A forest bursts from the ground.' }),
-  icelance: J({ name: 'Ice Lances', style: 'bloodline', bloodline: 'frost', tier: 0, ap: 3, chakra: 12, range: [1, 5], power: 26, effects: [E('slow', 2, 0.6)], desc: 'Shards of ice that chill and slow.' }),
-  icemirror: J({ name: 'Ice Mirror', style: 'bloodline', bloodline: 'frost', tier: 0, ap: 2, chakra: 14, target: 'self', effects: [E('def_up', 2), E('focus_up', 2)], desc: 'Mirrors of ice: armour and keen aim.' }),
-  blizzard: J({ name: 'Blizzard', style: 'bloodline', bloodline: 'frost', tier: 2, ap: 4, chakra: 26, range: [1, 4], aoe: 1, target: 'hex', power: 46, effects: [E('stun', 1, 0.45)], desc: 'A freezing storm that may freeze foes solid.' }),
-  lavaspit: J({ name: 'Lava Spit', style: 'bloodline', bloodline: 'magma', tier: 0, ap: 3, chakra: 12, range: [1, 4], power: 26, effects: [E('burn', 3, 0.7), E('armor_break', 2, 0.4)], desc: 'Molten rock melts through armour.' }),
-  moltenarmor: J({ name: 'Molten Armour', style: 'bloodline', bloodline: 'magma', tier: 0, ap: 2, chakra: 14, target: 'self', effects: [E('def_up', 2), E('atk_up', 2)], desc: 'Armour of magma: tougher and stronger.' }),
-  eruption: J({ name: 'Eruption', style: 'bloodline', bloodline: 'magma', tier: 2, ap: 4, chakra: 28, range: [1, 4], aoe: 1, target: 'hex', power: 54, effects: [E('burn', 3, 0.8)], desc: 'The ground erupts in lava.' }),
-  truesight: J({ name: 'True Sight', style: 'bloodline', bloodline: 'stormeye', tier: 0, ap: 1, chakra: 10, target: 'self', effects: [E('focus_up', 3), E('speed_up', 2)], desc: 'Your eyes see every move: +accuracy, crits and +2 AP.' }),
-  gaze: J({ name: 'Paralysing Gaze', style: 'bloodline', bloodline: 'stormeye', tier: 0, ap: 3, chakra: 14, range: [1, 4], power: 16, acc: 1, effects: [E('stun', 1, 0.6), E('confuse', 2)], desc: 'One look can freeze a foe.' }),
-  eyestorm: J({ name: 'Storm Eye', style: 'bloodline', bloodline: 'stormeye', tier: 2, ap: 4, chakra: 24, range: [1, 6], power: 52, crit: 0.3, desc: 'Lightning answers your gaze.' }),
-  steelskin: J({ name: 'Steel Skin', style: 'bloodline', bloodline: 'steel', tier: 0, ap: 1, stamina: 10, target: 'self', effects: [E('def_up', 3)], desc: 'Your skin hardens to steel.' }),
-  bladearms: J({ name: 'Blade Arms', style: 'bloodline', bloodline: 'steel', tier: 0, ap: 3, stamina: 12, power: 32, crit: 0.2, effects: [E('armor_break', 2, 0.6)], desc: 'Arms become blades. Breaks armour.' }),
-  spikeburst: J({ name: 'Spike Burst', style: 'bloodline', bloodline: 'steel', tier: 2, ap: 4, stamina: 20, range: [0, 0], aoe: 2, target: 'hex', power: 44, effects: [E('poison', 2, 0.5)], desc: 'Steel spikes burst out in all directions.' }),
+  // Bloodlines (main/secondary set per bloodline below): one jutsu per rank, as strong as normal jutsu of that rank,
+  // special in what they do rather than how hard they hit. Cooldown is one turn longer than normal (see cooldownOf).
+  thornbind: J({ name: 'Thorn Bind', style: 'bloodline', bloodline: 'verdant', tier: 0, ap: 3, chakra: 10, range: [1, 4], power: 14, effects: [E('root', 1, 0.4), E('poison', 2, 0.25)], desc: 'Living roots may seize and poison.' }),
+  barkskin: J({ name: 'Bark Skin', style: 'bloodline', bloodline: 'verdant', tier: 1, ap: 2, chakra: 14, target: 'self', heal: 0.05, effects: [E('def_up', 1), E('regen', 1)], desc: 'Wooden armour that slowly heals you.' }),
+  forest: J({ name: 'Thorn Forest', style: 'bloodline', bloodline: 'verdant', tier: 2, ap: 4, chakra: 22, range: [1, 4], aoe: 1, target: 'hex', power: 28, effects: [E('root', 1, 0.5)], desc: 'A forest bursts from the ground.' }),
+  grove: J({ name: 'Ancient Grove', style: 'bloodline', bloodline: 'verdant', tier: 3, ap: 4, chakra: 28, range: [1, 4], aoe: 1, target: 'hex', power: 46, effects: [E('root', 1, 0.5), E('poison', 2, 0.4)], desc: 'An ancient forest crushes and binds an area.' }),
+  icelance: J({ name: 'Ice Lances', style: 'bloodline', bloodline: 'frost', tier: 0, ap: 3, chakra: 10, range: [1, 5], power: 15, effects: [E('slow', 1, 0.35)], desc: 'Long-range ice shards that may slow.' }),
+  icemirror: J({ name: 'Ice Mirror', style: 'bloodline', bloodline: 'frost', tier: 1, ap: 2, chakra: 14, target: 'self', effects: [E('def_up', 1), E('focus_up', 2)], desc: 'Mirrors of ice: armour and keen aim.' }),
+  blizzard: J({ name: 'Blizzard', style: 'bloodline', bloodline: 'frost', tier: 2, ap: 4, chakra: 22, range: [1, 4], aoe: 1, target: 'hex', power: 24, effects: [E('slow', 1, 0.45)], desc: 'A freezing storm that chills an area.' }),
+  coffin: J({ name: 'Frozen Coffin', style: 'bloodline', bloodline: 'frost', tier: 3, ap: 4, chakra: 28, range: [1, 3], power: 46, effects: [E('root', 2, 0.5), E('stun', 1, 0.3)], desc: 'Seal the target in ice. May root and freeze them.' }),
+  lavaspit: J({ name: 'Lava Spit', style: 'bloodline', bloodline: 'magma', tier: 0, ap: 3, chakra: 10, range: [1, 4], power: 17, effects: [E('burn', 2, 0.3)], desc: 'A glob of molten rock that may burn.' }),
+  moltenarmor: J({ name: 'Molten Armour', style: 'bloodline', bloodline: 'magma', tier: 1, ap: 2, chakra: 14, target: 'self', effects: [E('def_up', 1), E('atk_up', 1)], desc: 'Armour of magma: tougher and stronger for a turn.' }),
+  lavaflow: J({ name: 'Lava Flow', style: 'bloodline', bloodline: 'magma', tier: 2, ap: 3, chakra: 18, range: [1, 4], power: 28, effects: [E('burn', 2, 0.4), E('armor_break', 2, 0.3)], desc: 'A river of lava that burns and melts armour.' }),
+  eruption: J({ name: 'Eruption', style: 'bloodline', bloodline: 'magma', tier: 3, ap: 4, chakra: 28, range: [1, 4], aoe: 1, target: 'hex', power: 48, effects: [E('burn', 3, 0.5)], desc: 'The ground erupts in lava.' }),
+  gaze: J({ name: 'Paralysing Gaze', style: 'bloodline', bloodline: 'stormeye', tier: 0, ap: 3, chakra: 10, range: [1, 4], power: 12, acc: 1, effects: [E('confuse', 1, 0.35)], desc: 'A piercing look that may confuse.' }),
+  truesight: J({ name: 'True Sight', style: 'bloodline', bloodline: 'stormeye', tier: 1, ap: 1, chakra: 12, target: 'self', effects: [E('focus_up', 2)], desc: 'Your eyes see every move: +accuracy and more critical hits for 2 turns.' }),
+  eyestorm: J({ name: 'Storm Eye', style: 'bloodline', bloodline: 'stormeye', tier: 2, ap: 4, chakra: 22, range: [1, 6], power: 27, crit: 0.15, desc: 'Lightning answers your gaze, from far away.' }),
+  thousandeyes: J({ name: 'Thousand Eyes', style: 'bloodline', bloodline: 'stormeye', tier: 3, ap: 4, chakra: 28, range: [1, 5], power: 42, acc: 1, crit: 0.15, effects: [E('confuse', 2, 0.5), E('stun', 1, 0.3)], desc: 'Every eye in the storm turns on them.' }),
+  bladearms: J({ name: 'Blade Arms', style: 'bloodline', bloodline: 'steel', tier: 0, ap: 3, stamina: 8, power: 17, crit: 0.15, effects: [E('armor_break', 2, 0.3)], desc: 'Arms become blades that may break armour.' }),
+  steelskin: J({ name: 'Steel Skin', style: 'bloodline', bloodline: 'steel', tier: 1, ap: 1, stamina: 10, target: 'self', effects: [E('def_up', 1)], desc: 'Your skin hardens to steel for a turn.' }),
+  spikeburst: J({ name: 'Spike Burst', style: 'bloodline', bloodline: 'steel', tier: 2, ap: 4, stamina: 16, range: [0, 0], aoe: 2, target: 'hex', power: 28, effects: [E('poison', 2, 0.3)], desc: 'Steel spikes burst out in all directions.' }),
+  ironmaiden: J({ name: 'Iron Maiden', style: 'bloodline', bloodline: 'steel', tier: 3, ap: 4, stamina: 20, chakra: 4, power: 48, crit: 0.12, effects: [E('armor_break', 2, 0.5), E('stun', 1, 0.25)], desc: 'A cage of blades closes around the target.' }),
   // Always available
   focus: J({ name: 'Focus', style: 'none', tier: 0, ap: 2, target: 'self', desc: 'Restore stamina and chakra.' }),
   guard: J({ name: 'Guard', style: 'none', tier: 0, ap: 1, target: 'self', effects: [E('def_up', 1)], desc: 'Brace: take less damage until your next turn.' }),
@@ -94,7 +100,7 @@ export const MOVES = {
   serpentfang: J({ name: 'Serpent Fang', style: 'bukijutsu', scroll: true, tier: 2, ap: 3, stamina: 8, chakra: 6, range: [1, 3], power: 40, crit: 0.2, effects: [E('poison', 3, 0.8), E('armor_break', 2, 0.5)], desc: 'Boss scroll: a coiling strike that poisons and breaks armour.' }),
 };
 // cooldowns by rank tier: Academy 0, Genin 1, Chunin 2, Jonin 3 turns (players only)
-export function cooldownOf(id) { const m = MOVES[id]; if (!m || m.gear || id === 'focus' || id === 'guard') return 0; return m.cd ?? [0, 1, 2, 3][m.tier] ?? 0; }
+export function cooldownOf(id) { const m = MOVES[id]; if (!m || m.gear || id === 'focus' || id === 'guard') return 0; return m.cd ?? ([0, 1, 2, 3][m.tier] ?? 0) + (m.style === 'bloodline' ? 1 : 0); }
 export const COUNTERS = Object.keys(MOVES).filter((id) => MOVES[id].counter);
 // consumable items: bought in the Tool Shop, 3 kinds can be packed per fight, each use costs AP
 export const ITEMS = {
@@ -159,11 +165,11 @@ export function gearStats(c) {
 }
 export const ITEM_SLOTS = 3, ITEM_STACK = 10;
 export const BLOODLINES = {
-  verdant: { label: 'Verdant Blood', icon: '🌳', main: 'willpower', sec: 'strength', desc: 'Living wood answers your call.' },
-  frost: { label: 'Frost Blood', icon: '❄️', main: 'intelligence', sec: 'agility', desc: 'Your chakra freezes the air.' },
-  magma: { label: 'Magma Blood', icon: '🌋', main: 'intelligence', sec: 'strength', desc: 'Molten rock flows in your veins.' },
-  stormeye: { label: 'Storm Eye', icon: '👁️', main: 'agility', sec: 'willpower', desc: 'Eyes that read every move.' },
-  steel: { label: 'Steel Blood', icon: '⚔️', main: 'strength', sec: 'agility', desc: 'A body forged like a blade.' },
+  verdant: { label: 'Verdant Blood', icon: '🌳', main: 'willpower', sec: 'strength', desc: 'Living wood answers your call.', passive: 'Heal 1.5% of your health at the start of each turn.' },
+  frost: { label: 'Frost Blood', icon: '❄️', main: 'intelligence', sec: 'agility', desc: 'Your chakra freezes the air.', passive: '+4% accuracy with every attack.' },
+  magma: { label: 'Magma Blood', icon: '🌋', main: 'intelligence', sec: 'strength', desc: 'Molten rock flows in your veins.', passive: '+4% damage with every attack.' },
+  stormeye: { label: 'Storm Eye', icon: '👁️', main: 'agility', sec: 'willpower', desc: 'Eyes that read every move.', passive: '+3% chance to dodge.' },
+  steel: { label: 'Steel Blood', icon: '⚔️', main: 'strength', sec: 'agility', desc: 'A body forged like a blade.', passive: 'Take 4% less damage.' },
 };
 export const STYLE_STATS = { taijutsu: ['strength', 'agility'], bukijutsu: ['agility', 'strength'], ninjutsu: ['intelligence', 'willpower'], genjutsu: ['willpower', 'intelligence'] };
 // Enemy techniques: f = multiplier of the enemy's attack stat
@@ -282,6 +288,7 @@ function startTurn(s, side, ev) {
     const d = Math.max(1, Math.round(u.hpmax * (k === 'burn' ? 0.06 : 0.05) * (u.boss ? 0.25 : 1))); u.hp = Math.max(0, u.hp - d);
     ev.push({ t: 'dot', who: side, k, dmg: d });
   }
+  if (!u.npc && u.bloodline === 'verdant' && u.hp > 0 && u.hp < u.hpmax) { const h = Math.max(1, Math.round(u.hpmax * 0.015)); u.hp = Math.min(u.hpmax, u.hp + h); ev.push({ t: 'heal', who: side, amount: h, bl: true }); }
   if (hasStatus(u, 'regen')) { const h = Math.round(u.hpmax * 0.06); u.hp = Math.min(u.hpmax, u.hp + h); ev.push({ t: 'heal', who: side, amount: h }); }
   if (u.hp <= 0) { ev.push({ t: 'down', who: side }); if (checkWipe(s, ev)) return; return endTurn(s, ev); }
   if (hasStatus(u, 'stun')) { u.ap = 0; addStatus(u, 'steady', 2); ev.push({ t: 'stunned', who: side }); }
@@ -332,7 +339,7 @@ function statsFor(u, m) {
   const p = STYLE_STATS[m.style]; return p ? [u.stats[p[0]] || 0, u.stats[p[1]] || 0] : [0, 0];
 }
 export function defenceOf(u) { return u.npc ? u.def : 3 + u.level * 1.5 + (u.stats.strength || 0) * 0.6 + (u.gear ? u.gear.def : 0); }
-export function dodgeOf(u) { return u.npc ? 0.05 : Math.min(0.3, (u.stats.agility || 0) * 0.004 + (u.gear ? u.gear.dodge : 0)); }
+export function dodgeOf(u) { return u.npc ? 0.05 : Math.min(0.3, (u.stats.agility || 0) * 0.004 + (u.gear ? u.gear.dodge : 0) + (u.bloodline === 'stormeye' ? 0.03 : 0)); }
 // player-vs-player damage scale by level: keeps duels around 5-6 turns at every rank
 const PVP_TABLE = [[20, 1], [25, 0.72], [30, 0.6], [40, 0.33], [50, 0.26], [60, 0.22]];
 export function pvpScale(level) {
@@ -357,6 +364,8 @@ export function damage(s, u, t, m, roll = true) {
   if (hasStatus(t, 'def_up')) mult *= 0.65;
   if (el === 'lightning' && t.gear && t.gear.lightningResist) mult *= 1 - t.gear.lightningResist;
   if (el && t.gear && t.gear.resist && t.gear.resist[el]) mult *= 1 - t.gear.resist[el];
+  if (!u.npc && u.bloodline === 'magma') mult *= 1.04;
+  if (!t.npc && t.bloodline === 'steel') mult *= 0.96;
   if (s.pvp && !u.npc && !t.npc) mult *= pvpScale(u.level); // ninja vs ninja: longer, more tactical duels
   return { dmg: Math.max(1, Math.round(base * mult - defenceOf(t) * 0.5)), mult: elementMult(el, t.elements[0]) };
 }
@@ -367,7 +376,7 @@ export function damage(s, u, t, m, roll = true) {
 function strike(s, u, m, moveId, targets, e) {
   let downed = false;
   for (const foe of targets) {
-    const acc = m.acc + (hasStatus(u, 'focus_up') ? 0.1 : 0) - (hasStatus(u, 'confuse') ? 0.4 : 0) - dodgeOf(foe);
+    const acc = m.acc + (!u.npc && u.bloodline === 'frost' ? 0.04 : 0) + (hasStatus(u, 'focus_up') ? 0.1 : 0) - (hasStatus(u, 'confuse') ? 0.4 : 0) - dodgeOf(foe);
     let hit = rand(s) < acc;
     const h = { who: foe.id, hit, dodge: !hit && rand(s) < 0.5 };
     if (hit && hasStatus(foe, 'sub')) { // the log takes the hit; the ninja reappears away from the attacker
@@ -547,7 +556,7 @@ export function knownMoves({ rankIndex = 0, elements = [], bloodline = null, scr
     if (m.gear) return false;
     if (m.scroll) return scrolls.includes(id);
     if (m.style === 'none') return true;
-    if (m.style === 'bloodline') return m.bloodline === bloodline && (m.tier === 0 || rankIndex >= 2);
+    if (m.style === 'bloodline') return m.bloodline === bloodline && m.tier <= rankIndex;
     if (m.tier > rankIndex) return false;
     if (m.style === 'ninjutsu') return elements.includes(m.element);
     return true;

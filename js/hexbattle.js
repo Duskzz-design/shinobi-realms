@@ -383,7 +383,7 @@ function missionResult(root, char, res, S0, battle, onEnd, finish) {
     const won = res.status === 'won', r = res.result || {}, exam = S0.exam;
     let body;
     const ups = Object.entries(r.jutsu_up || {}).map(([id, lv]) => `<p class="lvl">📜 ${esc(G.MOVES[id]?.name || id)} reached level ${lv}!</p>`).join('');
-    const blood = r.bloodline_test ? (r.bloodline ? `<div class="blood"><div class="bico">${G.BLOODLINES[r.bloodline].icon}</div><h4>Bloodline awakened: ${esc(G.BLOODLINES[r.bloodline].label)}!</h4><p>${esc(G.BLOODLINES[r.bloodline].desc)} Only 1 in 100 ninja are born with this. You can now use its secret techniques in battle.</p></div>`
+    const blood = r.bloodline_test ? (r.bloodline ? `<div class="blood"><div class="bico">${G.BLOODLINES[r.bloodline].icon}</div><h4>Bloodline awakened: ${esc(G.BLOODLINES[r.bloodline].label)}!</h4><p>${esc(G.BLOODLINES[r.bloodline].desc)} Only 1 in 100 ninja are born with this. You gain its passive (${esc(G.BLOODLINES[r.bloodline].passive)}) and one secret technique per rank, from now to Jonin.</p></div>`
       : `<div class="blood none"><h4>🧬 Bloodline test</h4><p>The Academy tested your blood: no bloodline awakened. Only 1 in 100 carry one. Most legends were made by training and clever tactics.</p></div>`) : '';
     if (r.lesson) body = `<h3 class="${won ? 'win' : 'lose'}">${won ? 'Lesson complete!' : 'Sparring lost'}</h3>
       ${won ? (r.first ? `<p class="big">+${r.xp} XP &nbsp; +${r.ryo} ryo</p><p>First time clear! Replay any lesson as often as you like for practice.</p>${r.leveled ? `<p class="lvl">⬆ Level up! You are now level ${r.level}.</p>` : ''}` : '<p>Well sparred! Rewards are only given the first time, but every spar trains your jutsu.</p>')
