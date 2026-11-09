@@ -622,7 +622,9 @@ export function newDuel(seed, ca, jla, cb, jlb) {
 export const DUEL_TURN_SEC = 60;
 // XP to go from level lv to lv+1 (same formula as the database's xp_need)
 export function xpNeed(lv) { return 100 * lv * (lv < 5 ? 3 : lv < 15 ? 22 : lv < 30 ? 85 : 190); }
-export const MISSION_DAILY_LIMIT = 150;
+export const MISSION_DAILY_LIMIT = 20;
+// XP for one training session (10 energy), same as the database's training_xp
+export function trainingXp(lv) { return Math.ceil(xpNeed(lv) / (lv < 5 ? 30 : lv < 15 ? 250 : lv < 30 ? 600 : 800)); }
 
 // boss for a team of n players (1-3): smaller teams face a weaker boss
 export const BOSSES = {

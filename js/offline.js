@@ -71,6 +71,14 @@ function gain(c, id, n) {
   return { level: j.level, up };
 }
 function takeEnergy(c, times) { const e = enrich(c).energy, n = Math.min(Math.max(1, times), Math.floor(e / 10)); if (n < 1) throw new Error('Not enough energy. It refills over time.'); c.energy = e - n * 10; c.energy_at = Date.now(); return n; }
+function mockGrantXp(c, xp) {
+  const cap = { 'Academy Student': 5, Genin: 15, Chunin: 30, Jonin: 60 }[c.rank] || 5, lv0 = c.level;
+  c.xp = (c.xp || 0) + xp;
+  while (c.level < cap && c.xp >= G.xpNeed(c.level)) { c.xp -= G.xpNeed(c.level); c.level++; }
+  if (c.level >= cap) c.xp = Math.min(c.xp, G.xpNeed(c.level));
+  if (c.level > lv0) { c.energy = 100; c.energy_at = Date.now(); }
+  return { xp, leveled: c.level - lv0, level: c.level, capped: c.level >= cap };
+}
 export function trainStat(c, s, times = 1) {
   const x = enrich(c); if (c[s] >= x.stat_cap) throw new Error('That stat is at the cap for your rank. Rank up to train further.');
   const e = x.energy, n = Math.min(Math.max(1, times), Math.floor(e / 10)); if (n < 1) throw new Error('Not enough energy. It refills over time.');
@@ -78,7 +86,8 @@ export function trainStat(c, s, times = 1) {
   for (let i = 0; i < n && c[s] < x.stat_cap; i++) { prog += 10; used++; if (prog >= pointCost(c[s])) { prog -= pointCost(c[s]); c[s]++; gained++; } }
   if (c[s] >= x.stat_cap) prog = 0;
   c.train_prog[s] = prog; c.energy = e - used * 10; c.energy_at = Date.now();
-  return { ...enrich(c), gained };
+  const xg = mockGrantXp(c, used * G.trainingXp(c.level));
+  return { ...enrich(c), gained, xp_gain: xg };
 }
 export function trainElement(c, el, times = 1) {
   const x = enrich(c); if (x.rank_index < 2) throw new Error('You can learn a second element once you are a Chunin.');

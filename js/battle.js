@@ -32,7 +32,7 @@ function overlay(root, cls, html) {
 // ---------- mission board ----------
 function dailyLine(c) {
   const n = c.missions_today || 0, lim = c.mission_limit || G.MISSION_DAILY_LIMIT;
-  return n >= lim ? `<p class="daily over">📋 Full rewards used today (${lim}/${lim}). Missions now pay 25% until tomorrow (London time).</p>`
+  return n >= lim ? `<p class="daily over">📋 Full rewards used today (${lim}/${lim}). Missions now pay 10% until tomorrow (London time).</p>`
     : `<p class="daily">📋 Full-reward missions today: <b>${n} / ${lim}</b></p>`;
 }
 export async function openMissionBoard(root, char, onPick) {
@@ -140,6 +140,7 @@ export async function openTraining(root, getChar, setChar, startTab = 'stats') {
       <p class="sub">${c.xp} / ${need} XP · 💰 ${c.ryo} ryo · 🏆 ${c.arena_points || 0} Arena</p>
       <div class="pools"><span>❤️ <b>${c.hp_max}</b> HP</span><span>💪 <b>${c.stamina_max}</b> Stamina</span><span>💧 <b>${c.chakra_max}</b> Chakra</span></div>
       <div class="energy"><b>⚡ Energy ${e} / ${c.energy_max}</b><div class="ebar"><i style="width:${e}%"></i></div>
+        <small class="txp">⭐ Each training gives <b>+${(c.training_xp || G.trainingXp(c.level)).toLocaleString('en-GB')} XP</b> (10 energy). Training is the main way to level up.</small>
         <small>${e >= c.energy_max ? 'Full! Spend it on training.' : `+1 every ${c.energy_regen_sec}s · full in ${fmt(Math.ceil((c.energy_max - e) * c.energy_regen_sec))}`}</small>
         ${c.arena_bonus ? `<small class="ebonus">🏆 Arena bonus: refilling ${c.arena_bonus.mult}× faster today (#${c.arena_bonus.place} yesterday)</small>` : ''}</div>
       <div class="ttabs"><button data-tab="stats" class="${tab === 'stats' ? 'on' : ''}">General stats</button><button data-tab="jutsu" class="${tab === 'jutsu' ? 'on' : ''}">Jutsu</button></div>
@@ -155,7 +156,8 @@ export async function openTraining(root, getChar, setChar, startTab = 'stats') {
     if (busy) return; busy = true; render();
     try {
       const r = await fn(); r._loadedAt = Date.now(); setChar(r);
-      toast(msg(r), 'ok');
+      const x = r.xp_gain && r.xp_gain.xp ? ` +${r.xp_gain.xp.toLocaleString('en-GB')} XP${r.xp_gain.leveled ? ` · ⬆ Level ${r.xp_gain.level}! Energy refilled.` : r.xp_gain.capped ? ' (level cap: take your rank exam)' : ''}` : '';
+      toast(msg(r) + x, 'ok');
     } catch (e) { toast(e.message); }
     busy = false; render();
   }
