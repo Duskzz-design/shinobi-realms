@@ -130,7 +130,7 @@ function finish(c, b, win) {
   let r;
   if (m.kind === 'lesson') {
     c.lessons_done = c.lessons_done || []; const first = win && !c.lessons_done.includes(m.id), before = c.level, cap = LCAP[RANKS.indexOf(c.rank)];
-    if (first) { c.lessons_done.push(m.id); c.xp += m.xp; c.ryo += m.ryo; while (c.level < cap && c.xp >= c.level * 100) { c.xp -= c.level * 100; c.level++; } }
+    if (first) { c.lessons_done.push(m.id); c.xp += m.xp; c.ryo += m.ryo; while (c.level < cap && c.xp >= G.xpNeed(c.level)) { c.xp -= G.xpNeed(c.level); c.level++; } }
     r = { lesson: true, first, xp: first ? m.xp : 0, ryo: first ? m.ryo : 0, level: c.level, leveled: c.level - before };
   } else if (win && st.exam) {
     if (st.exam.round < st.exam.rounds) r = { exam_round: st.exam.round, exam_rounds: st.exam.rounds, next: true };
@@ -144,8 +144,8 @@ function finish(c, b, win) {
   } else if (win) {
     const before = c.level, cap = LCAP[RANKS.indexOf(c.rank)];
     c.xp += m.xp; c.ryo += m.ryo;
-    while (c.level < cap && c.xp >= c.level * 100) { c.xp -= c.level * 100; c.level++; }
-    if (c.level >= cap) c.xp = Math.min(c.xp, c.level * 100);
+    while (c.level < cap && c.xp >= G.xpNeed(c.level)) { c.xp -= G.xpNeed(c.level); c.level++; }
+    if (c.level >= cap) c.xp = Math.min(c.xp, G.xpNeed(c.level));
     if (c.level > before) { c.energy = 100; c.energy_at = Date.now(); }
     r = { xp: m.xp, ryo: m.ryo, level: c.level, leveled: c.level - before, capped: c.level >= cap };
     if (st.quest) r.quest = questAdvance(c, st.quest);

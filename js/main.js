@@ -177,7 +177,7 @@ function creatorScreen(existing) {
 
 function profileScreen(c, fresh = false) {
   const v = VILLAGES[c.village];
-  const xpNeed = c.level * 100;
+  const xpNeed = c.xp_need || (c.level < 5 ? 3 : c.level < 15 ? 22 : c.level < 30 ? 85 : 190) * 100 * c.level;
   const styles = [['Strength', c.strength, '#d84a3a'], ['Agility', c.agility, '#3a8a4a'], ['Intelligence', c.intelligence, '#2f7fc4'], ['Willpower', c.willpower, '#9a5ad0']];
   const cap = c.stat_cap || 20;
   const el = h(`

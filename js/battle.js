@@ -30,8 +30,13 @@ function overlay(root, cls, html) {
 }
 
 // ---------- mission board ----------
+function dailyLine(c) {
+  const n = c.missions_today || 0, lim = c.mission_limit || G.MISSION_DAILY_LIMIT;
+  return n >= lim ? `<p class="daily over">📋 Full rewards used today (${lim}/${lim}). Missions now pay 25% until tomorrow (London time).</p>`
+    : `<p class="daily">📋 Full-reward missions today: <b>${n} / ${lim}</b></p>`;
+}
 export async function openMissionBoard(root, char, onPick) {
-  const el = overlay(root, 'board-wrap', `<div class="scroll board"><h3>Mission Board</h3><p class="sub">Pick a job. Win to earn XP and ryo.</p><div class="mlist"><div class="spinner"></div></div><button class="btn ghost" data-x>Close</button></div>`);
+  const el = overlay(root, 'board-wrap', `<div class="scroll board"><h3>Mission Board</h3><p class="sub">Pick a job. Win to earn XP and ryo.</p>${dailyLine(char)}<div class="mlist"><div class="spinner"></div></div><button class="btn ghost" data-x>Close</button></div>`);
   el.querySelector('[data-x]').onclick = () => el.remove();
   el.addEventListener('click', (e) => { if (e.target === el) el.remove(); });
   let cat;
@@ -94,7 +99,7 @@ export async function openTraining(root, getChar, setChar, startTab = 'stats') {
   try { cat = await net.getCatalog(); } catch {}
   const energyNow = () => { const c = getChar(); return Math.min(c.energy_max || 100, c.energy + Math.floor((Date.now() - (c._loadedAt || Date.now())) / 1000 / (c.energy_regen_sec || 9))); };
   function render() {
-    const c = getChar(), need = c.level * 100, v = VILLAGES[c.village], e = energyNow();
+    const c = getChar(), need = c.xp_need || G.xpNeed(c.level), v = VILLAGES[c.village], e = energyNow();
     const prog = c.train_prog || {};
     const statRows = Object.entries(STATS).map(([k, s]) => {
       const atCap = c[k] >= c.stat_cap, p = prog[k] || 0, per = (c.point_cost || {})[k] || 40;

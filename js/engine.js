@@ -620,6 +620,9 @@ export function newDuel(seed, ca, jla, cb, jlb) {
   return s;
 }
 export const DUEL_TURN_SEC = 60;
+// XP to go from level lv to lv+1 (same formula as the database's xp_need)
+export function xpNeed(lv) { return 100 * lv * (lv < 5 ? 3 : lv < 15 ? 22 : lv < 30 ? 85 : 190); }
+export const MISSION_DAILY_LIMIT = 150;
 
 // boss for a team of n players (1-3): smaller teams face a weaker boss
 export const BOSSES = {
