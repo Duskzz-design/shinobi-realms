@@ -252,6 +252,9 @@ export const QUEST_LINES = [
   { id: 'iron', name: 'The Iron Bandits', description: '', min_rank: 2, lair: 'stronghold', boss_name: 'Warlord Gorou', reward: 'riches', sort: 1 },
   { id: 'serpent', name: "The Serpent's Coil", description: '', min_rank: 2, lair: 'serpent_cave', boss_name: 'Venomfang the Cave Wyrm', reward: 'scroll', sort: 2 },
   { id: 'shrine', name: 'Shadow of the Fallen Shrine', description: '', min_rank: 3, lair: 'shadow_fortress', boss_name: 'The Hollow Shogun', reward: 'title', sort: 3 },
+  { id: 'mist', name: 'The Mist Reapers', description: '', min_rank: 3, min_level: 30, lair: 'mist_isle', boss_name: 'Kirishima the Mist Reaper', reward: 'gear', sort: 4 },
+  { id: 'sands', name: 'Sands of the Scorpion King', description: '', min_rank: 3, min_level: 40, lair: 'scorpion_tomb', boss_name: 'Sekiryu the Scorpion King', reward: 'gear', sort: 5 },
+  { id: 'eclipse', name: 'The Eclipse Covenant', description: '', min_rank: 3, min_level: 50, lair: 'moon_temple', boss_name: 'Mother Yoru, the Eclipse Sage', reward: 'gear', sort: 6 },
 ];
 const QS = (line, step, kind, title, story, location, mission_id, need) => ({ line, step, kind, title, story, location, mission_id, need });
 export const QUEST_STEPS = [
@@ -264,12 +267,30 @@ export const QUEST_STEPS = [
   QS('shrine', 1, 'fight', 'Restless Spirits', 'Lights burn at the ruined shrine every night.', 'ruined_shrine', 'qc1', 1),
   QS('shrine', 2, 'hunt', 'Ash Wolves', 'Defeat 3 Ash Wolves blocking the pass.', 'ashen_peak', 'qc2', 3),
   QS('shrine', 3, 'fight', "The Shogun's Herald", 'The herald guards the Shadow Fortress gate.', 'ashen_peak', 'qc3', 1),
+  QS('mist', 1, 'fight', "Silent Harbour", "Boats come back to the Drowned Pier empty. Wait in the fog and catch whoever is taking the fishermen.", 'drowned_pier', 'qd1', 1),
+  QS('mist', 2, 'hunt', "Ghosts in the Fog", "The scout was not alone. Defeat 3 Mist Assassins prowling the pier.", 'drowned_pier', 'qd2', 3),
+  QS('mist', 3, 'fight', "The Poisoned Well", "The Reapers are poisoning the marsh villages so no one dares follow them. Stop their alchemist.", 'misty_marsh', 'qd3', 1),
+  QS('mist', 4, 'hunt', "Frozen Sentries", "Frost wolves guard the hidden cove where the Reapers moor their boats. Defeat 3 of them.", 'ice_cove', 'qd4', 3),
+  QS('mist', 5, 'fight', "Blade of the Seventh Mist", "The Reapers' best swordsman holds the last boat to Mist Isle. Beat him and take it.", 'ice_cove', 'qd5', 1),
+  QS('sands', 1, 'fight', "Caravan of Bones", "Whole caravans are buried in the Glass Dunes. Ride out and find who is attacking them.", 'glass_dunes', 'qe1', 1),
+  QS('sands', 2, 'hunt', "Sand Wyrms", "The raiders herd giant sand wyrms. Defeat 3 before they swallow another caravan.", 'glass_dunes', 'qe2', 3),
+  QS('sands', 3, 'fight', "The Puppet Maker", "A puppet master in Red Canyon builds the King's army. Cut his strings.", 'red_canyon', 'qe3', 1),
+  QS('sands', 4, 'hunt', "Canyon Puppets", "His war puppets still march. Smash 3 of them.", 'red_canyon', 'qe4', 3),
+  QS('sands', 5, 'fight', "The Tomb Guardian", "A stone giant guards the road to the King's tomb. It does not sleep.", 'red_canyon', 'qe5', 1),
+  QS('sands', 6, 'fight', "The Royal Vizier", "The King's vizier holds the tomb key and will not give it up.", 'glass_dunes', 'qe6', 1),
+  QS('eclipse', 1, 'fight', "Vanishing Monks", "Monks keep disappearing from the Ruined Shrine. Someone in a black robe was seen leading them north.", 'ruined_shrine', 'qf1', 1),
+  QS('eclipse', 2, 'hunt', "Shades of the Pass", "Living shadows haunt the frozen pass. Destroy 3 Pass Shades.", 'frost_pass', 'qf2', 3),
+  QS('eclipse', 3, 'fight', "The Frozen Oracle", "An oracle trapped in the ice knows the way to the Moon Temple. She will not give it freely.", 'frost_pass', 'qf3', 1),
+  QS('eclipse', 4, 'hunt', "Eclipse Hounds", "Black hounds howl at the Eclipse Gate. Defeat 3 of them.", 'eclipse_gate', 'qf4', 3),
+  QS('eclipse', 5, 'fight', "Twin Blades of Dusk", "The Covenant's blademaster stands watch at the gate. Her swords are as fast as lightning.", 'eclipse_gate', 'qf5', 1),
+  QS('eclipse', 6, 'fight', "High Priest of the Covenant", "The high priest is starting the ritual. Stop him before the moon goes dark.", 'eclipse_gate', 'qf6', 1),
 ];
 const QM = { qa1: ['Bandit Scout', 'ninja', 17, 673, 79, 14, 'ranged', null], qa2: ['Bandit Raider', 'ninja', 16, 331, 80, 14, 'ninja', 'earth'], qa3: ['Lieutenant Senzo', 'ninja', 21, 866, 86, 18, 'ninja', 'wind'],
   qb1: ['Marsh Viper', 'beast_snake', 16, 334, 75, 14, 'snake', null], qb2: ['Swamp Witch Mirei', 'ninja', 19, 732, 84, 16, 'ranged', 'water'], qb3: ['Cult Leader Jabami', 'ninja', 23, 955, 92, 20, 'ninja', 'fire'],
-  qc1: ['Shrine Wraith', 'ninja', 31, 2152, 154, 28, 'ninja', 'lightning'], qc2: ['Ash Wolf', 'beast_wolf', 31, 1107, 170, 28, 'beast', null], qc3: ['Herald Kurogane', 'ninja', 35, 2995, 174, 32, 'ranged', 'wind'] };
+  qc1: ['Shrine Wraith', 'ninja', 31, 2152, 154, 28, 'ninja', 'lightning'], qc2: ['Ash Wolf', 'beast_wolf', 31, 1107, 170, 28, 'beast', null], qc3: ['Herald Kurogane', 'ninja', 35, 2995, 174, 32, 'ranged', 'wind'],
+  qd1: ["Reaper Scout","ninja",32,3901,210,30,"mistnin","water"], qd2: ["Mist Assassin","ninja",33,2444,173,31,"swordsman","water"], qd3: ["Reaper Alchemist","ninja",35,4429,237,33,"alchemist","water"], qd4: ["Frost Wolf","beast_wolf",36,2767,201,34,"frostbeast","water"], qd5: ["Swordsman Raizo","ninja",38,4986,247,36,"swordsman","water"], qe1: ["Dune Raider","ninja",41,5570,296,39,"ninja","wind"], qe2: ["Sand Wyrm","beast_snake",42,3462,242,40,"scorpion","earth"], qe3: ["Puppet Master Ayatsu","ninja",44,6182,328,42,"puppeteer","wind"], qe4: ["War Puppet","ninja",45,3835,288,43,"puppet","earth"], qe5: ["Stone Guardian","ninja",47,6822,382,45,"golem","earth"], qe6: ["Vizier Kazahana","ninja",49,7264,360,47,"cultist","wind"], qf1: ["Covenant Monk","ninja",51,7719,407,48,"cultist","fire"], qf2: ["Pass Shade","ninja",52,4770,377,49,"shade",null], qf3: ["Oracle Shirayuki","ninja",54,8424,469,51,"oracle","water"], qf4: ["Eclipse Hound","beast_wolf",55,5199,360,52,"hound",null], qf5: ["Dusk Blade Tsubame","ninja",57,9157,447,54,"swordsman","lightning"], qf6: ["High Priest Kagerou","ninja",59,9661,506,56,"cultist","fire"] };
 export function mockStartQuest(c, line) {
-  const x = enrich(c), L = QUEST_LINES.find((l) => l.id === line); if (x.rank_index < L.min_rank) throw new Error('Only Chunin or higher may take this quest.');
+  const x = enrich(c), L = QUEST_LINES.find((l) => l.id === line); if (x.rank_index < L.min_rank) throw new Error('Only Chunin or higher may take this quest.'); if (c.level < (L.min_level || 0)) throw new Error(`Reach level ${L.min_level} to take this quest.`);
   const p = (c.quests || {})[line] || {}, cur = p.step || 1, qs = QUEST_STEPS.find((s) => s.line === line && s.step === cur), [n, kind, lv, hp, atk, def, kit, el] = QM[qs.mission_id];
   const look = kind === 'ninja' ? { hairStyle: lv % 5, hair: lv % 8, skin: lv % 6, outfit: 4, band: 2, bandSpot: 0 } : { tint: '#5a5050' };
   const m = { id: qs.mission_id, xp: 200, ryo: 150, kind: 'quest' };
@@ -292,7 +313,7 @@ export function mockLobbies() { return raid && ['lobby', 'active'].includes(raid
 function raidStep(events) {
   const s = raid.state.engine; delete s.seed; raid.state.events = events; raid.seq++;
   if (events.some((e) => e.t === 'turn')) raid.deadline = new Date(Date.now() + 60000).toISOString();
-  if (s.status === 'over') { raid.status = 'over'; raid.winner = s.winner; raid.rewards = { [raid.leader]: s.winner === 'A' ? { win: true, xp: 900, ryo: 1200, claims_left: 2, scroll: raid.line === 'serpent' ? 'serpentfang' : null, title: raid.line === 'shrine' ? 'Shogun Slayer' : null } : { win: false } }; }
+  if (s.status === 'over') { raid.status = 'over'; raid.winner = s.winner; raid.rewards = { [raid.leader]: s.winner === 'A' ? { win: true, xp: 900, ryo: 1200, claims_left: 2, scroll: raid.line === 'serpent' ? 'serpentfang' : null, title: raid.line === 'shrine' ? 'Shogun Slayer' : { mist: 'Mist Breaker', sands: 'Tomb Raider of the Sands', eclipse: 'Dawnbringer' }[raid.line] || null, gear: (G.BOSS_DROPS[raid.line] || [])[0] || null } : { win: false } }; }
   remit(); raidAI();
 }
 function raidAI() {

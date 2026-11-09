@@ -21,6 +21,7 @@ export async function raidOp(admin: any, uid: string, body: any, seed: () => num
     if (!c || !ql) throw new Error('Unknown lair.');
     if (c.asleep_since) throw new Error('You are asleep. Wake up first.');
     if (G.RANKS.indexOf(c.rank) < ql.min_rank) throw new Error(`Only ${G.RANKS[ql.min_rank]}s and above may enter.`);
+    if (c.level < (ql.min_level || 0)) throw new Error(`Reach level ${ql.min_level} to enter.`);
     if (!(c.quests && c.quests[line] && c.quests[line].done)) throw new Error(`Finish the quest line "${ql.name}" first.`);
     return c;
   };

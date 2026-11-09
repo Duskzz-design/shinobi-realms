@@ -237,6 +237,7 @@ export function battleView(root, char, cfg) {
           const v = unit(hit.who); v.hp = Math.max(0, v.hp - hit.dmg); fx.hurt = { who: hit.who, start: t };
           float(hit.who, hit.crit ? `CRIT ${hit.dmg}` : String(hit.dmg), hit.crit ? '#ffe07a' : hit.who === MY ? '#ff8f7a' : '#fff4dc');
           if (hit.mult > 1) float(hit.who, 'Super effective!', '#ffb04a', 14); else if (hit.mult < 1) float(hit.who, 'Resisted', '#9ab0c0', 14);
+          if (hit.drain) { u.hp = Math.min(u.hpmax, u.hp + hit.drain); float(ev.who, `🩸 +${hit.drain}`, '#7ce08a', 20); }
           if (hit.enrage) { float(hit.who, '😡 ENRAGED!', '#ff5a3a', 40); say(`<b>${esc(unit(hit.who).name)}</b> is enraged and hits harder!`); }
           (hit.effects || []).forEach((k, i) => setTimeout(() => float(hit.who, G.STATUS[k].icon + ' ' + G.STATUS[k].label, '#e0a0ff', 26 + i * 10), 200 + i * 160));
         }

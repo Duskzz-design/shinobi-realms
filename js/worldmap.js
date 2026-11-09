@@ -1,5 +1,6 @@
 // World map (through the Village Gate): travel to quest locations and boss lairs.
 import * as net from './net.js';
+import * as G from './engine.js';
 import { VILLAGES } from './sprites.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -19,9 +20,21 @@ export const LOCATIONS = {
   ruined_shrine: { name: 'Ruined Shrine', x: 58, y: 40, icon: '⛩️', kind: 'quest', desc: 'A shrine abandoned long ago. Ghost lights flicker here.' },
   ashen_peak: { name: 'Ashen Peak', x: 160, y: 30, icon: '🌋', kind: 'quest', desc: 'A grey mountain where ash falls like snow.' },
   shadow_fortress: { name: 'Shadow Fortress', x: 222, y: 20, icon: '🏰', kind: 'lair', line: 'shrine', desc: 'A black castle in the clouds. The Hollow Shogun waits.' },
+  // Jonin regions
+  drowned_pier: { name: 'Drowned Pier', x: 96, y: 182, icon: '⚓', kind: 'quest', desc: 'Rotting jetties where fishing boats come back empty.' },
+  ice_cove: { name: 'Icebound Cove', x: 30, y: 130, icon: '🧊', kind: 'quest', desc: 'A frozen inlet where strange black boats are moored.' },
+  mist_isle: { name: 'Mist Isle', x: 16, y: 92, icon: '🏝️', kind: 'lair', line: 'mist', desc: 'An island lost in endless fog. The Mist Reaper rules here.' },
+  glass_dunes: { name: 'Glass Dunes', x: 254, y: 178, icon: '🏜️', kind: 'quest', desc: 'Dunes of sun-melted glass where caravans vanish.' },
+  red_canyon: { name: 'Red Canyon', x: 296, y: 100, icon: '🪨', kind: 'quest', desc: 'Towering red cliffs, littered with broken puppets.' },
+  scorpion_tomb: { name: 'Scorpion Tomb', x: 302, y: 164, icon: '🦂', kind: 'lair', line: 'sands', desc: 'A buried pyramid. The Scorpion King stirs beneath the sand.' },
+  frost_pass: { name: 'Frost Pass', x: 104, y: 18, icon: '❄️', kind: 'quest', desc: 'A knife-thin path across the frozen peaks.' },
+  eclipse_gate: { name: 'Eclipse Gate', x: 272, y: 36, icon: '🌘', kind: 'quest', desc: 'A black stone arch that swallows the light.' },
+  moon_temple: { name: 'Moon Temple', x: 302, y: 14, icon: '🌕', kind: 'lair', line: 'eclipse', desc: 'A temple on the highest peak. The Eclipse Sage waits for the dark.' },
 };
 const ROADS = [['pine', 'bandit_road'], ['bandit_road', 'dune'], ['bandit_road', 'watchtower'], ['watchtower', 'stronghold'], ['pine', 'tide'], ['pine', 'whispering_woods'],
-  ['whispering_woods', 'ruined_shrine'], ['whispering_woods', 'ashen_peak'], ['ashen_peak', 'shadow_fortress'], ['bandit_road', 'misty_marsh'], ['misty_marsh', 'serpent_cave']];
+  ['whispering_woods', 'ruined_shrine'], ['whispering_woods', 'ashen_peak'], ['ashen_peak', 'shadow_fortress'], ['bandit_road', 'misty_marsh'], ['misty_marsh', 'serpent_cave'],
+  ['tide', 'drowned_pier'], ['drowned_pier', 'misty_marsh'], ['tide', 'ice_cove'], ['ice_cove', 'mist_isle'], ['dune', 'glass_dunes'], ['dune', 'red_canyon'], ['glass_dunes', 'scorpion_tomb'],
+  ['ruined_shrine', 'frost_pass'], ['frost_pass', 'ashen_peak'], ['shadow_fortress', 'eclipse_gate'], ['eclipse_gate', 'moon_temple']];
 
 // painted once
 let mapCanvas = null;
@@ -68,7 +81,7 @@ function paint() {
 function lineState(char, line, steps) {
   const p = (char.quests || {})[line.id] || {}, st = steps.filter((s) => s.line === line.id).sort((a, b) => a.step - b.step);
   const cur = st.find((s) => s.step === (p.step || 1));
-  return { done: !!p.done, step: p.step || 1, count: p.count || 0, cur, steps: st, locked: RANKS.indexOf(char.rank) < line.min_rank };
+  return { done: !!p.done, step: p.step || 1, count: p.count || 0, cur, steps: st, locked: RANKS.indexOf(char.rank) < line.min_rank || char.level < (line.min_level || 0) };
 }
 
 export async function openWorldMap(root, char, { onQuest, onLair, onHome, onWar, focus }) {
@@ -97,12 +110,13 @@ export async function openWorldMap(root, char, { onQuest, onLair, onHome, onWar,
 
   function stepLine(l) {
     const s = states[l.id];
-    if (s.locked) return `<div class="wm-q locked"><b>🔒 ${esc(l.name)}</b><small>For ${RANKS[l.min_rank]}s and above.</small></div>`;
+    if (s.locked) return `<div class="wm-q locked"><b>🔒 ${esc(l.name)}</b><small>${lockMsg(l)}</small></div>`;
     if (s.done) return `<div class="wm-q done"><b>✅ ${esc(l.name)}</b><small>Complete. ${esc(LOCATIONS[l.lair].name)} is open to you.</small></div>`;
     const c = s.cur, at = LOCATIONS[c.location];
     return `<div class="wm-q"><b>${esc(l.name)}</b><small>Step ${s.step}/${s.steps.length}: <b>${esc(c.title)}</b>${c.need > 1 ? ` (${s.count}/${c.need})` : ''} at ${esc(at.name)}</small>
       <button class="btn small ghost" data-go="${c.location}">Go there</button></div>`;
   }
+  function lockMsg(l) { return RANKS.indexOf(char.rank) < l.min_rank ? `For ${RANKS[l.min_rank]}s and above.` : `Unlocks at level ${l.min_level} (you are ${char.level}).`; }
   function showLog() {
     panel.innerHTML = `<h3>📜 Quest lines</h3>${data.lines.map(stepLine).join('')}`;
     panel.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => showLoc(b.dataset.go)));
@@ -116,9 +130,10 @@ export async function openWorldMap(root, char, { onQuest, onLair, onHome, onWar,
         : `<p class="sub">${esc(VILLAGES[id]?.name || L.name)} is an allied village. Visiting other villages comes later.</p>`;
     } else if (L.kind === 'lair') {
       const line = data.lines.find((l) => l.id === L.line), s = states[L.line];
-      const reward = { riches: '💰 Huge XP and ryo', scroll: '📜 Chance of a rare boss-only jutsu scroll', title: '🏆 Titles and trophies' }[line.reward];
-      body = `<div class="wm-boss"><b>Boss: ${esc(line.boss_name)}</b><small>Reward: ${reward}</small></div>` +
-        (s.locked ? `<p class="sub">🔒 Only ${RANKS[line.min_rank]}s and above may enter.</p>`
+      const drops = (G.BOSS_DROPS[line.id] || []).map((id) => G.GEAR[id]).filter(Boolean);
+      const reward = { riches: '💰 Huge XP and ryo', scroll: '📜 Chance of a rare boss-only jutsu scroll', title: '🏆 Titles and trophies', gear: '💰 Big XP and ryo, plus a title for your first kill' }[line.reward];
+      body = `<div class="wm-boss"><b>Boss: ${esc(line.boss_name)}</b><small>Reward: ${reward}</small>${drops.length ? `<small class="wm-drops">Rare drops: ${drops.map((g) => `<span title="${esc(g.note || '')}">${g.icon} ${esc(g.name)}</span>`).join(' ')}</small>` : ''}</div>` +
+        (s.locked ? `<p class="sub">🔒 ${lockMsg(line)}</p>`
           : !s.done ? `<p class="sub">🔒 Finish the quest line <b>${esc(line.name)}</b> to find the way in.</p>`
           : `<button class="btn primary" data-lair="${id}">⚔️ Enter the lair (team up to 3)</button>`);
     } else {

@@ -113,10 +113,21 @@ Object.assign(GEAR, {
   iron_helm: GP({ slot: 'head', name: 'Iron Helm', icon: '⛑️', tier: 'boss', boss: 'iron', def: 12, stunResist: 0.3, note: 'Shrugs off 30% of stuns' }),
   scale_bracers: GP({ slot: 'arms', name: 'Scale Bracers', icon: '🐉', tier: 'boss', boss: 'serpent', def: 12, poisonImmune: true, note: 'Immune to poison' }),
   hollow_plate: GP({ slot: 'chest', name: 'Hollow Breastplate', icon: '🛡️', tier: 'boss', boss: 'shrine', def: 14, lightningResist: 0.15, note: 'Lightning hurts 15% less' }),
+  // Jonin boss drops: Mist Reaper (lv 30 line), Scorpion King (lv 40), Eclipse Sage (lv 50)
+  mistcutter: GP({ slot: 'weapon', name: 'Mistcutter', icon: '🌫️', tier: 'boss', boss: 'mist', boost: 0.32, slash: 76, slashFx: [E('slow', 1, 0.35)], note: 'Slash may chill (slow)' }),
+  reaper_hood: GP({ slot: 'head', name: 'Reaper Hood', icon: '🥷', tier: 'boss', boss: 'mist', def: 15, dodge: 0.03, note: '+3% dodge' }),
+  tidewalker_greaves: GP({ slot: 'legs', name: 'Tidewalker Greaves', icon: '🌊', tier: 'boss', boss: 'mist', def: 15, immune: ['slow'], note: 'Cannot be slowed' }),
+  stingblade: GP({ slot: 'weapon', name: "Scorpion King's Stinger", icon: '🦂', tier: 'boss', boss: 'sands', boost: 0.36, slash: 84, slashFx: [E('armor_break', 2, 0.4)], note: 'Slash may break armour' }),
+  sandshell_bracers: GP({ slot: 'arms', name: 'Sandshell Bracers', icon: '🏜️', tier: 'boss', boss: 'sands', def: 17, resist: { earth: 0.2 }, immune: ['root'], note: 'Earth hurts 20% less, cannot be rooted' }),
+  kings_mantle: GP({ slot: 'chest', name: "King's Mantle", icon: '👘', tier: 'boss', boss: 'sands', def: 18, hp: 0.05, note: '+5% max HP' }),
+  duskfang: GP({ slot: 'weapon', name: 'Duskfang', icon: '🌒', tier: 'boss', boss: 'eclipse', boost: 0.4, slash: 92, slashFx: [E('weaken', 2, 0.4)], note: 'Slash may weaken' }),
+  eclipse_crown: GP({ slot: 'head', name: 'Eclipse Crown', icon: '👑', tier: 'boss', boss: 'eclipse', def: 20, immune: ['confuse'], note: 'Cannot be confused' }),
+  moonshadow_greaves: GP({ slot: 'legs', name: 'Moonshadow Greaves', icon: '🌙', tier: 'boss', boss: 'eclipse', def: 20, dodge: 0.04, note: '+4% dodge' }),
 });
 export const GEAR_SETS = { genin: { name: 'Genin Uniform', hp: 0.05 }, flak: { name: 'Flak Uniform', hp: 0.08 }, anbu: { name: 'ANBU Uniform', hp: 0.1, dodge: 0.05 } };
 export const GEAR_SLOTS = ['weapon', 'head', 'chest', 'arms', 'legs'];
-export const BOSS_DROPS = { iron: ['cleaver', 'iron_helm'], serpent: ['fangblade', 'scale_bracers'], shrine: ['thunderclap', 'hollow_plate'] };
+export const BOSS_DROPS = { iron: ['cleaver', 'iron_helm'], serpent: ['fangblade', 'scale_bracers'], shrine: ['thunderclap', 'hollow_plate'],
+  mist: ['mistcutter', 'reaper_hood', 'tidewalker_greaves'], sands: ['stingblade', 'sandshell_bracers', 'kings_mantle'], eclipse: ['duskfang', 'eclipse_crown', 'moonshadow_greaves'] };
 // who may wear a piece: basic for everyone, advanced from Chunin, ANBU for squad members, boss drops for whoever owns them
 export function canWear(id, rankIndex, anbu) { const g = GEAR[id]; if (!g) return false; return g.tier === 'anbu' ? !!anbu : g.tier === 'adv' ? rankIndex >= 2 : true; }
 // combined bonuses of what a character is wearing
@@ -127,6 +138,9 @@ export function gearStats(c) {
     out.def += g.def; if (g.set) out.sets[g.set] = (out.sets[g.set] || 0) + 1;
     if (slot === 'weapon') Object.assign(out, { weapon: id, boost: g.boost, slash: g.slash, slashFx: g.slashFx || [] });
     if (g.stunResist) out.stunResist = g.stunResist; if (g.poisonImmune) out.poisonImmune = true; if (g.lightningResist) out.lightningResist = g.lightningResist;
+    if (g.dodge) out.dodge += g.dodge; if (g.hp) out.hp += g.hp;
+    if (g.immune) out.immune = [...(out.immune || []), ...g.immune];
+    if (g.resist) out.resist = { ...(out.resist || {}), ...g.resist };
   }
   for (const [set, n] of Object.entries(out.sets)) if (n >= 4) { out.hp += GEAR_SETS[set].hp || 0; out.dodge += GEAR_SETS[set].dodge || 0; out.fullSet = set; }
   return out;
@@ -150,8 +164,21 @@ export const ENEMY_MOVES = {
   guard: EM({ name: 'Guard', ap: 1, target: 'self', effects: [E('def_up', 1)] }),
   slam: EM({ name: 'Crushing Sweep', ap: 3, range: [0, 0], aoe: 1, target: 'hex', f: 1.1 }),
   rain: EM({ name: 'Barrage', ap: 4, range: [1, 5], aoe: 1, target: 'hex', f: 0.9, effects: [E('burn', 2, 0.3)] }),
+  ice: EM({ name: 'Frost Needles', ap: 3, range: [1, 3], f: 0.95, effects: [E('slow', 1, 0.45)] }),
+  mend: EM({ name: 'Mending Mist', ap: 3, target: 'self', heal: 0.12 }),
+  mist: EM({ name: 'Veil of Mist', ap: 3, target: 'self', heal: 0.04, effects: [E('def_up', 1)] }),
+  sever: EM({ name: 'Severing Blade', ap: 3, f: 1.4, effects: [E('armor_break', 2, 0.4)] }),
+  hex: EM({ name: 'Curse Seal', ap: 3, range: [1, 3], f: 0.8, effects: [E('weaken', 2, 0.55)] }),
+  illusion: EM({ name: 'Demon Illusion', ap: 3, range: [1, 4], f: 0.75, effects: [E('confuse', 1, 0.45)] }),
+  puppet: EM({ name: 'Puppet Strings', ap: 3, range: [1, 3], f: 1.05, effects: [E('root', 1, 0.35)] }),
+  sting: EM({ name: 'Scorpion Sting', ap: 3, f: 1.4, effects: [E('poison', 3, 0.6)] }),
+  quake: EM({ name: 'Earth Ripple', ap: 4, range: [1, 3], aoe: 1, target: 'hex', f: 1, effects: [E('slow', 1, 0.4)] }),
+  drain: EM({ name: 'Soul Drain', ap: 3, range: [1, 2], f: 1, drain: 0.5 }),
+  howl: EM({ name: 'Moon Howl', ap: 2, target: 'self', effects: [E('atk_up', 2), E('speed_up', 1)] }),
+  eclipse: EM({ name: 'Black Eclipse', ap: 5, range: [0, 0], aoe: 2, target: 'hex', f: 1.2, effects: [E('weaken', 2, 0.4)] }),
 };
-export const BOSS_KITS = { warlord: ['heavy', 'slam', 'throw', 'roar'], wyrm: ['bite', 'venom', 'slam', 'rain'], shogun: ['strike', 'elem', 'slam', 'rain', 'roar'] };
+export const BOSS_KITS = { warlord: ['heavy', 'slam', 'throw', 'roar'], wyrm: ['bite', 'venom', 'slam', 'rain'], shogun: ['strike', 'elem', 'slam', 'rain', 'roar'],
+  reaper: ['sever', 'ice', 'mist', 'rain', 'strike'], scorpionking: ['sting', 'quake', 'puppet', 'rain', 'roar'], eclipse: ['illusion', 'hex', 'eclipse', 'drain', 'elem'] };
 const ELEM_RIDER = { fire: E('burn', 2, 0.3), wind: E('armor_break', 2, 0.3), lightning: E('stun', 1, 0.15), earth: E('slow', 1, 0.4), water: E('weaken', 1, 0.3) };
 
 // ---------- hex maths ----------
@@ -306,6 +333,7 @@ export function damage(s, u, t, m, roll = true) {
   if (hasStatus(t, 'armor_break')) mult *= 1.25;
   if (hasStatus(t, 'def_up')) mult *= 0.65;
   if (el === 'lightning' && t.gear && t.gear.lightningResist) mult *= 1 - t.gear.lightningResist;
+  if (el && t.gear && t.gear.resist && t.gear.resist[el]) mult *= 1 - t.gear.resist[el];
   return { dmg: Math.max(1, Math.round(base * mult - defenceOf(t) * 0.5)), mult: elementMult(el, t.elements[0]) };
 }
 
@@ -323,11 +351,13 @@ function strike(s, u, m, moveId, targets, e) {
       const { dmg, mult } = damage(s, u, foe, m);
       const crit = rand(s) < critC, d = crit ? Math.round(dmg * 1.6) : dmg;
       foe.hp = Math.max(0, foe.hp - d); Object.assign(h, { dmg: d, crit, mult });
+      if (m.drain) { const g = Math.round(d * m.drain); u.hp = Math.min(u.hpmax, u.hp + g); h.drain = g; }
       const effs = [...(m.effects || [])]; if (u.npc && moveId === 'elem' && ELEM_RIDER[u.elements[0]]) effs.push(ELEM_RIDER[u.elements[0]]);
       h.effects = [];
       for (const x of effs) {
         if (foe.boss && (x.k === 'stun' || x.k === 'root') && rand(s) < 0.5) continue; // bosses shrug off half of all stuns and roots
         if (foe.gear && foe.gear.poisonImmune && x.k === 'poison') continue;
+        if (foe.gear && foe.gear.immune && foe.gear.immune.includes(x.k)) continue;
         if (foe.gear && foe.gear.stunResist && x.k === 'stun' && rand(s) < foe.gear.stunResist) continue;
         const chance = x.chance + (!u.npc && x.chance < 1 ? (u.stats.willpower || 0) * 0.003 : 0);
         if (rand(s) < chance) { addStatus(foe, x.k, x.turns); h.effects.push(x.k); }
@@ -487,7 +517,12 @@ export function knownMoves({ rankIndex = 0, elements = [], bloodline = null, scr
 
 // ---------- building fighters from game data (shared by server and offline mode) ----------
 export const RANKS = ['Academy Student', 'Genin', 'Chunin', 'Jonin'];
-export const KITS = { beast: ['claw', 'bite', 'roar'], ninja: ['strike', 'throw', 'elem', 'heavy'], snake: ['claw', 'venom', 'bite'], ranged: ['throw', 'elem', 'guard', 'strike'] };
+export const KITS = { beast: ['claw', 'bite', 'roar'], ninja: ['strike', 'throw', 'elem', 'heavy'], snake: ['claw', 'venom', 'bite'], ranged: ['throw', 'elem', 'guard', 'strike'],
+  // Jonin-era enemies
+  mistnin: ['strike', 'ice', 'throw', 'mend'], alchemist: ['venom', 'hex', 'throw', 'mend'], frostbeast: ['bite', 'ice', 'claw'], swordsman: ['sever', 'strike', 'heavy', 'guard'],
+  scorpion: ['claw', 'sting', 'quake'], puppeteer: ['puppet', 'throw', 'hex', 'guard'], puppet: ['strike', 'puppet', 'heavy'], golem: ['heavy', 'quake', 'guard'],
+  cultist: ['hex', 'illusion', 'elem', 'strike'], shade: ['illusion', 'drain', 'strike'], oracle: ['illusion', 'ice', 'mend', 'elem'], hound: ['bite', 'claw', 'howl'] };
+export const RANGED_KITS = ['ranged', 'mistnin', 'alchemist', 'puppeteer', 'oracle', 'cultist'];
 // c: character row; jl: {move: level}; pools: {php,pmax,pst,pstmax,pch,pchmax}
 export const ALWAYS = ['focus', 'guard'];
 // the jutsu a character takes into a fight: their saved loadout, or (if none) their strongest known jutsu
@@ -522,7 +557,7 @@ export function enemySpec(st) {
     return { ...sp, ai: f.ranged ? 'ranged' : 'melee' };
   }
   return { name: e.name, look: e.look, kind: e.kind, level: f.level || e.level, npc: true, hpmax: f.hp, atk: f.atk, def: f.def, element: f.element || null,
-    moves: KITS[f.kit] || KITS.ninja, ai: f.kit === 'ranged' ? 'ranged' : 'melee' };
+    moves: KITS[f.kit] || KITS.ninja, ai: RANGED_KITS.includes(f.kit) ? 'ranged' : 'melee' };
 }
 export function enemyMoveName(u, id) { return id === 'elem' && u.elements[0] ? `${ELEMENT_INFO[u.elements[0]].label} Jutsu` : ENEMY_MOVES[id]?.name || id; }
 // full fight pools for a character row (same formulas as the database)
@@ -542,6 +577,9 @@ export const BOSSES = {
   iron: { name: 'Warlord Gorou', kind: 'ninja', kit: 'warlord', hp: 7600, atk: 85, def: 22, element: 'earth', level: 26, look: { hairStyle: 0, hair: 0, skin: 3, outfit: 6, band: 1, bandSpot: 1 } },
   serpent: { name: 'Venomfang', kind: 'beast_snake', kit: 'wyrm', hp: 8000, atk: 86, def: 22, element: null, level: 26, look: { tint: '#3a6a3a' } },
   shrine: { name: 'The Hollow Shogun', kind: 'ninja', kit: 'shogun', hp: 14600, atk: 188, def: 36, element: 'lightning', level: 40, look: { hairStyle: 3, hair: 0, skin: 5, outfit: 4, band: 2, bandSpot: 0 } },
+  mist: { name: 'Kirishima the Mist Reaper', kind: 'ninja', kit: 'reaper', hp: 36000, atk: 240, def: 40, element: 'water', level: 42, look: { hairStyle: 1, hair: 7, skin: 0, outfit: 5, band: 2, bandSpot: 2 } },
+  sands: { name: 'Sekiryu the Scorpion King', kind: 'ninja', kit: 'scorpionking', hp: 50000, atk: 290, def: 46, element: 'earth', level: 52, look: { hairStyle: 4, hair: 3, skin: 2, outfit: 6, band: 1, bandSpot: 1 } },
+  eclipse: { name: 'Mother Yoru, the Eclipse Sage', kind: 'ninja', kit: 'eclipse', hp: 75000, atk: 430, def: 52, element: 'wind', level: 62, look: { hairStyle: 2, hair: 6, skin: 4, outfit: 3, band: 1, bandSpot: 0 } },
 };
 const BOSS_SCALE = { 1: [0.3, 0.65], 2: [0.6, 0.85], 3: [1, 1] };
 export function bossSpec(line, n) {
