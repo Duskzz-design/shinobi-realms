@@ -516,3 +516,8 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .tag { text-shadow: none; line-height: 1.35; display: inline-block; vertical-align: middle; }
 .wm-drops { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .wm-drops span { background: #fff4d8; box-shadow: 0 0 0 2px #8a2a2a; padding: 1px 5px; font-size: 0.92em; white-space: nowrap; }
+.cdb { background: #3a2a4a; color: #ffe07a; padding: 0 4px; font-size: 11px; margin-left: 2px; }
+.hx .cdb + * {}
+.hx-ctr { display: contents; }
+.hx-bar .ctr { border-color: #6a4aa0; }
+.lib-note { background: #2b1d3a; color: #e6dcff; padding: 8px 10px; margin: 6px 3px 10px; font-size: 14px; }

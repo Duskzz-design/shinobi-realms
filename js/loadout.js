@@ -31,9 +31,9 @@ export function openLoadout(root, char, opts) {
     const jl = char.jutsu || {};
     body.innerHTML = `${opts.sub ? `<p class="sub">${opts.sub}</p>` : ''}
       <div class="lo-timer"><i style="width:${(left / 60) * 100}%"></i><span>⏱ ${left}s</span></div>
-      <h4>Jutsu <b>${jutsu.length}/${slots}</b> <small>· Focus and Guard always come with you</small></h4>
+      <h4>Jutsu <b>${jutsu.length}/${slots}</b> <small>· Always with you: Focus, Guard${(char.gear || {}).weapon ? ', Sword Slash' : ''}${G.COUNTERS.filter((id) => (char.scrolls || []).includes(id)).map((id) => ', ' + G.MOVES[id].name).join('')}</small></h4>
       <div class="lo-grid">${known.map((id) => { const m = G.MOVES[id], on = jutsu.includes(id), col = m.element ? G.ELEMENT_INFO[m.element].color : '#7a4a2a';
-        return `<button class="lo-j ${on ? 'on' : ''}" data-j="${id}" style="--c:${col}"><b>${STYLE_ICON[m.style] || ''} ${esc(m.name)}</b><small>${m.ap} AP · ${m.target === 'self' ? 'Self' : m.range[1] === 0 ? 'Around you' : 'Range ' + m.range[1]}${m.aoe ? ' · Area' : ''} · Lv ${(jl[id] && jl[id].level) || 1}</small></button>`; }).join('') || '<p class="sub">You know no jutsu yet.</p>'}
+        return `<button class="lo-j ${on ? 'on' : ''}" data-j="${id}" style="--c:${col}"><b>${STYLE_ICON[m.style] || ''} ${esc(m.name)}</b><small>${m.ap} AP · ${m.target === 'self' ? 'Self' : m.range[1] === 0 ? 'Around you' : 'Range ' + m.range[1]}${m.aoe ? ' · Area' : ''}${G.cooldownOf(id) ? ' · ⏳' + G.cooldownOf(id) : ''} · Lv ${(jl[id] && jl[id].level) || 1}</small></button>`; }).join('') || '<p class="sub">You know no jutsu yet.</p>'}
         ${slots < 8 ? '<div class="lo-lock">🔒 <b>+2 jutsu slots</b><small>Premium upgrade, coming soon</small></div>' : ''}</div>
       <h4>Items <b>${items.length}/${G.ITEM_SLOTS}</b> <small>· buy more at the Tool Shop</small></h4>
       <div class="lo-grid">${Object.entries(G.ITEMS).map(([id, it]) => { const n = owned[id] || 0, on = items.includes(id);

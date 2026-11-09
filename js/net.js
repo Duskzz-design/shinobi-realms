@@ -347,6 +347,15 @@ const mockGear = async (fn, a) => {
   if (fn === 'equip') { if (a.id) c.gear[a.slot] = a.id; else delete c.gear[a.slot]; }
   saveMock(c); return loadCharacter();
 };
+export async function buyScroll(id) {
+  if (OFFLINE) {
+    const G = await import('./engine.js'), c = mockChar(), m = G.MOVES[id]; c.scrolls = c.scrolls || [];
+    if (!m || !m.counter) throw new Error('The Library has no such scroll.'); if (G.RANKS.indexOf(c.rank) < 1) throw new Error('Library scrolls are for Genin and above.');
+    if (c.scrolls.includes(id)) throw new Error('You already know that scroll.'); if (c.ryo < m.price) throw new Error('Not enough ryo.');
+    c.ryo -= m.price; c.scrolls.push(id); saveMock(c); return loadCharacter();
+  }
+  const { data, error } = await sb.rpc('buy_scroll', { p_scroll: id }); if (error) throw rpcErr(error); return data;
+}
 export async function buyGear(id) {
   if (OFFLINE) return mockGear('buy', id);
   const { data, error } = await sb.rpc('buy_gear', { p_id: id }); if (error) throw rpcErr(error); return data;

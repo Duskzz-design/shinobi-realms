@@ -20,7 +20,12 @@ export const STATUS = {
   focus_up: { label: 'Keen eye', icon: '🎯', good: true }, regen: { label: 'Regenerate', icon: '💚', good: true },
   burn: { label: 'Burning', icon: '🔥' }, poison: { label: 'Poisoned', icon: '☠️' }, slow: { label: 'Slowed', icon: '🐌' }, root: { label: 'Rooted', icon: '🌿' },
   stun: { label: 'Stunned', icon: '💫' }, confuse: { label: 'Confused', icon: '🌀' }, weaken: { label: 'Weakened', icon: '⬇️' }, armor_break: { label: 'Armour broken', icon: '💔' },
+  sub: { label: 'Substitution ready', icon: '🪵', good: true }, steady: { label: 'Steadfast (cannot be stunned)', icon: '🧘', good: true },
 };
+// PvP fairness: no debuff lands more than 75% of the time, and a stunned ninja can't be stunned again straight away
+export const DEBUFF_CAP = 0.75;
+export const DEBUFFS = ['burn', 'poison', 'slow', 'root', 'weaken', 'confuse', 'armor_break'];
+export const BUFFS = ['atk_up', 'def_up', 'speed_up', 'focus_up', 'regen', 'sub'];
 const E = (k, turns, chance = 1, on = 'target') => ({ k, turns, chance, on });
 const J = (o) => ({ ap: 3, stamina: 0, chakra: 0, range: [1, 1], aoe: 0, power: 0, acc: 0.92, crit: 0.05, target: 'enemy', effects: [], heal: 0, element: null, bloodline: null, ...o });
 // style: taijutsu | bukijutsu | ninjutsu | genjutsu | bloodline | none ; tier 0..3 = Academy..Jonin
@@ -81,15 +86,22 @@ export const MOVES = {
   focus: J({ name: 'Focus', style: 'none', tier: 0, ap: 2, target: 'self', desc: 'Restore stamina and chakra.' }),
   guard: J({ name: 'Guard', style: 'none', tier: 0, ap: 1, target: 'self', effects: [E('def_up', 1)], desc: 'Brace: take less damage until your next turn.' }),
   slash: J({ name: 'Sword Slash', style: 'bukijutsu', gear: true, tier: 0, ap: 2, stamina: 6, power: 0, crit: 0.1, desc: 'Strike with your equipped sword. Its power depends on the sword.' }),
+  // counter scrolls (bought at the Library, always ready: they don't use a loadout slot)
+  substitution: J({ name: 'Substitution', style: 'none', scroll: true, counter: true, price: 800, tier: 0, ap: 2, chakra: 10, target: 'self', effects: [E('sub', 1)], cd: 3, desc: 'Swap with a log: the next hit on you misses and you reappear away from your attacker.' }),
+  release: J({ name: 'Chakra Release', style: 'none', scroll: true, counter: true, price: 1500, tier: 0, ap: 2, chakra: 12, target: 'self', cleanse: true, cd: 3, desc: 'Flush your chakra to clear burning, poison, slow, root, weaken, confusion and armour break.' }),
+  dispel: J({ name: 'Dispel', style: 'none', scroll: true, counter: true, price: 2000, tier: 0, ap: 2, chakra: 12, range: [1, 4], acc: 1, dispel: true, cd: 2, desc: 'Break the enemy\'s jutsu: removes all their buffs (power, armour, haste, keen eye, regenerate, substitution).' }),
   // boss scrolls (learned only from boss drops)
   serpentfang: J({ name: 'Serpent Fang', style: 'bukijutsu', scroll: true, tier: 2, ap: 3, stamina: 8, chakra: 6, range: [1, 3], power: 40, crit: 0.2, effects: [E('poison', 3, 0.8), E('armor_break', 2, 0.5)], desc: 'Boss scroll: a coiling strike that poisons and breaks armour.' }),
 };
+// cooldowns by rank tier: Academy 0, Genin 1, Chunin 2, Jonin 3 turns (players only)
+export function cooldownOf(id) { const m = MOVES[id]; if (!m || m.gear || id === 'focus' || id === 'guard') return 0; return m.cd ?? [0, 1, 2, 3][m.tier] ?? 0; }
+export const COUNTERS = Object.keys(MOVES).filter((id) => MOVES[id].counter);
 // consumable items: bought in the Tool Shop, 3 kinds can be packed per fight, each use costs AP
 export const ITEMS = {
   pill_heal: { name: 'Healing Pill', icon: '💊', ap: 2, price: 120, desc: 'Heal 30% of your health.' },
   pill_chakra: { name: 'Chakra Pill', icon: '🔷', ap: 1, price: 100, desc: 'Restore 40% of your chakra and stamina.' },
   smoke: { name: 'Smoke Bomb', icon: '💨', ap: 2, price: 150, desc: 'Confuse every enemy next to you for 2 turns.' },
-  antidote: { name: 'Antidote', icon: '🧪', ap: 1, price: 80, desc: 'Cure burning, poison, slow, root and weaken.' },
+  antidote: { name: 'Antidote', icon: '🧪', ap: 1, price: 80, desc: 'Cure burning, poison, slow, root, weaken and confusion.' },
   // thrown weapons: aimed like a weapon technique, then used up
   kunai: { name: 'Kunai', icon: '🔪', ap: 1, price: 40, rank: 0, range: [1, 3], power: 12, acc: 0.95, crit: 0.1, effects: [], desc: 'A thrown blade. Range 1-3.' },
   shuriken: { name: 'Shuriken', icon: '✴️', ap: 1, price: 30, rank: 0, range: [2, 4], power: 10, acc: 0.95, crit: 0.25, effects: [], desc: 'A throwing star that often lands a critical hit. Range 2-4.' },
@@ -246,7 +258,7 @@ function mkUnit(id, spec, c, r, team) {
   const u = { id, c, r, team, boss: !!spec.boss, apBase: spec.apBase || 0, uid: spec.uid || null, name: spec.name, look: spec.look || {}, kind: spec.kind || 'ninja', level: spec.level || 1, npc: !!spec.npc,
     stats: spec.stats || {}, elements: spec.elements || (spec.element ? [spec.element] : []), bloodline: spec.bloodline || null,
     moves: spec.moves || [], jl: spec.jl || {}, atk: spec.atk || 0, def: spec.def || 0, ai: spec.ai || 'melee',
-    hpmax: spec.hpmax, stmax: spec.stmax || 0, chmax: spec.chmax || 0, effects: [], ap: 0, items: { ...(spec.items || {}) }, usedItems: {}, gear: spec.gear || null };
+    hpmax: spec.hpmax, stmax: spec.stmax || 0, chmax: spec.chmax || 0, effects: [], cd: {}, ap: 0, items: { ...(spec.items || {}) }, usedItems: {}, gear: spec.gear || null };
   u.hp = Math.min(u.hpmax, spec.hp ?? u.hpmax); u.st = Math.min(u.stmax, spec.st ?? u.stmax); u.ch = Math.min(u.chmax, spec.ch ?? u.chmax);
   return u;
 }
@@ -272,12 +284,13 @@ function startTurn(s, side, ev) {
   }
   if (hasStatus(u, 'regen')) { const h = Math.round(u.hpmax * 0.06); u.hp = Math.min(u.hpmax, u.hp + h); ev.push({ t: 'heal', who: side, amount: h }); }
   if (u.hp <= 0) { ev.push({ t: 'down', who: side }); if (checkWipe(s, ev)) return; return endTurn(s, ev); }
-  if (hasStatus(u, 'stun')) { u.ap = 0; ev.push({ t: 'stunned', who: side }); }
+  if (hasStatus(u, 'stun')) { u.ap = 0; addStatus(u, 'steady', 2); ev.push({ t: 'stunned', who: side }); }
   ev.push({ t: 'turn', who: side, ap: u.ap });
 }
 function endTurn(s, ev) {
   const u = s.units[s.side];
   for (const e of u.effects) e.turns--;
+  if (u.cd) for (const k of Object.keys(u.cd)) if (--u.cd[k] <= 0) delete u.cd[k];
   u.effects = u.effects.filter((e) => e.turns > 0);
   let i = s.order.indexOf(s.side);
   for (let k = 0; k < s.order.length; k++) { i = (i + 1) % s.order.length; if (i === 0) s.turn++; if (s.units[s.order[i]].hp > 0) break; }
@@ -292,11 +305,14 @@ export function moveDef(u, id) { return u.npc ? ENEMY_MOVES[id] : MOVES[id]; }
 export function canUse(s, u, id) {
   const m = moveDef(u, id); if (!m) return 'Unknown technique.';
   if (!u.moves.includes(id)) return 'You have not learned that.';
+  if (u.cd && u.cd[id] > 0) return `${m.name} is recharging (${cdLeft(u, id)} turn${cdLeft(u, id) === 1 ? '' : 's'}).`;
   if (u.ap < m.ap) return 'Not enough AP.';
   if (!u.npc && u.st < (m.stamina || 0)) return 'Not enough stamina.';
   if (!u.npc && u.ch < (m.chakra || 0)) return 'Not enough chakra.';
   return null;
 }
+// own turns still to wait before a technique can be used again
+export function cdLeft(u, id) { return u.cd && u.cd[id] > 0 ? Math.min(u.cd[id], cooldownOf(id)) : 0; }
 export function inRange(m, from, to) { const d = dist(from, to); return d >= m.range[0] && d <= m.range[1]; }
 // rocks block line of sight for anything thrown or cast further than one hex
 function cubeRound(x, y, z) { let rx = Math.round(x), ry = Math.round(y), rz = Math.round(z); const dx = Math.abs(rx - x), dy = Math.abs(ry - y), dz = Math.abs(rz - z);
@@ -317,6 +333,13 @@ function statsFor(u, m) {
 }
 export function defenceOf(u) { return u.npc ? u.def : 3 + u.level * 1.5 + (u.stats.strength || 0) * 0.6 + (u.gear ? u.gear.def : 0); }
 export function dodgeOf(u) { return u.npc ? 0.05 : Math.min(0.3, (u.stats.agility || 0) * 0.004 + (u.gear ? u.gear.dodge : 0)); }
+// player-vs-player damage scale by level: keeps duels around 5-6 turns at every rank
+const PVP_TABLE = [[20, 1], [25, 0.72], [30, 0.6], [40, 0.33], [50, 0.26], [60, 0.22]];
+export function pvpScale(level) {
+  if (level <= PVP_TABLE[0][0]) return 1;
+  for (let i = 1; i < PVP_TABLE.length; i++) { const [l1, v1] = PVP_TABLE[i - 1], [l2, v2] = PVP_TABLE[i]; if (level <= l2) return v1 + ((level - l1) / (l2 - l1)) * (v2 - v1); }
+  return PVP_TABLE[PVP_TABLE.length - 1][1];
+}
 // expected / rolled damage of move m from u to t
 export function damage(s, u, t, m, roll = true) {
   let base;
@@ -334,6 +357,7 @@ export function damage(s, u, t, m, roll = true) {
   if (hasStatus(t, 'def_up')) mult *= 0.65;
   if (el === 'lightning' && t.gear && t.gear.lightningResist) mult *= 1 - t.gear.lightningResist;
   if (el && t.gear && t.gear.resist && t.gear.resist[el]) mult *= 1 - t.gear.resist[el];
+  if (s.pvp && !u.npc && !t.npc) mult *= pvpScale(u.level); // ninja vs ninja: longer, more tactical duels
   return { dmg: Math.max(1, Math.round(base * mult - defenceOf(t) * 0.5)), mult: elementMult(el, t.elements[0]) };
 }
 
@@ -344,8 +368,19 @@ function strike(s, u, m, moveId, targets, e) {
   let downed = false;
   for (const foe of targets) {
     const acc = m.acc + (hasStatus(u, 'focus_up') ? 0.1 : 0) - (hasStatus(u, 'confuse') ? 0.4 : 0) - dodgeOf(foe);
-    const hit = rand(s) < acc;
+    let hit = rand(s) < acc;
     const h = { who: foe.id, hit, dodge: !hit && rand(s) < 0.5 };
+    if (hit && hasStatus(foe, 'sub')) { // the log takes the hit; the ninja reappears away from the attacker
+      foe.effects = foe.effects.filter((x) => x.k !== 'sub'); h.hit = false; h.dodge = false; h.sub = true;
+      let best = null;
+      for (let r = 0; r < GH; r++) for (let c = 0; c < GW; c++) {
+        if (blockedHex(s, c, r, foe) || dist([c, r], [foe.c, foe.r]) > 3) continue;
+        const sc = dist([c, r], [u.c, u.r]) * 2 - dist([c, r], [foe.c, foe.r]);
+        if (!best || sc > best.sc) best = { sc, c, r };
+      }
+      if (best) { foe.c = best.c; foe.r = best.r; h.to = [best.c, best.r]; }
+      e.hits.push(h); continue;
+    }
     if (hit) {
       const critC = (m.crit || 0) + (u.npc ? 0 : (u.stats.agility || 0) * 0.002) + (hasStatus(u, 'focus_up') ? 0.15 : 0);
       const { dmg, mult } = damage(s, u, foe, m);
@@ -359,7 +394,8 @@ function strike(s, u, m, moveId, targets, e) {
         if (foe.gear && foe.gear.poisonImmune && x.k === 'poison') continue;
         if (foe.gear && foe.gear.immune && foe.gear.immune.includes(x.k)) continue;
         if (foe.gear && foe.gear.stunResist && x.k === 'stun' && rand(s) < foe.gear.stunResist) continue;
-        const chance = x.chance + (!u.npc && x.chance < 1 ? (u.stats.willpower || 0) * 0.003 : 0);
+        if (x.k === 'stun' && hasStatus(foe, 'steady')) continue;
+        const chance = Math.min(DEBUFF_CAP, x.chance + (!u.npc && x.chance < 1 ? (u.stats.willpower || 0) * 0.003 : 0));
         if (rand(s) < chance) { addStatus(foe, x.k, x.turns); h.effects.push(x.k); }
       }
       if (foe.boss && !foe.enraged && foe.hp > 0 && foe.hp < foe.hpmax / 2) { foe.enraged = true; addStatus(foe, 'atk_up', 99); h.enrage = true; }
@@ -400,7 +436,7 @@ export function act(s, side, a) {
     const e = { t: 'item', who: side, item: a.item, name: it.name, hits: [] };
     if (a.item === 'pill_heal') { const h = Math.round(u.hpmax * 0.3); u.hp = Math.min(u.hpmax, u.hp + h); e.heal = h; }
     if (a.item === 'pill_chakra') { const g = Math.round(u.chmax * 0.4), g2 = Math.round(u.stmax * 0.4); u.ch = Math.min(u.chmax, u.ch + g); u.st = Math.min(u.stmax, u.st + g2); e.focus = g; }
-    if (a.item === 'antidote') { const bad = ['burn', 'poison', 'slow', 'root', 'weaken']; e.cured = u.effects.filter((x) => bad.includes(x.k)).map((x) => x.k); u.effects = u.effects.filter((x) => !bad.includes(x.k)); }
+    if (a.item === 'antidote') { const bad = ['burn', 'poison', 'slow', 'root', 'weaken', 'confuse']; e.cured = u.effects.filter((x) => bad.includes(x.k)).map((x) => x.k); u.effects = u.effects.filter((x) => !bad.includes(x.k)); }
     if (a.item === 'smoke') for (const f of foesOf(s, u)) if (dist([u.c, u.r], [f.c, f.r]) <= 1) { if (!(f.boss && rand(s) < 0.5)) { addStatus(f, 'confuse', 2); e.hits.push({ who: f.id, effects: ['confuse'] }); } }
     ev.push(e);
     return ev;
@@ -426,11 +462,13 @@ export function act(s, side, a) {
     if (m.target !== 'self' && !(m.range[1] === 0) && !canHitFrom(s, m, [u.c, u.r], target)) throw new Error('A rock is in the way.');
     const foes = foesOf(s, u), tgt = m.target === 'enemy' ? foes.find((f) => f.c === target[0] && f.r === target[1]) : null;
     if (m.target === 'enemy' && !tgt) throw new Error('No enemy there.');
-    u.ap -= m.ap; if (!u.npc) { u.st -= m.stamina || 0; u.ch -= m.chakra || 0; }
+    u.ap -= m.ap; if (!u.npc) { u.st -= m.stamina || 0; u.ch -= m.chakra || 0; const n = cooldownOf(a.move); if (n) { u.cd = u.cd || {}; u.cd[a.move] = n + 1; } }
     const e = { t: 'use', who: side, move: a.move, name: u.npc ? enemyMoveName(u, a.move) : m.name, style: m.style, element: m.element || (u.npc && a.move === 'elem' ? u.elements[0] : null), at: target, aoe: m.aoe, hits: [] };
     ev.push(e);
     if (a.move === 'focus') { const g = 12 + u.level; u.st = Math.min(u.stmax, u.st + g); u.ch = Math.min(u.chmax, u.ch + g); e.focus = g; }
     if (m.heal) { const h = Math.round(u.hpmax * m.heal); u.hp = Math.min(u.hpmax, u.hp + h); e.heal = h; }
+    if (m.cleanse) { e.cured = u.effects.filter((x) => DEBUFFS.includes(x.k)).map((x) => x.k); u.effects = u.effects.filter((x) => !DEBUFFS.includes(x.k)); }
+    if (m.dispel) { const gone = tgt.effects.filter((x) => BUFFS.includes(x.k)).map((x) => x.k); tgt.effects = tgt.effects.filter((x) => !BUFFS.includes(x.k)); e.hits.push({ who: tgt.id, hit: true, dmg: 0, dispelled: gone, effects: [] }); return ev; }
     if (m.target === 'self') { for (const x of m.effects) addStatus(u, x.k, x.turns + 1); e.self = m.effects.map((x) => x.k); }
     else {
       const downed = strike(s, u, m, a.move, m.aoe ? foes.filter((f) => dist(target, [f.c, f.r]) <= m.aoe) : [tgt], e);
@@ -457,7 +495,8 @@ function aiChoose(s, side) {
   for (const id of u.moves) {
     const m0 = moveDef(u, id); if (!m0) continue;
     const m = { ...m0, id };
-    if (u.ap < m.ap || (!u.npc && (u.st < (m.stamina || 0) || u.ch < (m.chakra || 0)))) continue;
+    if (u.ap < m.ap || (u.cd && u.cd[id] > 0) || (!u.npc && (u.st < (m.stamina || 0) || u.ch < (m.chakra || 0)))) continue;
+    if (m.dispel || m.cleanse) continue; // left to human players
     if (m.target === 'self') {
       if (id === 'focus') { if (!u.npc && (u.ch < u.chmax * 0.25 || u.st < u.stmax * 0.2)) best = pick(best, { score: 30, a: { t: 'use', move: id } }); continue; }
       const useful = m.heal ? (u.hp < u.hpmax * 0.5 ? 40 : 0) : m.effects.every((x) => hasStatus(u, x.k)) ? 0 : (s.turn <= 3 || u.hp > u.hpmax * 0.4 ? 18 : 6);
@@ -528,7 +567,7 @@ export const ALWAYS = ['focus', 'guard'];
 // the jutsu a character takes into a fight: their saved loadout, or (if none) their strongest known jutsu
 export function loadoutMoves(c) {
   const ri = Math.max(0, RANKS.indexOf(c.rank)), elements = [c.element, c.element2].filter(Boolean);
-  const known = knownMoves({ rankIndex: ri, elements, bloodline: c.bloodline, scrolls: c.scrolls || [] }).filter((m) => !ALWAYS.includes(m));
+  const known = knownMoves({ rankIndex: ri, elements, bloodline: c.bloodline, scrolls: c.scrolls || [] }).filter((m) => !ALWAYS.includes(m) && !MOVES[m].counter);
   const slots = c.jutsu_slots || 6, saved = (c.loadout && c.loadout.jutsu) || [];
   let pick = saved.filter((m) => known.includes(m)).slice(0, slots);
   if (!pick.length) pick = [...known].sort((a, b) => MOVES[b].tier - MOVES[a].tier).slice(0, slots);
@@ -543,7 +582,7 @@ export function playerSpec(c, jl, pools) {
   const elements = [c.element, c.element2].filter(Boolean);
   const g = gearStats(c), hpx = 1 + g.hp;
   return { uid: c.user_id || null, name: c.name, look: c.appearance, kind: 'ninja', level: c.level, stats: { strength: c.strength, agility: c.agility, intelligence: c.intelligence, willpower: c.willpower },
-    elements, bloodline: c.bloodline || null, moves: [...loadoutMoves(c).pick, ...(g.weapon ? ['slash'] : []), ...ALWAYS], items: loadoutItems(c), jl: jl || {}, gear: g,
+    elements, bloodline: c.bloodline || null, moves: [...loadoutMoves(c).pick, ...(g.weapon ? ['slash'] : []), ...ALWAYS, ...COUNTERS.filter((id) => (c.scrolls || []).includes(id))], items: loadoutItems(c), jl: jl || {}, gear: g,
     hpmax: Math.round(pools.pmax * hpx), stmax: pools.pstmax, chmax: pools.pchmax, hp: Math.round(pools.php * hpx), st: pools.pst, ch: pools.pch };
 }
 // st: battle state with foe {hp,atk,def,kit,element,level} and enemy {name,kind,look}
@@ -568,6 +607,7 @@ export function poolsOf(c) {
 // a duel: both sides are players; faster (higher Agility) ninja moves first
 export function newDuel(seed, ca, jla, cb, jlb) {
   const s = newBattle({ seed, a: playerSpec(ca, jla, poolsOf(ca)), b: playerSpec(cb, jlb, poolsOf(cb)), aStarts: ca.agility >= cb.agility });
+  s.pvp = true;
   return s;
 }
 export const DUEL_TURN_SEC = 60;
@@ -577,9 +617,9 @@ export const BOSSES = {
   iron: { name: 'Warlord Gorou', kind: 'ninja', kit: 'warlord', hp: 7600, atk: 85, def: 22, element: 'earth', level: 26, look: { hairStyle: 0, hair: 0, skin: 3, outfit: 6, band: 1, bandSpot: 1 } },
   serpent: { name: 'Venomfang', kind: 'beast_snake', kit: 'wyrm', hp: 8000, atk: 86, def: 22, element: null, level: 26, look: { tint: '#3a6a3a' } },
   shrine: { name: 'The Hollow Shogun', kind: 'ninja', kit: 'shogun', hp: 14600, atk: 188, def: 36, element: 'lightning', level: 40, look: { hairStyle: 3, hair: 0, skin: 5, outfit: 4, band: 2, bandSpot: 0 } },
-  mist: { name: 'Kirishima the Mist Reaper', kind: 'ninja', kit: 'reaper', hp: 36000, atk: 240, def: 40, element: 'water', level: 42, look: { hairStyle: 1, hair: 7, skin: 0, outfit: 5, band: 2, bandSpot: 2 } },
-  sands: { name: 'Sekiryu the Scorpion King', kind: 'ninja', kit: 'scorpionking', hp: 50000, atk: 290, def: 46, element: 'earth', level: 52, look: { hairStyle: 4, hair: 3, skin: 2, outfit: 6, band: 1, bandSpot: 1 } },
-  eclipse: { name: 'Mother Yoru, the Eclipse Sage', kind: 'ninja', kit: 'eclipse', hp: 75000, atk: 430, def: 52, element: 'wind', level: 62, look: { hairStyle: 2, hair: 6, skin: 4, outfit: 3, band: 1, bandSpot: 0 } },
+  mist: { name: 'Kirishima the Mist Reaper', kind: 'ninja', kit: 'reaper', hp: 40000, atk: 285, def: 40, element: 'water', level: 42, look: { hairStyle: 1, hair: 7, skin: 0, outfit: 5, band: 2, bandSpot: 2 } },
+  sands: { name: 'Sekiryu the Scorpion King', kind: 'ninja', kit: 'scorpionking', hp: 54000, atk: 330, def: 46, element: 'earth', level: 52, look: { hairStyle: 4, hair: 3, skin: 2, outfit: 6, band: 1, bandSpot: 1 } },
+  eclipse: { name: 'Mother Yoru, the Eclipse Sage', kind: 'ninja', kit: 'eclipse', hp: 80000, atk: 490, def: 52, element: 'wind', level: 62, look: { hairStyle: 2, hair: 6, skin: 4, outfit: 3, band: 1, bandSpot: 0 } },
 };
 const BOSS_SCALE = { 1: [0.3, 0.65], 2: [0.6, 0.85], 3: [1, 1] };
 export function bossSpec(line, n) {

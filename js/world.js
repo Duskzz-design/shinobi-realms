@@ -17,7 +17,7 @@ export const BUILDINGS = [
   { id: 'missions', name: 'Mission Hall', x: 33, y: 12, w: 8, h: 5 },
   { id: 'shop', name: 'Tool Shop', x: 7, y: 12, w: 8, h: 5 },
   { id: 'arena', name: 'Arena', x: 6, y: 24, w: 10, h: 7, arena: true },
-  { id: 'house', x: 6, y: 4, w: 5, h: 4 }, { id: 'house', x: 12, y: 4, w: 5, h: 4 },
+  { id: 'house', x: 6, y: 4, w: 5, h: 4 }, { id: 'library', name: 'Library', x: 12, y: 4, w: 5, h: 4 },
   { id: 'house', x: 32, y: 4, w: 5, h: 4 }, { id: 'kage', name: 'Kage Tower', x: 38, y: 4, w: 8, h: 6, big: true, tower: true },
   { id: 'house', x: 32, y: 24, w: 5, h: 4 }, { id: 'house', x: 39, y: 22, w: 5, h: 4 },
 ];

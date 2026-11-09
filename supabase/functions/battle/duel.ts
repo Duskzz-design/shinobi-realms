@@ -112,7 +112,7 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
     const jl = (rows: any[]) => Object.fromEntries((rows || []).map((r) => [r.move_id, r.level]));
     // war ambush: the attacker (a) acts first; other duels: the faster ninja acts first
     const s = G.newBattle({ seed: seed(), a: G.playerSpec(ca, jl(ja), G.poolsOf(ca)), b: G.playerSpec(cb, jl(jb), G.poolsOf(cb)), aStarts: d.kind === 'war' ? true : ca.agility >= cb.agility });
-    delete (s as any).seed;
+    delete (s as any).seed; (s as any).pvp = true;
     return save(d, { status: 'active', ready, state: { engine: s, events: d.kind === 'war' ? [{ t: 'ambush', who: 'a' }] : [], arena: { a: ca.arena_points, b: cb.arena_points } }, seq: 1, deadline: iso(new Date(Date.now() + TURN_MS)) });
   }
   if (body.op === 'duel_act' || body.op === 'duel_timeout') {

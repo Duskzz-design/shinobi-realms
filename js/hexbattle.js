@@ -9,6 +9,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const GRADE_COL = { D: '#3a8a4a', C: '#2f7fc4', B: '#9a5ad0', A: '#e8742c', S: '#c43c32', X: '#b8860b', L: '#2a9d8f', Q: '#7a4a2a' };
 const RANKS = G.RANKS;
+const CTR_ICON = { substitution: '🪵', release: '✨', dispel: '🚫' };
 export const STYLE_INFO = {
   ninjutsu: { label: 'Ninjutsu', color: '#e8742c', icon: '🔥' }, genjutsu: { label: 'Genjutsu', color: '#9a5ad0', icon: '🌀' },
   taijutsu: { label: 'Taijutsu', color: '#d84a3a', icon: '👊' }, bukijutsu: { label: 'Bukijutsu', color: '#7a8a9a', icon: '🗡️' },
@@ -54,14 +55,14 @@ export function battleView(root, char, cfg) {
     <div class="hx-info"></div>
     <div class="b-tabs"></div>
     <div class="hx-moves"></div>
-    <div class="hx-bar"><button class="btn small ghost" data-u="guard">🛡️ Guard <small>1 AP</small></button><button class="btn small ghost" data-u="focus">🧘 Focus <small>2 AP</small></button><span class="hx-items"></span>
+    <div class="hx-bar"><button class="btn small ghost" data-u="guard">🛡️ Guard <small>1 AP</small></button><button class="btn small ghost" data-u="focus">🧘 Focus <small>2 AP</small></button><span class="hx-ctr"></span><span class="hx-items"></span>
       <button class="btn small primary" data-end>End turn ▶</button><button class="btn small ghost" data-flee>🏃</button></div>
   </div>`);
   root.appendChild(el);
   const cv = el.querySelector('canvas'), ctx = cv.getContext('2d'), info = el.querySelector('.hx-info'), banner = el.querySelector('.hx-banner');
   let sel = null, hover = null, busy = false, alive = true, tab = null, t = 0;
   const fx = { floats: [], proj: null, flash: null, anim: {} };
-  const mine = () => me().moves.filter((id) => id !== 'focus' && id !== 'guard');
+  const mine = () => me().moves.filter((id) => id !== 'focus' && id !== 'guard' && !G.MOVES[id]?.counter);
   const styles = () => [...new Set(mine().map((id) => G.MOVES[id].style))].sort((a, b) => Object.keys(STYLE_INFO).indexOf(a) - Object.keys(STYLE_INFO).indexOf(b));
   tab = styles()[0] || 'taijutsu';
 
@@ -90,12 +91,12 @@ export function battleView(root, char, cfg) {
   const defOf = (id) => { if (!id) return null; if (id.startsWith('it:')) { const it = G.ITEMS[id.slice(3)]; return it && { ...it, style: 'bukijutsu', target: it.aoe ? 'hex' : 'enemy', aoe: it.aoe || 0 }; } return G.MOVES[id]; };
   function moveBtn(id) {
     const m = G.MOVES[id], p = me(), learned = p.moves.includes(id), jl = p.jl[id] || 1;
-    const afford = learned && p.ap >= m.ap && p.st >= m.stamina && p.ch >= m.chakra;
+    const cdl = G.cdLeft(p, id), afford = learned && !cdl && p.ap >= m.ap && p.st >= m.stamina && p.ch >= m.chakra;
     const rng = m.target === 'self' ? 'Self' : m.range[1] === 0 ? `Around you` : m.range[0] === m.range[1] ? `Range ${m.range[1]}` : `Range ${m.range[0]}-${m.range[1]}`;
     const c = STYLE_INFO[m.style].color;
     return `<button class="mv hx ${learned ? '' : 'locked'} ${sel === id ? 'sel' : ''}" data-m="${id}" style="--c:${m.element ? G.ELEMENT_INFO[m.element].color : c}" ${learned && afford && !busy && eng.side === MY ? '' : 'disabled'}>
-      <b>${learned ? '' : '🔒 '}${esc(m.name)}${learned ? ` <span class="jl">Lv ${jl}</span>` : ''}</b>
-      <small>${learned ? `<em class="ap">${m.ap} AP</em> ${rng}${m.aoe ? ' · Area' : ''} · ${[m.stamina ? '💪' + m.stamina : '', m.chakra ? '💧' + m.chakra : ''].join(' ').trim() || 'Free'}` : `${RANKS[m.tier]} rank`}</small></button>`;
+      <b>${learned ? '' : '🔒 '}${esc(m.name)}${learned ? ` <span class="jl">Lv ${jl}</span>` : ''}${cdl ? ` <span class="cdb">⏳ ${cdl}</span>` : ''}</b>
+      <small>${learned ? `<em class="ap">${m.ap} AP</em> ${rng}${m.aoe ? ' · Area' : ''} · ${[m.stamina ? '💪' + m.stamina : '', m.chakra ? '💧' + m.chakra : ''].join(' ').trim() || 'Free'}${G.cooldownOf(id) ? ` · ⏳${G.cooldownOf(id)}` : ''}` : `${RANKS[m.tier]} rank`}</small></button>`;
   }
   function panel() {
     const st = styles();
@@ -106,7 +107,13 @@ export function battleView(root, char, cfg) {
     el.querySelectorAll('[data-tab]').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; panel(); }));
     el.querySelectorAll('.hx-moves [data-m]').forEach((b) => (b.onclick = () => pick(b.dataset.m)));
     const myTurn = eng.side === MY && !busy;
-    el.querySelectorAll('.hx-bar [data-u]').forEach((b) => { const m = G.MOVES[b.dataset.u]; b.disabled = !myTurn || p.ap < m.ap; b.classList.toggle('sel', sel === b.dataset.u); });
+    const ctr = el.querySelector('.hx-ctr');
+    if (ctr) {
+      ctr.innerHTML = G.COUNTERS.filter((id) => p.moves.includes(id)).map((id) => { const m = G.MOVES[id], cdl = G.cdLeft(p, id);
+        return `<button class="btn small ghost ctr" data-u="${id}" title="${esc(m.name)}: ${esc(m.desc)}">${CTR_ICON[id]} ${esc(m.name)} <small>${cdl ? `⏳ ${cdl}` : `${m.ap} AP · 💧${m.chakra}`}</small></button>`; }).join('');
+      ctr.querySelectorAll('[data-u]').forEach((b) => (b.onclick = () => pick(b.dataset.u)));
+    }
+    el.querySelectorAll('.hx-bar [data-u]').forEach((b) => { const id = b.dataset.u, m = G.MOVES[id]; b.disabled = !myTurn || p.ap < m.ap || G.cdLeft(p, id) > 0 || p.ch < (m.chakra || 0); b.classList.toggle('sel', sel === id); });
     el.querySelector('[data-end]').disabled = !myTurn; el.querySelector('[data-flee]').disabled = busy && !cfg.duel;
     const its = el.querySelector('.hx-items');
     if (its) {
@@ -231,8 +238,11 @@ export function battleView(root, char, cfg) {
         }
         if (ev.focus) float(ev.who, `+${ev.focus} 💪💧`, '#7cc4ec');
         if (ev.heal) { u.hp = Math.min(u.hpmax, u.hp + ev.heal); float(ev.who, `+${ev.heal}`, '#7ce08a'); }
+        if (ev.cured) { float(ev.who, ev.cured.length ? '✨ Cleansed' : '✨ Nothing to clear', '#9fe0a0', 14); u.effects = (u.effects || []).filter((x) => !ev.cured.includes(x.k)); }
         if (ev.self) ev.self.forEach((k, i) => setTimeout(() => float(ev.who, G.STATUS[k].icon + ' ' + G.STATUS[k].label, '#ffe07a', 12 + i * 10), i * 150));
         for (const hit of ev.hits || []) {
+          if (hit.sub) { const v = unit(hit.who); float(hit.who, '🪵 Substitution!', '#ffe07a'); if (hit.to) { v.c = hit.to[0]; v.r = hit.to[1]; } say(`<b>${esc(v.name)}</b> swapped with a log and vanished!`); continue; }
+          if (hit.dispelled) { float(hit.who, hit.dispelled.length ? '🚫 Dispelled!' : '🚫 Nothing to dispel', '#e0a0ff'); const v = unit(hit.who); v.effects = (v.effects || []).filter((x) => !hit.dispelled.includes(x.k)); continue; }
           if (!hit.hit) { float(hit.who, hit.dodge ? 'DODGE' : 'MISS', hit.dodge ? '#9fe0a0' : '#c9ccd4'); continue; }
           const v = unit(hit.who); v.hp = Math.max(0, v.hp - hit.dmg); fx.hurt = { who: hit.who, start: t };
           float(hit.who, hit.crit ? `CRIT ${hit.dmg}` : String(hit.dmg), hit.crit ? '#ffe07a' : hit.who === MY ? '#ff8f7a' : '#fff4dc');

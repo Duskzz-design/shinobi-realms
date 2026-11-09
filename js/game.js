@@ -8,6 +8,7 @@ import { openKageTower } from './kageui.js';
 import { openWarField } from './warfield.js';
 import { openLoadout } from './loadout.js';
 import { openShop } from './shop.js';
+import { openLibrary } from './library.js';
 import { openGear } from './gear.js';
 import { ninjaSprite, emblem, VILLAGES } from './sprites.js';
 import { openMissionBoard, openTraining, runBattle, openExamHall } from './battle.js';
@@ -229,7 +230,7 @@ export async function enterWorld(app, char, hooks) {
     root.querySelector('#ptsBadge').hidden = !(char.energy + Math.floor((Date.now() - (char._loadedAt || Date.now())) / 1000 / (char.energy_regen_sec || 9)) >= (char.energy_max || 100));
     me.level = char.level; me.rank = char.rank;
   }
-  if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char, exam: () => startExam(), hall: () => openExamHall(root, char, startExam, startLesson), map: (f) => worldMap(f), shop: (t) => shop(t), gear: () => gear(), tower: (t) => kageTower(t), war: (id) => warAt(id), lesson: (id) => startLesson(id), click: (x, y) => { const sp = spotAt(x, y); sp ? goTo(sp.x, sp.y, sp) : goTo(x, y); }, me };
+  if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char, exam: () => startExam(), hall: () => openExamHall(root, char, startExam, startLesson), map: (f) => worldMap(f), shop: (t) => shop(t), library: () => openLibrary(root, char, () => refreshPlate()), gear: () => gear(), tower: (t) => kageTower(t), war: (id) => warAt(id), lesson: (id) => startLesson(id), click: (x, y) => { const sp = spotAt(x, y); sp ? goTo(sp.x, sp.y, sp) : goTo(x, y); }, me };
   function startExam() { startBattle(null, () => net.startExam()); }
   function startLesson(id) { startBattle(null, () => net.startLesson(id)); }
   let warReturn = null; // reopen the war camp after a war duel
@@ -329,6 +330,7 @@ export async function enterWorld(app, char, hooks) {
     if (s.id === 'gate') { worldMap(); return; }
     if (s.id === 'kage') { kageTower(); return; }
     if (s.id === 'shop') { shop(); return; }
+    if (s.id === 'library') { openLibrary(root, char, () => refreshPlate()); return; }
     const [title, text] = SPOT_TEXT[s.id] || [s.name, ''];
     showModal(`<h3>${title}</h3><p>${text}</p>`);
   }
