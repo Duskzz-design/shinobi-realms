@@ -48,7 +48,7 @@ export async function openMissionBoard(root, char, onPick) {
     return `<button class="mcard ${locked ? 'locked' : ''}" data-id="${m.id}" ${locked ? 'disabled' : ''}>
       <span class="grade" style="background:${GRADE_COL[m.grade]}">${m.grade}</span>
       <span class="mtxt"><b>${esc(m.name)}</b><small>${esc(m.description)}</small>
-      <em>${locked ? '🔒 ' + why : `Foe: ${esc(m.enemy_name)} (Lv ${m.enemy_level}) · +${m.xp} XP · +${m.ryo} ryo`}</em></span></button>`;
+      <em>${locked ? '🔒 ' + why : `Foe: ${esc(m.enemy_name)} (Lv ${m.enemy_level}) · +${Math.round(m.xp * (char.reward_mult || G.rewardMult(char.level))).toLocaleString('en-GB')} XP · +${m.ryo} ryo`}</em></span></button>`;
   }).join('');
   el.querySelectorAll('.mcard:not(.locked)').forEach((b) => (b.onclick = () => { el.remove(); onPick(b.dataset.id); }));
 }

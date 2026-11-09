@@ -152,11 +152,11 @@ function finish(c, b, win) {
     }
   } else if (win) {
     const before = c.level, cap = LCAP[RANKS.indexOf(c.rank)];
-    c.xp += m.xp; c.ryo += m.ryo;
+    const gx = Math.round(m.xp * G.rewardMult(c.level)); c.xp += gx; c.ryo += m.ryo;
     while (c.level < cap && c.xp >= G.xpNeed(c.level)) { c.xp -= G.xpNeed(c.level); c.level++; }
     if (c.level >= cap) c.xp = Math.min(c.xp, G.xpNeed(c.level));
     if (c.level > before) { c.energy = 100; c.energy_at = Date.now(); }
-    r = { xp: m.xp, ryo: m.ryo, level: c.level, leveled: c.level - before, capped: c.level >= cap };
+    r = { xp: gx, ryo: m.ryo, level: c.level, leveled: c.level - before, capped: c.level >= cap };
     if (st.quest) r.quest = questAdvance(c, st.quest);
   } else if (st.exam) { lastExamFail = Date.now(); r = { ryo_lost: 0 }; }
   else { const lost = Math.min(c.ryo, Math.round(m.ryo * 0.2)); c.ryo -= lost; r = { ryo_lost: lost }; }
