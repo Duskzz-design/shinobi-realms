@@ -521,3 +521,5 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .hx-ctr { display: contents; }
 .hx-bar .ctr { border-color: #6a4aa0; }
 .lib-note { background: #2b1d3a; color: #e6dcff; padding: 8px 10px; margin: 6px 3px 10px; font-size: 14px; }
+.online.net-bad { background: #b02a2a; color: #fff; white-space: nowrap; animation: netpulse 1.2s infinite; }
+@keyframes netpulse { 50% { opacity: .6; } }

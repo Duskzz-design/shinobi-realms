@@ -76,31 +76,54 @@ export async function savePosition(x, y) {
 }
 
 // ---------- realtime rooms ----------
-// joinRoom(name, { me, onEvent(event, payload), onPresence(list) }) -> { send(event,payload), track(meta), leave() }
-export async function joinRoom(name, { me, onEvent, onPresence, events = [] }) {
+// joinRoom(name, { me, onEvent(event, payload), onPresence(list), onStatus(state) }) -> { send, track, leave, rejoin, state }
+// Self-healing: if the channel errors, times out or closes (sleeping laptop, phone app switch, expired login),
+// it refreshes the login and rejoins with back-off, then re-announces this player.
+export async function joinRoom(name, { me, onEvent, onPresence, onStatus, events = [] }) {
   if (OFFLINE) return mockRoom(name, { me, onEvent, onPresence });
-  const { data } = await sb.auth.getSession();
-  if (data.session) sb.realtime.setAuth(data.session.access_token);
-  const ch = sb.channel(name, { config: { private: true, broadcast: { self: false }, presence: { key: me ? me.id : undefined } } });
-  for (const ev of events) ch.on('broadcast', { event: ev }, (m) => onEvent && onEvent(ev, m.payload));
-  if (onPresence) ch.on('presence', { event: 'sync' }, () => {
-    const st = ch.presenceState(); const list = [];
-    for (const k in st) { const m = st[k][st[k].length - 1]; if (m) list.push(m); }
-    onPresence(list);
-  });
-  let ready = false;
-  await new Promise((res) => {
-    const t = setTimeout(res, 6000);
-    ch.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') { ready = true; clearTimeout(t); if (me) await ch.track(me); res(); }
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') console.warn('room', name, status);
+  let ch = null, state = 'connecting', lastMeta = me, closed = false, retry = null, tries = 0;
+  const debug = new URLSearchParams(location.search).has('netdebug');
+  const setState = (s, why) => { if (state === s) return; state = s; if (debug) console.log('[room]', name, s, why || ''); onStatus && onStatus(s, why); };
+  async function connect() {
+    if (closed) return;
+    clearTimeout(retry);
+    const { data } = await sb.auth.getSession(); // refreshes an expired login
+    if (data.session) sb.realtime.setAuth(data.session.access_token);
+    if (ch) { try { await sb.removeChannel(ch); } catch {} }
+    const c = sb.channel(name, { config: { private: true, broadcast: { self: false }, presence: { key: me ? me.id : undefined } } });
+    ch = c;
+    for (const ev of events) c.on('broadcast', { event: ev }, (m) => onEvent && onEvent(ev, m.payload));
+    if (onPresence) c.on('presence', { event: 'sync' }, () => {
+      if (c !== ch) return;
+      const st = c.presenceState(); const list = [];
+      for (const k in st) { const m = st[k][st[k].length - 1]; if (m) list.push(m); }
+      onPresence(list);
     });
-  });
+    return new Promise((res) => {
+      const t = setTimeout(() => { if (c === ch && state !== 'live') { setState('error', 'timeout'); schedule(); } res(); }, 8000);
+      c.subscribe(async (status, err) => {
+        if (c !== ch) return;
+        if (status === 'SUBSCRIBED') { tries = 0; clearTimeout(t); setState('live'); if (lastMeta) await c.track(lastMeta); res(); }
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { clearTimeout(t); if (!closed) { setState('error', status + (err ? ': ' + err.message : '')); schedule(); } res(); }
+      });
+    });
+  }
+  function schedule() { clearTimeout(retry); if (closed) return; const wait = Math.min(30000, 1000 * 2 ** Math.min(tries++, 5)); retry = setTimeout(connect, wait); }
+  // coming back to the tab: make sure we're still connected and visible
+  const onVisible = () => { if (document.visibilityState !== 'visible' || closed) return; if (state !== 'live' || (ch && ch.state !== 'joined')) { tries = 0; connect(); } else if (lastMeta) ch.track(lastMeta); };
+  const onShow = (e) => { if (e.persisted && !closed) { tries = 0; connect(); } };
+  document.addEventListener('visibilitychange', onVisible);
+  addEventListener('pageshow', onShow);
+  addEventListener('online', onVisible);
+  await connect();
   return {
-    ready: () => ready,
-    send: (event, payload) => ch.send({ type: 'broadcast', event, payload }),
-    track: (meta) => ch.track(meta),
-    leave: () => sb.removeChannel(ch),
+    ready: () => state === 'live',
+    state: () => state,
+    rejoin: () => { tries = 0; return connect(); },
+    send: (event, payload) => (state === 'live' && ch ? ch.send({ type: 'broadcast', event, payload }) : Promise.resolve('offline')),
+    track: (meta) => { lastMeta = meta; return state === 'live' && ch ? ch.track(meta) : Promise.resolve('offline'); },
+    leave: () => { closed = true; clearTimeout(retry); document.removeEventListener('visibilitychange', onVisible); removeEventListener('pageshow', onShow); removeEventListener('online', onVisible); return ch ? sb.removeChannel(ch) : null; },
+    pause: () => { if (ch) { const c = ch; ch = null; setState('paused'); sb.removeChannel(c); } },
   };
 }
 

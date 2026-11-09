@@ -26,6 +26,10 @@ export async function enterWorld(app, char, hooks) {
     x: world.spawn.x, y: world.spawn.y, dir: 0, moving: false, anim: 0,
   };
   if (char.pos_x && char.pos_y && !blocked(world, char.pos_x, char.pos_y)) { me.x = char.pos_x; me.y = char.pos_y; }
+  else for (let i = 0; i < 20; i++) { // new arrivals spread out around the spawn point so two ninja never stand on the exact same spot
+    const x = world.spawn.x + (Math.random() - 0.5) * 64, y = world.spawn.y + (Math.random() - 0.5) * 32;
+    if (!blocked(world, x, y)) { me.x = x; me.y = y; break; }
+  }
   const others = new Map(); // id -> {meta, x,y, tx,ty, dir, moving, anim, last}
   const bubbles = new Map(); // id -> {text, until}
   const v = VILLAGES[char.village];
@@ -339,7 +343,9 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, worldRoom = null, lastSend = 0, lastTrack = 0, lastSave = performance.now();
-  const meta = () => ({ id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
+  const BUILD = '2026-11-09b';
+  let newerSeen = false;
+  const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   const onEvent = (ev, p) => {
     if (!p || p.id === me.id) return;
     if (ev === 'mv') { const o = others.get(p.id); if (o) { o.tx = p.x; o.ty = p.y; o.dir = p.dir; o.moving = !!p.m; o.last = performance.now(); } }
@@ -350,14 +356,28 @@ export async function enterWorld(app, char, hooks) {
     const seen = new Set();
     for (const m of list) {
       if (!m || m.id === me.id) continue; seen.add(m.id);
+      if (!newerSeen && m.v && m.v > BUILD) { newerSeen = true; addMsg({ sys: true, text: 'A newer version of the game is out. Refresh the page to update.' }); }
       if (!others.has(m.id)) { others.set(m.id, { meta: m, x: m.x, y: m.y, tx: m.x, ty: m.y, dir: m.dir || 0, moving: false, anim: 0, last: performance.now() }); addMsg({ sys: true, text: `${m.name} arrived.`, ch: 'village' }); }
       else others.get(m.id).meta = m;
     }
     for (const id of [...others.keys()]) if (!seen.has(id)) { addMsg({ sys: true, text: `${others.get(id).meta.name} left.` }); others.delete(id); }
     countEl.textContent = others.size + 1;
   };
+  // connection health: shown on the "here" counter, with a note in chat when it drops or comes back
+  const countBtn = countEl.closest('button') || countEl.parentElement;
+  let wasLive = null;
+  const onStatus = (st, why) => {
+    const live = st === 'live';
+    countBtn && countBtn.classList.toggle('net-bad', !live);
+    if (countBtn) countBtn.title = live ? 'Connected: players in your village can see you' : 'Reconnecting to your village…';
+    if (wasLive === true && !live) addMsg({ sys: true, text: 'Connection to the village lost. Reconnecting…' });
+    if (wasLive === false && live) addMsg({ sys: true, text: 'Reconnected. You can see other players again.' });
+    wasLive = live;
+    if (live) { room && room.track(meta()); lastTrack = performance.now(); }
+  };
   try {
-    room = await net.joinRoom('village:' + char.village, { me: meta(), onEvent, onPresence, events: ['mv', 'chat'] });
+    room = await net.joinRoom('village:' + char.village, { me: meta(), onEvent, onPresence, onStatus, events: ['mv', 'chat'] });
+    if (!room.ready()) addMsg({ sys: true, text: 'Still connecting to your village… other players will appear when connected.' });
     worldRoom = await net.joinRoom('world', { onEvent, events: ['chat'] });
   } catch (e) { addMsg({ sys: true, text: 'Could not connect to other players. You can still explore.' }); console.error(e); }
 
@@ -483,7 +503,8 @@ export async function enterWorld(app, char, hooks) {
     try { await net.savePosition(me.x, me.y); } catch {}
     room?.leave(); worldRoom?.leave(); duels.stop(); clearInterval(champTimer);
   }
-  addEventListener('pagehide', () => { room?.leave(); }, { once: true });
+  // the page may be frozen and later restored (phones, back button): pause instead of leaving for good; joinRoom rejoins on return
+  addEventListener('pagehide', (e) => { if (e.persisted) room?.pause?.(); else room?.leave(); });
   requestAnimationFrame(step);
   return { leave };
 }
