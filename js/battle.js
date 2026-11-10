@@ -32,7 +32,7 @@ function overlay(root, cls, html) {
 // ---------- mission board ----------
 function dailyLine(c) {
   const n = c.missions_today || 0, lim = c.mission_limit || G.MISSION_DAILY_LIMIT;
-  return n >= lim ? `<p class="daily over">📋 Full rewards used today (${lim}/${lim}). Missions now pay 10% until tomorrow (London time).</p>`
+  return n >= lim ? `<p class="daily over">📋 Full rewards used today (${lim}/${lim}). Missions now pay 10% XP and no ryo until tomorrow (London time).</p>`
     : `<p class="daily">📋 Full-reward missions today: <b>${n} / ${lim}</b></p>`;
 }
 export async function openMissionBoard(root, char, onPick) {
