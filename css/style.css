@@ -606,3 +606,24 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 
 /* pixel-art emoji (swapped in by pixemoji.js) */
 .pxe { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -0.22em; image-rendering: pixelated; image-rendering: crisp-edges; pointer-events: none; }
+
+/* battle: status chips, element matchup, hit preview, log */
+.hx-card .sts { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+.stc { font-size: 12px; padding: 1px 5px; background: #f0e2c4; box-shadow: inset 0 0 0 1px #c9a86a; white-space: nowrap; }
+.stc.good { background: #e2f4dc; box-shadow: inset 0 0 0 1px #7cbf6a; } .stc.bad { background: #f8dcd6; box-shadow: inset 0 0 0 1px #d8846a; }
+.stc b { font-size: 11px; margin-left: 1px; } .sts .none { color: var(--ink2); font-size: 12px; }
+.mus { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+.mu { font-size: 12px; padding: 1px 6px; background: #f0e2c4; white-space: nowrap; } .mu.good { background: #d8f0cc; color: #245c30; } .mu.bad { background: #f8d4cc; color: #8a2a22; }
+.pv { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; margin: 4px 0; padding: 4px 8px; background: #2b1d14; color: #fff4dc; font-size: 13px; }
+.pv .pvd { color: #ffe07a; font-weight: 700; } .pv .good { color: #9fe0a0; } .pv .bad { color: #ffa08a; } .pv .ko { background: #c43c32; color: #fff; padding: 0 5px; }
+.pv.far { opacity: .8; }
+.hx-logbox { background: #fffaf0; box-shadow: inset 0 0 0 2px #e2cfa8; margin: 0 6px 4px; font-size: 13px; }
+.hx-logbox summary { cursor: pointer; padding: 3px 8px; font-weight: 700; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hx-logbox summary .hx-last { font-weight: 400; color: var(--ink); }
+.hx-logbox[open] summary .hx-last { display: none; }
+.hx-log { list-style: none; margin: 0; padding: 0 8px 6px; max-height: 132px; overflow-y: auto; }
+.hx-log li { padding: 2px 0 2px 8px; border-left: 3px solid #c9a86a; margin: 2px 0; line-height: 1.3; }
+.hx-log li.me { border-color: #5aa64c; } .hx-log li.foe { border-color: #c43c32; }
+.hx-log li.turn { border: 0; padding: 2px 0; color: var(--ink2); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.hx-log .dmg { color: #c43c32; } .hx-log .crit { color: #b8862a; }
+.hexb > :not(.hx-arena) { flex-shrink: 0; }
