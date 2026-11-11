@@ -449,3 +449,37 @@ export function mockAnbu(c, fn, a) {
     squads: st.squads.map((s) => ({ ...s, applications: s.leader === c.user_id || isKage ? s.applications : [] })),
     candidates: isKage ? [{ id: c.user_id, name: c.name, rank: c.rank, level: c.level }, { id: 'p5', name: 'Haru', rank: 'Jonin', level: 33 }, { id: 'p6', name: 'Mika', rank: 'Chunin', level: 22 }] : [] };
 }
+
+// pretend Auction House for offline mode
+const MK = { list: null };
+export function mockMarket(c) {
+  if (!MK.list) {
+    const t = (h) => new Date(Date.now() + h * 3600e3).toISOString();
+    MK.list = [
+      { id: 'm1', seller: 'npc1', seller_name: 'Kaito', kind: 'gear', item_id: 'reaper_hood', qty: 1, price: 4500, status: 'active', expires_at: t(31) },
+      { id: 'm2', seller: 'npc2', seller_name: 'Sora', kind: 'gear', item_id: 'fangblade', qty: 1, price: 2800, status: 'active', expires_at: t(12) },
+      { id: 'm3', seller: 'npc3', seller_name: 'Hikari', kind: 'item', item_id: 'pill_heal', qty: 5, price: 520, status: 'active', expires_at: t(40) },
+      { id: 'm4', seller: 'npc4', seller_name: 'Ren', kind: 'item', item_id: 'kunai_x', qty: 3, price: 420, status: 'active', expires_at: t(5) },
+      { id: 'm5', seller: 'npc1', seller_name: 'Kaito', kind: 'gear', item_id: 'kings_mantle', qty: 1, price: 9800, status: 'active', expires_at: t(46) },
+    ];
+  }
+  const me = c.user_id;
+  const giveBack = (l) => { if (l.kind === 'gear') { c.owned_gear = [...new Set([...(c.owned_gear || []), l.item_id])]; } else { c.items = { ...(c.items || {}), [l.item_id]: ((c.items || {})[l.item_id] || 0) + l.qty }; } };
+  return {
+    browse: () => ({ listings: MK.list.filter((l) => l.status === 'active' && l.seller !== me), mine: MK.list.filter((l) => l.seller === me), bought: MK.list.filter((l) => l.buyer === me), tax: 0.1 }),
+    list(kind, item, qty, price) {
+      if (MK.list.filter((l) => l.seller === me && l.status === 'active').length >= 10) throw new Error('You can have at most 10 listings at a time.');
+      if (kind === 'gear') { if (!(c.owned_gear || []).includes(item)) throw new Error('You do not own that.'); if (Object.values(c.gear || {}).includes(item)) throw new Error('Take it off first (Equipment).'); c.owned_gear = c.owned_gear.filter((x) => x !== item); qty = 1; }
+      else { const have = (c.items || {})[item] || 0; if (have < qty) throw new Error(`You only have ${have} of those.`); c.items = { ...c.items, [item]: have - qty }; }
+      MK.list.unshift({ id: 'm' + Date.now(), seller: me, seller_name: c.name, kind, item_id: item, qty, price, status: 'active', expires_at: new Date(Date.now() + 48 * 3600e3).toISOString() });
+    },
+    buy(id) {
+      const l = MK.list.find((x) => x.id === id && x.status === 'active'); if (!l) throw new Error('Sorry, that listing is gone.');
+      if (c.ryo < l.price) throw new Error('Not enough ryo.');
+      if (l.kind === 'gear' && (c.owned_gear || []).includes(l.item_id)) throw new Error('You already own one of those.');
+      if (l.kind === 'item' && ((c.items || {})[l.item_id] || 0) + l.qty > 10) throw new Error('You can carry at most 10 of each item.');
+      c.ryo -= l.price; giveBack(l); Object.assign(l, { status: 'sold', buyer: me, buyer_name: c.name, tax: Math.ceil(l.price * 0.1) });
+    },
+    cancel(id) { const l = MK.list.find((x) => x.id === id && x.seller === me && x.status === 'active'); if (!l) throw new Error('Listing not found.'); giveBack(l); l.status = 'cancelled'; },
+  };
+}

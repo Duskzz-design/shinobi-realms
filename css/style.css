@@ -525,3 +525,14 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 @keyframes netpulse { 50% { opacity: .6; } }
 .daily { background: #fff4d8; box-shadow: 0 0 0 2px #c9a46a; padding: 4px 8px; margin: 6px 3px; font-size: 14px; text-align: center; }
 .daily.over { background: #fbe8e0; box-shadow: 0 0 0 2px #8a2a2a; }
+.mk-filter { display: flex; gap: 6px; margin: 4px 3px 8px; flex-wrap: wrap; }
+.mk-filter .chip { border: 0; background: #f3e3c0; box-shadow: 0 0 0 2px #8a6a3a; padding: 4px 10px; font: inherit; cursor: pointer; }
+.mk-filter .chip.on { background: #8a2a2a; color: #fff; }
+.mk-meta { color: #7a5a2a; }
+.mk-empty { text-align: center; color: #7a5a2a; padding: 10px; }
+.market .tag.boss, .tag.boss { background: #6a2a8a; color: #fff; }
+.mk-sell { display: flex; flex-direction: column; gap: 8px; }
+.mk-sell label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mk-sell input { width: 120px; font: inherit; padding: 4px 6px; border: 2px solid #8a6a3a; background: #fffaf0; }
+.mk-get { background: #fff4d8; box-shadow: 0 0 0 2px #c9a46a; padding: 6px 8px; margin: 0; }
+.mk-sell .row { display: flex; gap: 8px; }

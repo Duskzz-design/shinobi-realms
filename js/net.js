@@ -370,6 +370,12 @@ const mockGear = async (fn, a) => {
   if (fn === 'equip') { if (a.id) c.gear[a.slot] = a.id; else delete c.gear[a.slot]; }
   saveMock(c); return loadCharacter();
 };
+// Auction House (offline mode keeps a small pretend market in memory)
+const rpcOk = async (fn, args) => { const { data, error } = await sb.rpc(fn, args); if (error) throw rpcErr(error); return data; };
+export async function marketBrowse() { if (OFFLINE) return (await import('./offline.js')).mockMarket(mockChar()).browse(); return rpcOk('market_browse', {}); }
+export async function marketList(kind, item, qty, price) { if (OFFLINE) { const c = mockChar(); const r = (await import('./offline.js')).mockMarket(c).list(kind, item, qty, price); saveMock(c); return loadCharacter(); } return rpcOk('market_list', { p_kind: kind, p_item: item, p_qty: qty, p_price: price }); }
+export async function marketBuy(id) { if (OFFLINE) { const c = mockChar(); (await import('./offline.js')).mockMarket(c).buy(id); saveMock(c); return loadCharacter(); } return rpcOk('market_buy', { p_id: id }); }
+export async function marketCancel(id) { if (OFFLINE) { const c = mockChar(); (await import('./offline.js')).mockMarket(c).cancel(id); saveMock(c); return loadCharacter(); } return rpcOk('market_cancel', { p_id: id }); }
 export async function buyScroll(id) {
   if (OFFLINE) {
     const G = await import('./engine.js'), c = mockChar(), m = G.MOVES[id]; c.scrolls = c.scrolls || [];
