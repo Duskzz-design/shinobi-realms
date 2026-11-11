@@ -4,15 +4,29 @@ export const SUPABASE_KEY = 'sb_publishable_wIQUai52KRMk3WTRCm4mzg_5itXxKF4';
 
 const OFFLINE = new URLSearchParams(location.search).has('offline');
 let sb = null;
+// Hidden tester entrance: a secret word in the address (?<word>). Only its SHA-256 is kept here,
+// so reading the code does not reveal the word.
+const TESTER_HASH = '13c2dee896deedb1666670f10b64286af3f26c7cebbabe1481b006c18aaf8bf4';
+let TESTER = false;
+async function checkTester() {
+  try {
+    for (const k of new URLSearchParams(location.search).keys()) {
+      const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(k));
+      if ([...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('') === TESTER_HASH) return true;
+    }
+  } catch {}
+  return false;
+}
 
 export function isOffline() { return OFFLINE; }
+export function isTester() { return TESTER; }
 
 export async function init() {
+  TESTER = await checkTester();
   if (OFFLINE) return;
   if (!window.supabase) throw new Error('Could not reach the game servers. Check your connection and refresh.');
   // tester mode keeps each tab's login separate, so two test ninjas can duel each other
-  const tester = new URLSearchParams(location.search).has('tester');
-  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, detectSessionInUrl: true, flowType: 'pkce', ...(tester ? { storage: window.sessionStorage, storageKey: 'sr-tester' } : {}) } });
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, detectSessionInUrl: true, flowType: 'pkce', ...(TESTER ? { storage: window.sessionStorage, storageKey: 'sr-tester' } : {}) } });
 }
 export function client() { return sb; }
 
@@ -27,7 +41,7 @@ export function onAuth(cb) {
   if (OFFLINE) return;
   sb.auth.onAuthStateChange((_e, s) => cb(s ? s.user : null));
 }
-// hidden tester entrance (?tester): a guest account with no password
+// hidden tester entrance (see TESTER_HASH): a guest account with no password
 export async function signInGuest() {
   const { data, error } = await sb.auth.signInAnonymously();
   if (error) throw error;
@@ -66,6 +80,8 @@ export async function createCharacter({ name, village, appearance }) {
     if (error.code === '23505') throw new Error('That name was just taken. Try another.');
     throw error;
   }
+  // a brand-new ninja starts the guided first session from the beginning
+  try { const u = await getUser(); if (u) localStorage.removeItem('sr_guide_' + u.id); } catch {}
   return loadCharacter();
 }
 export async function savePosition(x, y) {

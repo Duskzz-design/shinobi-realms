@@ -59,7 +59,7 @@ function titleScreen() {
       </ul>
       <button class="btn google" id="g"><span class="gicon"></span>Sign in with Google</button>
       <p class="fine">Free to play. Your ninja is saved to your Google account.</p>
-      ${new URLSearchParams(location.search).has('tester') ? '<button class="btn ghost small" id="guest">Tester: play as guest</button>' : ''}
+      ${net.isTester() ? '<button class="btn ghost small" id="guest">Tester: play as guest</button>' : ''}
     </div>
     <div class="credits">Season 1 · Early Access · <a href="../">About the game</a> · <a href="../privacy.html">Privacy</a> · <a href="../terms.html">Terms</a></div>
   </div>`);
