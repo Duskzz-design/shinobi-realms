@@ -1,21 +1,195 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Shinobi Realms</title>
-<meta name="description" content="A pixel-art ninja MMORPG in your browser. Join a hidden village and forge your path.">
+<script>
+  // Google sign-in can land here instead of on the game page: send it straight on to the game.
+  (function () { var q = location.search + location.hash; if (/[?&#](code|access_token|error_description)=/.test(q)) location.replace('play/' + location.search + location.hash); })();
+</script>
+<title>Shinobi Realms · Free Pixel-Art Ninja MMORPG in Your Browser</title>
+<meta name="description" content="Shinobi Realms is a free ninja MMORPG you play in your browser, on desktop or phone. Join a hidden village, train from Academy student to Jonin, and fight in tactical turn-based battles, duels, boss raids and village wars.">
+<meta name="keywords" content="ninja game, ninja MMORPG, browser MMORPG, free online RPG, pixel art RPG, turn-based tactics, shinobi game, anime ninja game">
+<link rel="canonical" href="https://duskzz-design.github.io/shinobi-realms/">
+<meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#ff9a63">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'><rect width='16' height='16' fill='%23c43c32'/><rect x='3' y='6' width='10' height='4' fill='%23e8e0cf'/><rect x='6' y='5' width='4' height='6' fill='%23c9ccd4'/></svg>">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Shinobi Realms">
+<meta property="og:title" content="Shinobi Realms · Free Ninja MMORPG in Your Browser">
+<meta property="og:description" content="Join a hidden village, train your ninja from Academy student to Jonin, and fight tactical battles, duels, boss raids and village wars. Free, no download.">
+<meta property="og:url" content="https://duskzz-design.github.io/shinobi-realms/">
+<meta property="og:image" content="https://duskzz-design.github.io/shinobi-realms/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Shinobi Realms: pixel-art ninjas in a hidden village">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Shinobi Realms · Free Ninja MMORPG in Your Browser">
+<meta name="twitter:description" content="Train your ninja, master tactical hex battles, and fight for your village. Free, no download.">
+<meta name="twitter:image" content="https://duskzz-design.github.io/shinobi-realms/assets/og-image.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<link rel="preload" as="image" href="assets/shots/village.webp" type="image/webp">
+<link rel="stylesheet" href="css/landing.css">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://duskzz-design.github.io/shinobi-realms/#website",
+      "url": "https://duskzz-design.github.io/shinobi-realms/",
+      "name": "Shinobi Realms",
+      "inLanguage": "en-GB"
+    },
+    {
+      "@type": "VideoGame",
+      "name": "Shinobi Realms",
+      "url": "https://duskzz-design.github.io/shinobi-realms/",
+      "description": "A free pixel-art ninja MMORPG played in the browser. Join one of three hidden villages, train from Academy student to Jonin, and fight tactical turn-based hex battles, live duels, team boss raids and village wars.",
+      "image": "https://duskzz-design.github.io/shinobi-realms/assets/og-image.png",
+      "screenshot": [
+        "https://duskzz-design.github.io/shinobi-realms/assets/shots/village.webp",
+        "https://duskzz-design.github.io/shinobi-realms/assets/shots/village-tide.webp",
+        "https://duskzz-design.github.io/shinobi-realms/assets/shots/battle.webp",
+        "https://duskzz-design.github.io/shinobi-realms/assets/shots/world-map.webp",
+        "https://duskzz-design.github.io/shinobi-realms/assets/shots/creator.webp"
+      ],
+      "genre": ["MMORPG", "Role-playing game", "Turn-based tactics"],
+      "gamePlatform": ["Web browser", "Mobile web browser"],
+      "applicationCategory": "Game",
+      "operatingSystem": "Any (web browser)",
+      "playMode": ["MultiPlayer", "SinglePlayer"],
+      "inLanguage": "en-GB",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "GBP", "availability": "https://schema.org/InStock" }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "Is Shinobi Realms free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Shinobi Realms is free to play in your web browser." } },
+        { "@type": "Question", "name": "Do I need to download anything?", "acceptedAnswer": { "@type": "Answer", "text": "No. The game runs in your browser on desktop and on phones. On a phone you can add it to your home screen so it opens like an app." } },
+        { "@type": "Question", "name": "How do I sign in?", "acceptedAnswer": { "@type": "Answer", "text": "Sign in with your Google account. Your ninja is saved to it, so you can carry on from any device." } },
+        { "@type": "Question", "name": "Can I play with friends?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Players in the same village see each other live and share a chat. You can duel other players, team up in groups of three against bosses, and fight together in village wars." } },
+        { "@type": "Question", "name": "How long does it take to reach max level?", "acceptedAnswer": { "@type": "Answer", "text": "Reaching level 60 as a Jonin takes a dedicated player around three months. Training every 15 minutes and a short daily session of missions is the fastest path." } }
+      ]
+    }
+  ]
+}
+</script>
 </head>
 <body>
-<canvas id="bg"></canvas>
-<main id="app"><div class="screen center"><div class="scroll small"><div class="spinner"></div><p>Loading…</p></div></div></main>
-<script type="module" src="js/main.js"></script>
+<header class="top">
+  <a class="brand" href="./"><img src="assets/icon.svg" alt="" width="28" height="28"> Shinobi Realms</a>
+  <nav><a href="#features">Features</a><a href="#how">How to play</a><a href="#faq">FAQ</a><a class="btn primary small cta" href="play/">Play free</a></nav>
+</header>
+
+<main>
+  <section class="hero">
+    <canvas id="scene" aria-hidden="true"></canvas>
+    <div class="hero-in">
+      <div class="logo">
+        <div class="logo-kanji" aria-hidden="true">忍</div>
+        <h1>Shinobi<span>Realms</span></h1>
+      </div>
+      <p class="lead">A free <b>ninja MMORPG</b> you play in your browser. Join a hidden village, train from Academy student to Jonin, and fight for your people.</p>
+      <div class="hero-btns">
+        <a class="btn primary big cta" href="play/">▶ Play free now</a>
+        <a class="btn ghost big" href="#features">See the game</a>
+      </div>
+      <ul class="badges"><li>✅ Free to play</li><li>🌐 No download</li><li>📱 Desktop &amp; phone</li><li>👥 Live multiplayer</li></ul>
+      <figure class="hero-shot frame"><img src="assets/shots/village.webp" width="1280" height="720" alt="A ninja village in Shinobi Realms, with players walking, chatting and visiting the Academy" fetchpriority="high"></figure>
+    </div>
+  </section>
+
+  <section id="features" class="features">
+    <h2>What you'll do</h2>
+    <article class="feat">
+      <figure class="frame"><img src="assets/shots/village-tide.webp" width="1280" height="720" loading="lazy" alt="Ninjas chatting in the square of Hidden Tide village"></figure>
+      <div><h3>🏯 Live in a hidden village</h3>
+        <p>Pick <b>Hidden Pine</b>, <b>Hidden Ember</b> or <b>Hidden Tide</b>. Walk the streets with other players in real time, chat, and visit the Academy, Mission Hall, Tool Shop, Library, Hospital and Auction House.</p>
+        <p>Your village is your team for life: earn points for it, join its wars over territory, and rise to become its <b>Kage</b>.</p></div>
+    </article>
+    <article class="feat flip">
+      <figure class="frame"><img src="assets/shots/battle.webp" width="880" height="720" loading="lazy" alt="A turn-based hex battle against a smuggler chief"></figure>
+      <div><h3>⚔️ Tactical hex battles</h3>
+        <p>Every fight is turn-based on a hex grid. Spend your action points to move, take cover behind rocks, and chain <b>ninjutsu, genjutsu, taijutsu and weapon</b> techniques.</p>
+        <p>Pick your loadout before each battle. Five elements counter each other, stronger jutsu have cooldowns, and counter scrolls let you dodge, cleanse or dispel at the perfect moment.</p></div>
+    </article>
+    <article class="feat">
+      <figure class="frame"><img src="assets/shots/world-map.webp" width="920" height="720" loading="lazy" alt="The world map, the Land of Five Winds, with quest locations and boss lairs"></figure>
+      <div><h3>🗺️ Quests, bosses and rare loot</h3>
+        <p>Leave the village gate to explore the <b>Land of Five Winds</b>: 21 places, story quest lines, and boss lairs.</p>
+        <p>Team up with two friends to take down bosses like the Mist Reaper and the Scorpion King, and hunt for rare weapons and armour to trade at the Auction House.</p></div>
+    </article>
+    <article class="feat flip">
+      <figure class="frame"><img src="assets/shots/creator.webp" width="1280" height="720" loading="lazy" alt="The character creator with hair, skin, outfit and headband options"></figure>
+      <div><h3>🥷 Make your own ninja</h3>
+        <p>Choose your hair, skin, outfit and headband. You're born with one of five elements. A lucky few awaken a rare <b>bloodline</b> at the Genin exam.</p>
+        <p>Climb the ranks from Academy student to <b>Genin, Chunin and Jonin</b>, all the way to level 60. A maxed ninja is a real achievement.</p></div>
+    </article>
+    <article class="feat phone-feat">
+      <figure class="frame phone"><img src="assets/shots/phone.webp" width="390" height="844" loading="lazy" alt="Shinobi Realms running on a phone"></figure>
+      <div><h3>📱 Play anywhere</h3>
+        <p>Shinobi Realms runs in any modern browser on desktop, tablet and phone. There's nothing to install. Your ninja is saved to your Google account, so you can train on your phone and battle on your computer.</p>
+        <p>On a phone, use <b>Add to Home Screen</b> to open it like an app.</p></div>
+    </article>
+  </section>
+
+  <section class="more">
+    <h2>Plenty to master</h2>
+    <ul class="grid">
+      <li><b>🏟️ Duels &amp; the Arena</b>Challenge any ninja in your village. Climb the daily and monthly ranks and earn a champion statue.</li>
+      <li><b>🔥 Elements &amp; bloodlines</b>Fire, Wind, Lightning, Earth and Water each beat the next. Train a second element at Chunin.</li>
+      <li><b>👹 Team boss raids</b>Six bosses with their own rare gear sets. Fight them in teams of up to three.</li>
+      <li><b>🚩 Village wars</b>Declare war on rival villages, ambush enemies on the battlefield and capture territory.</li>
+      <li><b>🎭 ANBU squads</b>Your Kage picks squad leaders. Members unlock ANBU blades and uniforms.</li>
+      <li><b>💰 Player economy</b>Sell boss drops and battle items to other players at the Auction House.</li>
+    </ul>
+  </section>
+
+  <section id="how" class="how">
+    <h2>How to start</h2>
+    <ol class="steps">
+      <li><span>1</span><b>Sign in with Google</b>It's free and takes a few seconds. Your ninja is saved to your account.</li>
+      <li><span>2</span><b>Create your ninja</b>Pick a name, a village and a look.</li>
+      <li><span>3</span><b>Follow the guide</b>A step-by-step guide takes you through the Academy, your first training and your first mission.</li>
+    </ol>
+    <p class="center"><a class="btn primary big cta" href="play/">▶ Play free now</a></p>
+  </section>
+
+  <section id="faq" class="faq">
+    <h2>Questions</h2>
+    <details open><summary>Is Shinobi Realms free?</summary><p>Yes. Shinobi Realms is free to play in your web browser.</p></details>
+    <details><summary>Do I need to download anything?</summary><p>No. The game runs in your browser on desktop and on phones. On a phone you can add it to your home screen so it opens like an app.</p></details>
+    <details><summary>How do I sign in?</summary><p>Sign in with your Google account. Your ninja is saved to it, so you can carry on from any device.</p></details>
+    <details><summary>Can I play with friends?</summary><p>Yes. Players in the same village see each other live and share a chat. You can duel other players, team up in groups of three against bosses, and fight together in village wars.</p></details>
+    <details><summary>How long does it take to reach max level?</summary><p>Reaching level 60 as a Jonin takes a dedicated player around three months. Training every 15 minutes and a short daily session of missions is the fastest path.</p></details>
+    <details><summary>Is it based on an existing show?</summary><p>Shinobi Realms is inspired by classic ninja anime, but its world, villages and characters are all original.</p></details>
+  </section>
+</main>
+
+<footer class="foot">
+  <p>Shinobi Realms · Season 1 · Early Access</p>
+  <p><a href="play/">Play</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p>
+</footer>
+
+<script type="module">
+  import { startTitleScene } from './js/scene.js';
+  const cv = document.getElementById('scene');
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) startTitleScene(cv);
+  // returning players: say "Continue" instead of "Play free"
+  try {
+    if (Object.keys(localStorage).some((k) => k.startsWith('sb-') && k.endsWith('-auth-token')))
+      document.querySelectorAll('.cta').forEach((a) => { a.textContent = a.classList.contains('small') ? 'Continue' : '▶ Continue your ninja'; });
+  } catch {}
+</script>
 </body>
 </html>

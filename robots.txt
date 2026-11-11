@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /supabase/
+Sitemap: https://duskzz-design.github.io/shinobi-realms/sitemap.xml
