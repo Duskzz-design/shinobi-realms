@@ -1,6 +1,6 @@
 // War battlefield: a small walkable map at the territory. Walk around, tap an enemy ninja, press Attack.
 import * as net from './net.js';
-import { ninjaSprite, VILLAGES } from './sprites.js';
+import { ninjaSprite, VILLAGES, lookOf, drawNinjaFit } from './sprites.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -56,7 +56,7 @@ export function openWarField(root, char, war, terrName, hooks = {}) {
   const [sx0, sy0] = spawn(mySide);
   const me = { id: char.user_id, x: sx0, y: sy0, dir: TALL ? (mySide === 'defender' ? 3 : 0) : (mySide === 'defender' ? 1 : 2), moving: false, anim: 0, tx: null, ty: null };
   const others = new Map(); let st = null, alive = true, room = null, sc = 3, last = performance.now(), lastSend = 0;
-  const meta = () => ({ id: me.id, name: char.name, village: char.village, rank: char.rank, level: char.level, look: char.appearance, side: mySide, asleep: !!char.asleep_since, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
+  const meta = () => ({ id: me.id, name: char.name, village: char.village, rank: char.rank, level: char.level, look: lookOf(char.appearance, char.gear), side: mySide, asleep: !!char.asleep_since, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
 
   // silent: removed by something else (a duel starting), so don't send the player back to the map
   function close(silent) {
@@ -113,7 +113,7 @@ export function openWarField(root, char, war, terrName, hooks = {}) {
     const px = wx * sc, py = wy * sc, pad = 6 * (cv.width / r.width);
     const hit = swords.find((b) => px >= b.x - pad && px <= b.x + b.w + pad && py >= b.y - pad && py <= b.y + b.h + pad);
     if (hit) return attack(hit.m);
-    for (const o of others.values()) if (Math.abs(wx - o.x) < 11 && wy < o.y + 3 && wy > o.y - 28) return showCard(o.meta);
+    for (const o of others.values()) if (Math.abs(wx - o.x) < 11 && wy < o.y + 3 && wy > o.y - 31) return showCard(o.meta);
     card.hidden = true;
     me.tx = Math.max(8, Math.min(MW * T - 8, wx)); me.ty = Math.max(14, Math.min(MH * T - 4, wy));
   });
@@ -135,7 +135,7 @@ export function openWarField(root, char, war, terrName, hooks = {}) {
     else act = '<p class="sub">Click the <b>⚔️</b> above their head to attack.</p>';
     card.innerHTML = `<canvas width="36" height="52"></canvas><div><b>${esc(m.name)}</b><small style="color:${vv.dark}">${esc(vv.short || '')} · ${esc(m.rank)} · Lv ${m.level}</small>${act}</div><button class="wf-cx" data-cx>✕</button>`;
     card.hidden = false;
-    const c = card.querySelector('canvas').getContext('2d'); c.imageSmoothingEnabled = false; c.drawImage(ninjaSprite(m.look || {}, 0, 0), 0, 0, 18, 26, 0, 0, 36, 52);
+    const c = card.querySelector('canvas').getContext('2d'); c.imageSmoothingEnabled = false; drawNinjaFit(card.querySelector('canvas'), m.look || {});
     card.querySelector('[data-cx]').onclick = () => (card.hidden = true);
     const a = card.querySelector('[data-atk]');
     if (a) a.onclick = () => { card.hidden = true; hooks.challenge ? hooks.challenge({ id: m.id, name: m.name }, war.id) : toast('Duels are not available here.'); };
@@ -168,11 +168,11 @@ export function openWarField(root, char, war, terrName, hooks = {}) {
       const frame = n.moving ? [1, 0, 2, 0][Math.floor(n.anim * 8) % 4] : 0, spr = ninjaSprite(m.look || {}, n.dir || 0, frame);
       ctx.fillStyle = 'rgba(30,20,10,.3)'; ctx.fillRect((n.x - 6) * sc, (n.y - 1) * sc, 12 * sc, 2 * sc);
       if (m.asleep) ctx.globalAlpha = 0.6;
-      ctx.drawImage(spr, Math.round((n.x - 9) * sc), Math.round((n.y - 25) * sc), spr.width * sc, spr.height * sc);
+      ctx.drawImage(spr, Math.round((n.x - spr.width / 2) * sc), Math.round((n.y - spr.height + 1) * sc), spr.width * sc, spr.height * sc);
       ctx.globalAlpha = 1;
       const enemy = mySide && m.side && m.side !== mySide;
       ctx.font = `${fsz}px 'Pixelify Sans', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-      const label = (m.asleep ? '💤 ' : '') + m.name, w = ctx.measureText(label).width + 8, sx = n.x * sc, sy = (n.y - 28) * sc;
+      const label = (m.asleep ? '💤 ' : '') + m.name, w = ctx.measureText(label).width + 8, sx = n.x * sc, sy = (n.y - 32) * sc;
       ctx.fillStyle = enemy ? 'rgba(160,30,24,.85)' : isMe ? 'rgba(36,22,14,.8)' : 'rgba(36,22,14,.6)'; ctx.fillRect(sx - w / 2, sy - fsz - 2, w, fsz + 4);
       ctx.fillStyle = isMe ? '#ffe07a' : '#fff4dc'; ctx.fillText(label, sx, sy + 1);
       if (!isMe && canAttack(m)) { // the clickable crossed swords above an enemy's head

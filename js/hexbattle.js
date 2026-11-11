@@ -1,7 +1,7 @@
 // Hex tactical battle screen (missions and exams). The battle server decides every roll; this file draws and animates.
 import * as net from './net.js';
 import * as G from './engine.js';
-import { ninjaSprite, beastSprite } from './sprites.js';
+import { ninjaSprite, beastSprite, lookOf } from './sprites.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -43,6 +43,8 @@ export async function runBattle(root, char, missionId, onEnd, start = null) {
 export function battleView(root, char, cfg) {
   let S0 = cfg.state, eng = S0.engine;
   const MY = cfg.my, team = () => eng.units[MY].team;
+  // what each ninja wears: my own gear, and other players' weapons when the battle server shares them
+  const looks = {}, lookFor = (id, u) => looks[id] || (looks[id] = id === MY && !u.npc ? lookOf(u.look, char.gear) : u.gear && u.gear.weapon ? { ...(u.look || {}), eq: { weapon: u.gear.weapon } } : u.look || {});
   const me = () => eng.units[MY];
   const foes = () => Object.values(eng.units).filter((u) => u.team !== team() && u.hp > 0);
   const foe = () => foes()[0] || Object.values(eng.units).find((u) => u.team !== team());
@@ -328,7 +330,7 @@ export function battleView(root, char, cfg) {
       ctx.fillStyle = 'rgba(20,20,10,.3)'; ctx.fillRect(x - 7, y + 5, 14, 3);
       if (th.id === eng.side && !busy) { ctx.strokeStyle = u.team === team() ? '#ffe07a' : '#ff8f7a'; ctx.lineWidth = 1; hexPath(ctx, x, y, S - 3); ctx.stroke(); }
       let spr;
-      if (u.kind === 'ninja') spr = ninjaSprite(u.look, dir, moving ? 1 + ((t >> 3) & 1) : fx.lunge && fx.lunge.who === th.id ? 3 : 0);
+      if (u.kind === 'ninja') spr = ninjaSprite(lookFor(th.id, u), dir, moving ? 1 + ((t >> 3) & 1) : fx.lunge && fx.lunge.who === th.id ? 3 : 0);
       else spr = beastSprite(u.kind, u.look?.tint, (t >> 4) % 2);
       ctx.save(); if (hurt && t % 4 < 2) ctx.globalAlpha = 0.35;
       const k = u.boss ? 1.6 : 1, sw = spr.width * k, sh = spr.height * k;

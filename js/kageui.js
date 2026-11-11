@@ -1,6 +1,6 @@
 // Kage Tower: village wars leaderboard, the Kage seat, village upgrades and the war room.
 import * as net from './net.js';
-import { ninjaSprite, VILLAGES, emblem } from './sprites.js';
+import { ninjaSprite, VILLAGES, emblem, drawNinjaFit } from './sprites.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -70,7 +70,7 @@ export function openKageTower(root, char, hooks = {}, startTab = 'wars') {
       else if (wait) btn = `<p class="sub">The seat was challenged recently. Next challenge in <b>${left(v.challenge_at)}</b>.</p>`;
       else if (!k.online) btn = '<p class="sub">The Kage can only be challenged while they are in the village.</p><button class="btn primary" disabled>⚔️ Challenge (offline)</button>';
       else btn = '<button class="btn primary" data-challenge>⚔️ Challenge for the seat</button><p class="sub">A live duel. Win and the seat is yours.</p>';
-      seat = `<div class="kg-kage"><canvas width="54" height="78" data-look='${esc(JSON.stringify(k.look || {}))}'></canvas><div><p class="soon">👑 ${esc(vv.short)} Kage</p><h4>${esc(k.name)}</h4><p>Level ${k.level} · ${k.asleep ? '<span class="off">💤 asleep</span>' : k.online ? '<span class="on">● in the village</span>' : '<span class="off">○ away</span>'}</p></div></div>${btn}`;
+      seat = `<div class="kg-kage"><canvas width="48" height="60" data-look='${esc(JSON.stringify(k.look || {}))}'></canvas><div><p class="soon">👑 ${esc(vv.short)} Kage</p><h4>${esc(k.name)}</h4><p>Level ${k.level} · ${k.asleep ? '<span class="off">💤 asleep</span>' : k.online ? '<span class="on">● in the village</span>' : '<span class="off">○ away</span>'}</p></div></div>${btn}`;
     }
     const kage = isKage();
     const ups = UPGRADES.map((u) => {
@@ -128,7 +128,7 @@ export function openKageTower(root, char, hooks = {}, startTab = 'wars') {
     body.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => { tab = b.dataset.t; if (tab === 'anbu' && !anbu) loadAnbu(); render(); }));
     if (tab === 'anbu') wireAnbu();
     body.querySelectorAll('[data-em]').forEach((s) => s.appendChild(emblem(s.dataset.em, 16)));
-    body.querySelectorAll('canvas[data-look]').forEach((cv) => { const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; try { c.drawImage(ninjaSprite(JSON.parse(cv.dataset.look), 0, 0), 0, 0, 18, 26, 0, 0, 54, 78); } catch {} });
+    body.querySelectorAll('canvas[data-look]').forEach((cv) => { const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; try { drawNinjaFit(cv, JSON.parse(cv.dataset.look)); } catch {} });
     const q = (s) => body.querySelector(s);
     q('[data-claim]') && (q('[data-claim]').onclick = () => act(() => net.kageClaim(), 'You are now the Kage! 👑'));
     q('[data-challenge]') && (q('[data-challenge]').onclick = () => { close(); hooks.challengeKage && hooks.challengeKage(mine().kage); });
@@ -152,7 +152,7 @@ export function openKageTower(root, char, hooks = {}, startTab = 'wars') {
       <span>Chunin and Jonin apply; the squad leader accepts or declines. Up to 6 per squad.</span><span>Members can buy and wear the ANBU blade and uniform at the Tool Shop. Leave the ANBU and that gear comes off.</span></div>`;
     const squads = anbu.squads.map((sq) => {
       const lead = sq.leader === anbu.me, mine = anbu.my_squad === sq.id, canManage = lead || anbu.is_kage;
-      const members = sq.members.map((m) => `<div class="an-m"><canvas width="18" height="26" data-look='${esc(JSON.stringify(m.look || {}))}'></canvas><span><b>${esc(m.name)}${m.id === sq.leader ? ' <em class="tag anbu">Leader</em>' : ''}</b><small>${esc(m.rank)} · Lv ${m.level}</small></span>
+      const members = sq.members.map((m) => `<div class="an-m"><canvas width="24" height="30" data-look='${esc(JSON.stringify(m.look || {}))}'></canvas><span><b>${esc(m.name)}${m.id === sq.leader ? ' <em class="tag anbu">Leader</em>' : ''}</b><small>${esc(m.rank)} · Lv ${m.level}</small></span>
         ${canManage && m.id !== sq.leader ? `<button class="btn small ghost" data-kick="${m.id}">Remove</button>` : ''}${m.id === anbu.me && m.id !== sq.leader ? '<button class="btn small ghost" data-leave>Leave</button>' : ''}</div>`).join('');
       const apps = canManage && sq.applications.length ? `<h4>Applications</h4>${sq.applications.map((a) => `<div class="an-m"><span><b>${esc(a.name)}</b><small>${esc(a.rank)} · Lv ${a.level}</small></span>
         <button class="btn small primary" data-acc="${sq.id}|${a.id}">Accept</button><button class="btn small ghost" data-dec="${sq.id}|${a.id}">Decline</button></div>`).join('')}` : '';
@@ -168,7 +168,7 @@ export function openKageTower(root, char, hooks = {}, startTab = 'wars') {
   }
   function wireAnbu() {
     const q = (x) => body.querySelector(x);
-    body.querySelectorAll('canvas[data-look]').forEach((cv) => { const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; try { c.drawImage(ninjaSprite(JSON.parse(cv.dataset.look), 0, 0), 0, 0); } catch {} });
+    body.querySelectorAll('canvas[data-look]').forEach((cv) => { const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; try { drawNinjaFit(cv, JSON.parse(cv.dataset.look)); } catch {} });
     body.querySelectorAll('[data-apply]').forEach((b) => (b.onclick = () => anbuAct(() => net.anbuApply(b.dataset.apply), 'Application sent!')));
     body.querySelectorAll('[data-acc]').forEach((b) => (b.onclick = () => { const [sq, u] = b.dataset.acc.split('|'); anbuAct(() => net.anbuDecide(sq, u, true), 'Welcome to the squad!'); }));
     body.querySelectorAll('[data-dec]').forEach((b) => (b.onclick = () => { const [sq, u] = b.dataset.dec.split('|'); anbuAct(() => net.anbuDecide(sq, u, false)); }));

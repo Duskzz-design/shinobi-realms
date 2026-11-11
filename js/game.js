@@ -12,7 +12,7 @@ import { openLibrary } from './library.js';
 import { openMarket } from './market.js';
 import { openHospital, injuredLeft, mmss } from './hospital.js';
 import { openGear } from './gear.js';
-import { ninjaSprite, emblem, VILLAGES } from './sprites.js';
+import { ninjaSprite, emblem, VILLAGES, lookOf, drawNinjaFit } from './sprites.js';
 import { openMissionBoard, openTraining, runBattle, openExamHall } from './battle.js';
 import { setupDuels } from './duelui.js';
 import { setupGuide } from './guide.js';
@@ -26,7 +26,7 @@ const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in win
 export async function enterWorld(app, char, hooks) {
   const world = buildWorld(char.village);
   const me = {
-    id: char.user_id || 'me', name: char.name, village: char.village, rank: char.rank, level: char.level, look: char.appearance,
+    id: char.user_id || 'me', name: char.name, village: char.village, rank: char.rank, level: char.level, look: lookOf(char.appearance, char.gear),
     x: world.spawn.x, y: world.spawn.y, dir: 0, moving: false, anim: 0,
   };
   if (char.pos_x && char.pos_y && !blocked(world, char.pos_x, char.pos_y)) { me.x = char.pos_x; me.y = char.pos_y; }
@@ -83,7 +83,8 @@ export async function enterWorld(app, char, hooks) {
   const face = root.querySelector('.face').getContext('2d');
   face.imageSmoothingEnabled = false;
   const fs = ninjaSprite(me.look, 0, 0);
-  face.drawImage(fs, 0, 0, 18, 14, 0, 0, 36, 28);
+  const drawFace = () => { face.clearRect(0, 0, 36, 36); face.drawImage(ninjaSprite(me.look, 0, 0), 4, 0, 16, 16, 0, 1, 36, 36); };
+  drawFace();
 
   const view = root.querySelector('#view');
   const ctx = view.getContext('2d');
@@ -166,7 +167,7 @@ export async function enterWorld(app, char, hooks) {
   view.addEventListener('click', (e) => {
     const wx = camX + e.clientX * (view.width / vw) / scale, wy = camY + e.clientY * (view.height / vh) / scale;
     for (const o of others.values()) {
-      if (Math.abs(wx - o.x) < 10 && wy < o.y + 2 && wy > o.y - 28) { playerCard(o.meta); return; }
+      if (Math.abs(wx - o.x) < 10 && wy < o.y + 2 && wy > o.y - 31) { playerCard(o.meta); return; }
     }
     if (root.querySelector('.ov') || !modal.hidden) return;
     for (const st of STATUES) { const bx = st.x * T + 8, by = (st.y + 1) * T; if (Math.abs(wx - bx) < 12 && wy < by + 2 && wy > by - 42) { statueCard(st); return; } }
@@ -244,6 +245,7 @@ export async function enterWorld(app, char, hooks) {
     root.querySelector('#plateSub').textContent = `Lv ${char.level} · ${char.rank}`;
     root.querySelector('#ptsBadge').hidden = !(char.energy + Math.floor((Date.now() - (char._loadedAt || Date.now())) / 1000 / (char.energy_regen_sec || 9)) >= (char.energy_max || 100));
     me.level = char.level; me.rank = char.rank;
+    const nl = lookOf(char.appearance, char.gear); if (JSON.stringify(nl) !== JSON.stringify(me.look)) { me.look = nl; drawFace(); room?.track(meta()); }
     guide?.update();
   }
   if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char, exam: () => startExam(), hall: () => openExamHall(root, char, startExam, startLesson), map: (f) => worldMap(f), shop: (t) => shop(t), library: () => openLibrary(root, char, () => refreshPlate()), market: () => openMarket(root, char, () => refreshPlate()), hospital: () => openHospital(root, char, () => refreshPlate()), gear: () => gear(), tower: (t) => kageTower(t), war: (id) => warAt(id), lesson: (id) => startLesson(id), guide: () => guide, handbook: (p) => handbook(p), click: (x, y) => { const sp = spotAt(x, y); sp ? goTo(sp.x, sp.y, sp) : goTo(x, y); }, me };
@@ -330,7 +332,7 @@ export async function enterWorld(app, char, hooks) {
     const vv = VILLAGES[m.village] || v;
     showModal(`<div class="pcard"><canvas width="64" height="80"></canvas><div><h3>${esc(m.name)}</h3>${m.title ? `<p class="ttl">🏆 ${esc(m.title)}</p>` : ''}<p style="color:${vv.dark}"><b>${vv.name}</b></p><p>${esc(m.rank || 'Academy Student')} · Level ${m.level || 1}</p>${m.asleep ? '<p>💤 <b>Asleep</b></p>' : ''}</div></div>${m.asleep ? '<p class="soon">This ninja is asleep and can\'t be challenged.</p>' : char.asleep_since ? '<p class="soon">You are asleep. Wake up to duel.</p>' : char.rank === 'Academy Student' ? '<p class="soon">Academy students can\'t duel. Practise in the sparring lessons at the Academy, then graduate.</p>' : (m.rank || 'Academy Student') === 'Academy Student' ? '<p class="soon">Academy students can\'t be challenged.</p>' : '<button class="btn primary" data-duel>⚔️ Challenge to a duel</button>'}`, (el) => {
       const c = el.querySelector('canvas').getContext('2d'); c.imageSmoothingEnabled = false;
-      c.drawImage(ninjaSprite(m.look || {}, 0, 0), 0, 0, 18, 26, 5, 2, 54, 78);
+      drawNinjaFit(el.querySelector('canvas'), m.look || {});
       const db = el.querySelector('[data-duel]'); if (db) db.onclick = () => { closeModal(); duels.challenge(m); };
     });
   }
@@ -358,7 +360,7 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, worldRoom = null, lastSend = 0, lastTrack = 0, lastSave = performance.now();
-  const BUILD = '2026-11-11a';
+  const BUILD = '2026-11-11b';
   let newerSeen = false;
   const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   const onEvent = (ev, p) => {
@@ -468,11 +470,11 @@ export async function enterWorld(app, char, hooks) {
     const drawNinja = (n, look, isMe) => {
       const frame = n.moving || (n.anim > 0) ? [1, 0, 2, 0][Math.floor(n.anim * 8) % 4] : 0;
       const spr = ninjaSprite(look || {}, n.dir || 0, frame);
-      const x = n.x - 9, y = n.y - 25;
+      const x = n.x - spr.width / 2, y = n.y - spr.height + 1;
       list.push({ y: n.y, draw: () => {
         ctx.fillStyle = 'rgba(30,20,10,.28)'; ctx.fillRect(Math.round((n.x - 6 - camX) * sc), Math.round((n.y - 1 - camY) * sc), 12 * sc, 2 * sc);
         ctx.drawImage(spr, Math.round((x - camX) * sc), Math.round((y - camY) * sc), spr.width * sc, spr.height * sc);
-      }, label: { x: n.x, y: n.y - 28, name: ((isMe ? !!char.asleep_since : n.meta?.asleep) ? '💤 ' : '') + (n.name || n.meta?.name), me: isMe, id: n.id || n.meta?.id } });
+      }, label: { x: n.x, y: n.y - 32, name: ((isMe ? !!char.asleep_since : n.meta?.asleep) ? '💤 ' : '') + (n.name || n.meta?.name), me: isMe, id: n.id || n.meta?.id } });
     };
     for (const o of others.values()) drawNinja(o, o.meta.look, false);
     drawNinja(me, me.look, true);

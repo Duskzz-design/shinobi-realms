@@ -2,7 +2,7 @@ import * as net from './net.js';
 import { startTitleScene } from './scene.js';
 import { enterWorld } from './game.js';
 import { ELEMENT_INFO, BLOODLINES, ELEMENTS } from './engine.js';
-import { ninjaSprite, emblem, PALETTES, HAIR_STYLES, BAND_SPOTS, VILLAGES, DEFAULT_LOOK } from './sprites.js';
+import { ninjaSprite, emblem, PALETTES, HAIR_STYLES, BAND_SPOTS, VILLAGES, DEFAULT_LOOK, lookOf } from './sprites.js';
 
 const app = document.getElementById('app');
 const bg = document.getElementById('bg');
@@ -217,7 +217,7 @@ function profileScreen(c, fresh = false) {
     </section>
   </div>`);
   el.querySelector('.em').appendChild(emblem(c.village, 24));
-  spritePreview(el.querySelector('#pv'), () => c.appearance, { walk: true, dir: 0 });
+  const shown = lookOf(c.appearance, c.gear); spritePreview(el.querySelector('#pv'), () => shown, { walk: true, dir: 0 });
   el.querySelector('#out').onclick = () => net.signOut();
   el.querySelector('#edit').onclick = () => lookEditor(c);
   el.querySelector('#enter').onclick = () => village(c);

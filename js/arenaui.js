@@ -1,6 +1,6 @@
 // Arena: daily and monthly leaderboards per rank, and the energy bonus they unlock.
 import * as net from './net.js';
-import { ninjaSprite, VILLAGES } from './sprites.js';
+import { ninjaSprite, VILLAGES, drawNinjaFit } from './sprites.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -34,7 +34,7 @@ export function openArena(root, char) {
   }
   function rowHtml(r) {
     const v = VILLAGES[r.village] || {}, bz = period !== 'month' && r.place <= 10;
-    return `<div class="ar-row ${r.me ? "me" : ""} ${bz ? "bz" : ""} ${r.place <= 3 ? "top" : ""}"><span class="pl">${medal(r.place)}</span><canvas width="18" height="26" data-look='${esc(JSON.stringify(r.look || {}))}'></canvas>
+    return `<div class="ar-row ${r.me ? "me" : ""} ${bz ? "bz" : ""} ${r.place <= 3 ? "top" : ""}"><span class="pl">${medal(r.place)}</span><canvas width="24" height="30" data-look='${esc(JSON.stringify(r.look || {}))}'></canvas>
       <span class="nm"><b>${esc(r.name)}</b><small style="color:${v.dark || '#555'}">${esc(v.name || '')} · Lv ${r.level}</small></span>
       <span class="arp">${r.points}</span>${bz ? `<span class="bt">${period === 'yesterday' ? '⚡' : ''}${bonusFor(r.place)}</span>` : ''}</div>`;
   }
@@ -54,7 +54,7 @@ export function openArena(root, char) {
       <p class="sub ar-how">⚔️ To duel, tap another Genin or higher in the village and choose <b>Challenge</b>.</p>`;
     body.querySelectorAll('[data-p]').forEach((b) => (b.onclick = () => { period = b.dataset.p; load(); }));
     body.querySelectorAll('[data-r]').forEach((b) => (b.onclick = () => { rank = b.dataset.r; load(); }));
-    body.querySelectorAll('canvas[data-look]').forEach((cv) => { const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; try { c.drawImage(ninjaSprite(JSON.parse(cv.dataset.look), 0, 0), 0, 0); } catch {} });
+    body.querySelectorAll('canvas[data-look]').forEach((cv) => { const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; try { drawNinjaFit(cv, JSON.parse(cv.dataset.look)); } catch {} });
   }
   load();
 }
@@ -64,17 +64,17 @@ const cache = new Map();
 export function statueSprite(look) {
   const k = JSON.stringify(look || null);
   if (cache.has(k)) return cache.get(k);
-  const W = 22, H = 40, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const W = 26, H = 44, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const c = cv.getContext('2d');
   // pedestal
-  c.fillStyle = '#5a5248'; c.fillRect(1, 28, 20, 12); c.fillStyle = '#8a8276'; c.fillRect(2, 28, 18, 9); c.fillStyle = '#a8a092'; c.fillRect(2, 28, 18, 2);
-  c.fillStyle = '#d8b84a'; c.fillRect(7, 32, 8, 3);
+  c.fillStyle = '#5a5248'; c.fillRect(2, 32, 22, 12); c.fillStyle = '#8a8276'; c.fillRect(3, 32, 20, 9); c.fillStyle = '#a8a092'; c.fillRect(3, 32, 20, 2);
+  c.fillStyle = '#d8b84a'; c.fillRect(9, 36, 8, 3);
   if (look) {
     const n = ninjaSprite(look, 0, 0), t = document.createElement('canvas'); t.width = n.width; t.height = n.height;
     const tc = t.getContext('2d'); tc.drawImage(n, 0, 0);
     const img = tc.getImageData(0, 0, t.width, t.height), d = img.data;
     for (let i = 0; i < d.length; i += 4) { if (!d[i + 3]) continue; const l = (d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11) / 255; const v = l < 0.2 ? 0.35 : 0.55 + l * 0.45; d[i] = 150 * v + 40; d[i + 1] = 144 * v + 38; d[i + 2] = 132 * v + 34; }
-    tc.putImageData(img, 0, 0); c.drawImage(t, Math.round((W - t.width) / 2), 28 - t.height + 1);
-  } else { c.fillStyle = '#6a6258'; c.font = 'bold 12px monospace'; c.textAlign = 'center'; c.fillText('?', W / 2, 24); }
+    tc.putImageData(img, 0, 0); c.drawImage(t, Math.round((W - t.width) / 2), 32 - t.height + 1);
+  } else { c.fillStyle = '#6a6258'; c.font = 'bold 12px monospace'; c.textAlign = 'center'; c.fillText('?', W / 2, 28); }
   cache.set(k, cv); return cv;
 }
