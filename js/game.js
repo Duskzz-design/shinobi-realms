@@ -142,16 +142,22 @@ export async function enterWorld(app, char, hooks) {
       if ((Math.abs(dx) === r || Math.abs(dy) === r) && walkable(tx + dx, ty + dy)) return [tx + dx, ty + dy];
     return null;
   }
-  function goTo(wx, wy, spot = null) {
-    const st = [Math.floor(me.x / T), Math.floor((me.y - 2) / T)];
+  // path from (fx,fy) to (wx,wy) in world pixels, or null
+  function planPath(fx, fy, wx, wy) {
+    const st = [Math.floor(fx / T), Math.floor((fy - 2) / T)];
     const start = walkable(st[0], st[1]) ? st : nearestWalkable(st[0], st[1]);
     let gt = [Math.floor(wx / T), Math.floor(wy / T)];
-    if (!walkable(gt[0], gt[1])) { gt = nearestWalkable(gt[0], gt[1]); if (!gt) return; wx = gt[0] * T + 8; wy = gt[1] * T + 12; }
-    if (!start) return;
+    if (!walkable(gt[0], gt[1])) { gt = nearestWalkable(gt[0], gt[1]); if (!gt) return null; wx = gt[0] * T + 8; wy = gt[1] * T + 12; }
+    if (!start) return null;
     const p = findPath(start[0], start[1], gt[0], gt[1]);
-    if (!p) return;
+    if (!p) return null;
     p.push({ x: wx, y: wy });
-    path = p; dest = { x: wx, y: wy, t: 0 }; pendingSpot = spot;
+    return { path: p, x: wx, y: wy };
+  }
+  function goTo(wx, wy, spot = null) {
+    const r = planPath(me.x, me.y, wx, wy); if (!r) return;
+    path = r.path; dest = { x: r.x, y: r.y, t: 0 }; pendingSpot = spot;
+    announceMove(); // one message per click: where I am and where I'm going
   }
   function spotAt(wx, wy) {
     for (const b of BUILDINGS) {
@@ -361,13 +367,24 @@ export async function enterWorld(app, char, hooks) {
   const promptEl = root.querySelector('#prompt');
 
   // ---------- network ----------
-  let room = null, worldRoom = null, lastSend = 0, lastTrack = 0, lastSave = performance.now();
-  const BUILD = '2026-11-11h';
+  let room = null, worldRoom = null, lastTrack = 0, lastSave = performance.now(), savedAt = { x: 0, y: 0 };
+  const BUILD = '2026-11-12a';
   let newerSeen = false;
   const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
+  // Movement is sent as "I'm here, heading there" once per click; everyone replays the walk locally.
+  function announceMove() { if (room) room.send('mv', { id: me.id, x: Math.round(me.x), y: Math.round(me.y), tx: dest ? Math.round(dest.x) : Math.round(me.x), ty: dest ? Math.round(dest.y) : Math.round(me.y), dir: me.dir }); }
+  let helloTimer = null; // when someone new arrives, tell them where we are (once, batched)
+  const sayHello = () => { clearTimeout(helloTimer); helloTimer = setTimeout(announceMove, 600 + Math.random() * 1400); };
   const onEvent = (ev, p) => {
     if (!p || p.id === me.id) return;
-    if (ev === 'mv') { const o = others.get(p.id); if (o) { o.tx = p.x; o.ty = p.y; o.dir = p.dir; o.moving = !!p.m; o.last = performance.now(); } }
+    if (ev === 'mv') {
+      const o = others.get(p.id); if (!o) return;
+      o.last = performance.now(); o.dir = p.dir ?? o.dir;
+      if (p.tx != null) { // destination move: correct position if we drifted, then walk the same path
+        if (Math.hypot(o.x - p.x, o.y - p.y) > 24) { o.x = p.x; o.y = p.y; }
+        const r = planPath(o.x, o.y, p.tx, p.ty); o.path = r ? r.path : null; o.tx = p.tx; o.ty = p.ty;
+      } else { o.path = null; o.tx = p.x; o.ty = p.y; o.moving = !!p.m; } // older clients and practice bots
+    }
     if (ev === 'chat') { addMsg({ ...p, text: String(p.text).slice(0, 120), name: String(p.name).slice(0, 16) }); if (p.ch === 'village') bubbles.set(p.id, { text: String(p.text).slice(0, 120), until: performance.now() + 5000 }); }
   };
   const countEl = root.querySelector('#count');
@@ -376,7 +393,7 @@ export async function enterWorld(app, char, hooks) {
     for (const m of list) {
       if (!m || m.id === me.id) continue; seen.add(m.id);
       if (!newerSeen && m.v && m.v > BUILD) { newerSeen = true; addMsg({ sys: true, text: 'A newer version of the game is out. Refresh the page to update.' }); }
-      if (!others.has(m.id)) { others.set(m.id, { meta: m, x: m.x, y: m.y, tx: m.x, ty: m.y, dir: m.dir || 0, moving: false, anim: 0, last: performance.now() }); addMsg({ sys: true, text: `${m.name} arrived.`, ch: 'village' }); }
+      if (!others.has(m.id)) { sayHello(); others.set(m.id, { meta: m, x: m.x, y: m.y, tx: m.x, ty: m.y, dir: m.dir || 0, moving: false, anim: 0, last: performance.now() }); addMsg({ sys: true, text: `${m.name} arrived.`, ch: 'village' }); }
       else others.get(m.id).meta = m;
     }
     for (const id of [...others.keys()]) if (!seen.has(id)) { addMsg({ sys: true, text: `${others.get(id).meta.name} left.` }); others.delete(id); }
@@ -393,15 +410,16 @@ export async function enterWorld(app, char, hooks) {
     const live = st === 'live';
     countBtn && countBtn.classList.toggle('net-bad', !live);
     if (countBtn) countBtn.title = live ? 'Connected: players in your village can see you' : 'Reconnecting to your village…';
+    if (st === 'paused') { wasLive = null; others.clear(); countEl.textContent = 1; return; }
     if (wasLive === true && !live) addMsg({ sys: true, text: 'Connection to the village lost. Reconnecting…' });
     if (wasLive === false && live) addMsg({ sys: true, text: 'Reconnected. You can see other players again.' });
     wasLive = live;
-    if (live) { room && room.track(meta()); lastTrack = performance.now(); }
+    if (live) { room && room.track(meta()); lastTrack = performance.now(); sayHello(); }
   };
   try {
-    room = await net.joinRoom('village:' + char.village, { me: meta(), onEvent, onPresence, onStatus, events: ['mv', 'chat'] });
+    room = await net.joinRoom('village:' + char.village, { me: meta(), onEvent, onPresence, onStatus, events: ['mv', 'chat'], pauseWhenHidden: 60000 });
     if (!room.ready()) addMsg({ sys: true, text: 'Still connecting to your village… other players will appear when connected.' });
-    worldRoom = await net.joinRoom('world', { onEvent, events: ['chat'] });
+    worldRoom = await net.joinRoom('world', { onEvent, events: ['chat'], pauseWhenHidden: 60000 });
   } catch (e) { addMsg({ sys: true, text: 'Could not connect to other players. You can still explore.' }); console.error(e); }
 
   // ---------- loop ----------
@@ -420,14 +438,16 @@ export async function enterWorld(app, char, hooks) {
       me.moving = true; me.anim += dt;
       if (!path.length) { dest = null; if (pendingSpot) { const sp = pendingSpot; pendingSpot = null; interact(sp); } }
     } else me.anim = 0;
-    // network send
-    if (room && now - lastSend > (me.moving ? 100 : 1000)) {
-      if (me.moving || now - lastSend > 1000) { room.send('mv', { id: me.id, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir, m: me.moving ? 1 : 0 }); lastSend = now; }
-    }
-    if (room && now - lastTrack > 4000) { room.track(meta()); lastTrack = now; }
-    if (now - lastSave > 15000) { lastSave = now; net.savePosition(me.x, me.y).catch(() => {}); }
+    // save where we are (only after moving) so we reappear here next time
+    if (now - lastSave > 15000 && (Math.abs(me.x - savedAt.x) > 4 || Math.abs(me.y - savedAt.y) > 4)) { lastSave = now; savedAt = { x: me.x, y: me.y }; net.savePosition(me.x, me.y).catch(() => {}); }
     // others interpolate
     for (const o of others.values()) {
+      if (o.path && o.path.length) {
+        const wp = o.path[0], dx = wp.x - o.x, dy = wp.y - o.y, d = Math.hypot(dx, dy), sl = SPEED * dt;
+        if (d <= sl) { o.x = wp.x; o.y = wp.y; o.path.shift(); } else { o.x += (dx / d) * sl; o.y += (dy / d) * sl; }
+        if (d > 0.5) o.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : (dy < 0 ? 3 : 0);
+        o.moving = o.path.length > 0; o.anim = o.moving ? o.anim + dt : 0; continue;
+      }
       const dx = o.tx - o.x, dy = o.ty - o.y, d = Math.hypot(dx, dy);
       if (d > 120) { o.x = o.tx; o.y = o.ty; }
       else if (d > 0.5) { const s = Math.min(d, Math.max(SPEED * 1.15 * dt, d * 0.2)); o.x += (dx / d) * s; o.y += (dy / d) * s; o.anim += dt; }

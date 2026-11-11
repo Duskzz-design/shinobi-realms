@@ -79,7 +79,7 @@ export async function savePosition(x, y) {
 // joinRoom(name, { me, onEvent(event, payload), onPresence(list), onStatus(state) }) -> { send, track, leave, rejoin, state }
 // Self-healing: if the channel errors, times out or closes (sleeping laptop, phone app switch, expired login),
 // it refreshes the login and rejoins with back-off, then re-announces this player.
-export async function joinRoom(name, { me, onEvent, onPresence, onStatus, events = [] }) {
+export async function joinRoom(name, { me, onEvent, onPresence, onStatus, events = [], pauseWhenHidden = 0 }) {
   if (OFFLINE) return mockRoom(name, { me, onEvent, onPresence });
   let ch = null, state = 'connecting', lastMeta = me, closed = false, retry = null, tries = 0;
   const debug = new URLSearchParams(location.search).has('netdebug');
@@ -110,7 +110,9 @@ export async function joinRoom(name, { me, onEvent, onPresence, onStatus, events
   }
   function schedule() { clearTimeout(retry); if (closed) return; const wait = Math.min(30000, 1000 * 2 ** Math.min(tries++, 5)); retry = setTimeout(connect, wait); }
   // coming back to the tab: make sure we're still connected and visible
-  const onVisible = () => { if (document.visibilityState !== 'visible' || closed) return; if (state !== 'live' || (ch && ch.state !== 'joined')) { tries = 0; connect(); } else if (lastMeta) ch.track(lastMeta); };
+  // hidden tabs drop out of busy rooms after a while (saves messages); coming back reconnects
+  let hideTimer = null;
+  const onVisible = () => { clearTimeout(hideTimer); if (document.visibilityState === 'hidden' && pauseWhenHidden && !closed) { hideTimer = setTimeout(() => { if (ch && document.visibilityState === 'hidden') { const c = ch; ch = null; setState('paused', 'hidden'); sb.removeChannel(c); } }, pauseWhenHidden); return; } if (document.visibilityState !== 'visible' || closed) return; if (state !== 'live' || (ch && ch.state !== 'joined')) { tries = 0; connect(); } else if (lastMeta) ch.track(lastMeta); };
   const onShow = (e) => { if (e.persisted && !closed) { tries = 0; connect(); } };
   document.addEventListener('visibilitychange', onVisible);
   addEventListener('pageshow', onShow);
@@ -122,7 +124,7 @@ export async function joinRoom(name, { me, onEvent, onPresence, onStatus, events
     rejoin: () => { tries = 0; return connect(); },
     send: (event, payload) => (state === 'live' && ch ? ch.send({ type: 'broadcast', event, payload }) : Promise.resolve('offline')),
     track: (meta) => { lastMeta = meta; return state === 'live' && ch ? ch.track(meta) : Promise.resolve('offline'); },
-    leave: () => { closed = true; clearTimeout(retry); document.removeEventListener('visibilitychange', onVisible); removeEventListener('pageshow', onShow); removeEventListener('online', onVisible); return ch ? sb.removeChannel(ch) : null; },
+    leave: () => { closed = true; clearTimeout(retry); clearTimeout(hideTimer); document.removeEventListener('visibilitychange', onVisible); removeEventListener('pageshow', onShow); removeEventListener('online', onVisible); return ch ? sb.removeChannel(ch) : null; },
     pause: () => { if (ch) { const c = ch; ch = null; setState('paused'); sb.removeChannel(c); } },
   };
 }
