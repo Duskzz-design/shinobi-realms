@@ -1,5 +1,6 @@
 // Mission board, turn-based battle screen, and training (stat points) panel.
 import * as net from './net.js';
+import { injuredLeft, mmss } from './hospital.js';
 import { VILLAGES } from './sprites.js';
 import * as G from './engine.js';
 
@@ -148,6 +149,12 @@ export async function openTraining(root, getChar, setChar, startTab = 'stats') {
       <button class="btn ghost" data-x>Close</button>`;
     el.querySelector('[data-x]').onclick = close;
     el.querySelectorAll('[data-tab]').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; render(); }));
+    const hurt = injuredLeft(getChar());
+    if (hurt) {
+      const box = el.querySelector('.energy');
+      if (box && !el.querySelector('.hurt-note')) box.insertAdjacentHTML('afterend', `<p class="daily over hurt-note">🤕 You are in the Hospital recovering (${mmss(hurt)} left). You can't train until you heal. Rest, or pay to heal at the Hospital.</p>`);
+      el.querySelectorAll('[data-s], [data-j], [data-el]').forEach((b) => (b.disabled = true));
+    }
     el.querySelectorAll('[data-s]').forEach((b) => (b.onclick = () => doTrain(() => net.trainStat(b.dataset.s, +b.dataset.n), (r) => r.gained ? `${STATS[b.dataset.s].label} +${r.gained}!` : 'Training progress saved.')));
     el.querySelectorAll('[data-el]').forEach((b) => (b.onclick = () => doTrain(() => net.trainElement(b.dataset.el, 1), (r) => r.element_learned ? `You now command ${G.ELEMENT_INFO[b.dataset.el].label} too!` : `${G.ELEMENT_INFO[b.dataset.el].label} training: ${r.element2_prog}/1000`)));
     el.querySelectorAll('[data-j]').forEach((b) => (b.onclick = () => doTrain(() => net.trainJutsu(b.dataset.j, +b.dataset.n), (r) => r.trained && r.trained.up ? `Jutsu level up! Now level ${r.trained.level}.` : 'Jutsu experience gained.')));

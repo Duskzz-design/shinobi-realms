@@ -29,7 +29,7 @@ export function openHospital(root, char, onChange) {
   function render() {
     const left = injuredLeft(char), cost = healCost(char);
     body.innerHTML = left
-      ? `<div class="hp-card hurt"><div class="hp-ic">🤕</div><b>You are injured</b><p>You can't take missions, quests, exams, boss fights or duels until you heal. Training, chat and the shops still work.</p>
+      ? `<div class="hp-card hurt"><div class="hp-ic">🤕</div><b>You are injured</b><p>You're resting in the Hospital. You can't train, take missions, quests, exams, boss fights or duels until you heal. Chat and the shops still work.</p>
           <div class="hp-timer">Healed naturally in <b>${mmss(left)}</b></div></div>
           <div class="sh-ryo">💰 ${n(char.ryo)} ryo</div>
           <button class="btn primary hp-heal" data-heal ${busy || char.ryo < cost ? 'disabled' : ''}>Heal now · ${n(cost)} ryo</button>

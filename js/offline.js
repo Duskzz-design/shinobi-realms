@@ -80,6 +80,7 @@ function mockGrantXp(c, xp) {
   return { xp, leveled: c.level - lv0, level: c.level, capped: c.level >= cap };
 }
 export function trainStat(c, s, times = 1) {
+  if ((c.injured_until || 0) > Date.now()) throw new Error(`You are in the Hospital recovering (${Math.ceil((c.injured_until - Date.now()) / 60e3)} min left). Rest, or pay to heal before training.`);
   const x = enrich(c); if (c[s] >= x.stat_cap) throw new Error('That stat is at the cap for your rank. Rank up to train further.');
   const e = x.energy, n = Math.min(Math.max(1, times), Math.floor(e / 10)); if (n < 1) throw new Error('Not enough energy. It refills over time.');
   c.train_prog = c.train_prog || {}; let prog = c.train_prog[s] || 0, gained = 0, used = 0;
