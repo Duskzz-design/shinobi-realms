@@ -1,5 +1,6 @@
 // Hex tactical battle screen (missions and exams). The battle server decides every roll; this file draws and animates.
 import * as net from './net.js';
+import { paintTerrain, obstacleSprite, LINE_BIOME, VILLAGE_BIOME } from './terrain.js';
 import { fillTextPx, EMOJI_RE } from './pixemoji.js';
 import { gearIconHTML } from './itemicons.js';
 import * as G from './engine.js';
@@ -286,14 +287,16 @@ export function battleView(root, char, cfg) {
 
   // ---------- drawing ----------
   const theme = { pine: ['#5aa64c', '#4f9a44', '#3f8a46'], dune: ['#e8c88a', '#dcb978', '#c99a5e'], tide: ['#7cc87a', '#6cbc6c', '#5aa858'] }[char.village] || ['#5aa64c', '#4f9a44', '#3f8a46'];
-  function rock(x, y) {
-    ctx.fillStyle = '#5a4a3a'; ctx.fillRect(x - 10, y - 4, 20, 9); ctx.fillStyle = '#8a7a66'; ctx.fillRect(x - 9, y - 8, 17, 10); ctx.fillStyle = '#a89a84'; ctx.fillRect(x - 6, y - 9, 9, 4);
-    ctx.fillStyle = '#6a5a48'; ctx.fillRect(x + 2, y - 3, 6, 3); ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(x - 10, y + 5, 20, 2);
-  }
+  // battlefield: biome by place (dojo for Academy, arena for duels, quest line, or the home village)
+  const biome = cfg.biome || (S0.lesson || S0.exam ? 'dojo' : S0.quest && LINE_BIOME[S0.quest.line] ? LINE_BIOME[S0.quest.line] : VILLAGE_BIOME[char.village] || 'grass');
+  const centres = []; for (let r = 0; r < G.GH; r++) for (let c = 0; c < G.GW; c++) { const [x, y] = hx(c, r); centres.push({ c, r, x, y }); }
+  const seed = [...String(S0.mission?.id || S0.id || 'x')].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7);
+  const ground = paintTerrain(biome, centres, S, HW, W, H, seed);
+  function rock(x, y, c, r) { const img = obstacleSprite(biome, (c * 7 + r * 3) % 2); ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y + 7 - img.height)); }
   function draw() {
     if (!alive) return; t++;
     ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = theme[2]; ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(ground, 0, 0);
     const p = me(), e = foe(), myTurn = eng.side === MY && !busy && p.hp > 0;
     const reach = myTurn && !sel ? G.reachable(eng, p, p.ap) : null;
     const m = defOf(sel);
@@ -306,12 +309,11 @@ export function battleView(root, char, cfg) {
     if (reach && hover && reach.has(G.key(...hover))) path = G.pathTo(reach, ...hover);
     for (let r = 0; r < G.GH; r++) for (let c = 0; c < G.GW; c++) {
       const [x, y] = hx(c, r), k = G.key(c, r);
-      hexPath(ctx, x, y); ctx.fillStyle = (c + r) % 2 ? theme[0] : theme[1]; ctx.fill();
-      if (reach && reach.has(k) && reach.get(k).cost > 0) { ctx.fillStyle = 'rgba(120,200,255,.3)'; ctx.fill(); }
+      hexPath(ctx, x, y, S - 1.5);
+      if (reach && reach.has(k) && reach.get(k).cost > 0) { ctx.fillStyle = 'rgba(70,170,255,.42)'; ctx.fill(); ctx.strokeStyle = 'rgba(200,236,255,.85)'; ctx.lineWidth = 1; ctx.stroke(); }
       if (m && myTurn && m.target !== 'self' && m.range[1] > 0 && G.canHitFrom(eng, m, [p.c, p.r], [c, r])) { ctx.fillStyle = 'rgba(255,170,60,.45)'; ctx.fill(); }
       if (aoe && G.dist(aoe.at, [c, r]) <= aoe.r) { ctx.fillStyle = 'rgba(230,50,40,.35)'; ctx.fill(); }
       if (fx.flash && G.dist(fx.flash.at, [c, r]) <= fx.flash.r) { ctx.globalAlpha = fx.flash.life / 22; ctx.fillStyle = fx.flash.col; ctx.fill(); ctx.globalAlpha = 1; }
-      ctx.strokeStyle = 'rgba(30,40,20,.35)'; ctx.lineWidth = 1; ctx.stroke();
       if (hover && hover[0] === c && hover[1] === r && myTurn) { ctx.strokeStyle = '#fff4dc'; ctx.lineWidth = 2; hexPath(ctx, x, y, S - 2); ctx.stroke(); }
     }
     if (fx.flash && --fx.flash.life <= 0) fx.flash = null;
@@ -322,7 +324,7 @@ export function battleView(root, char, cfg) {
     things.sort((a, b) => a.r - b.r);
     for (const th of things) {
       let [x, y] = hx(th.c, th.r);
-      if (th.rock) { rock(x, y); continue; }
+      if (th.rock) { rock(x, y, th.c, th.r); continue; }
       const u = th.u, foeU = Object.values(eng.units).filter((x) => x.team !== u.team && x.hp > 0).sort((p, q) => G.dist([u.c, u.r], [p.c, p.r]) - G.dist([u.c, u.r], [q.c, q.r]))[0] || u;
       if (fx.dead === th.id && t % 8 < 4) continue;
       if (fx.lunge && fx.lunge.who === th.id) { const [tx, ty] = hx(...fx.lunge.to), k = Math.sin(Math.min(1, (t - fx.lunge.start) / 14) * Math.PI) * 0.45; x += (tx - x) * k; y += (ty - y) * k; }
@@ -429,7 +431,7 @@ export function runDuel(root, char, duel, onEnd) {
   let deadline = new Date(duel.deadline).getTime(), lastClaim = 0, unsub = null, seqNow = duel.seq;
   const track = (d) => { if (d.deadline) deadline = new Date(d.deadline).getTime(); seqNow = Math.max(seqNow, d.seq); return duelRes(d, myId); };
   battleView(root, char, {
-    my, duel: true, state: duel.state, seq: duel.seq,
+    my, duel: true, state: duel.state, seq: duel.seq, biome: duel.kind === 'war' ? VILLAGE_BIOME[char.village] : 'arena',
     head: `<span class="grade" style="background:#c43c32">⚔</span><b>Duel vs ${esc(foeName)}</b>`,
     intro: `<b>Live duel!</b> You have 60 seconds per turn. Three missed turns and you lose.`,
     act: async (a) => track(await net.duelAct(duel.id, a)),
@@ -455,12 +457,12 @@ export function raidRes(r, myId) {
   const over = ['over', 'closed'].includes(r.status);
   return { seq: r.seq, state: r.state, events: (r.state && r.state.events) || [], status: over ? (r.winner === 'A' ? 'won' : 'lost') : 'active', result: { rewards: r.rewards && r.rewards[myId], closed: r.status === 'closed' } };
 }
-export function runRaid(root, char, raid, bossName, onEnd) {
+export function runRaid(root, char, raid, bossName, onEnd, lineId = null) {
   const myId = char.user_id, units = raid.state.engine.units, my = Object.keys(units).find((k) => units[k].uid === myId);
   let deadline = new Date(raid.deadline).getTime(), lastClaim = 0, unsub = null, seqNow = raid.seq;
   const track = (r) => { if (r.deadline) deadline = new Date(r.deadline).getTime(); seqNow = Math.max(seqNow, r.seq); return raidRes(r, myId); };
   battleView(root, char, {
-    my, raid: true, state: raid.state, seq: raid.seq,
+    my, raid: true, state: raid.state, seq: raid.seq, biome: LINE_BIOME[lineId || raid.line || raid.boss] || undefined,
     head: `<span class="grade" style="background:#8a2a2a">☠</span><b>${esc(bossName)}</b>`,
     intro: `<b>Boss fight!</b> Players act in turn (60 seconds each), then the boss. Spread out: its sweeps and barrages hit everyone close together.`,
     act: async (a) => track(await net.raidAct(raid.id, a)),

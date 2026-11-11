@@ -48,7 +48,7 @@ export function openLair(root, char, line, onEnd) {
   function begin(r) {
     if (lo) { lo.close(); lo = null; }
     if (!alive) return; alive = false; unsub && unsub(); clearInterval(poll); el.remove();
-    runRaid(root, char, r, line.boss_name, (res) => onEnd && onEnd(res));
+    runRaid(root, char, r, line.boss_name, (res) => onEnd && onEnd(res), line.id);
   }
   async function refresh() {
     try { list = await net.raidLobbies(line.id); } catch (e) { body.innerHTML = `<p>${esc(e.message)}</p>`; return; }
