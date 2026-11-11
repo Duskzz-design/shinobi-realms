@@ -65,16 +65,20 @@ export function drawNinjaRaw(look, dir = 0, frame = 0) {
   const wpn = WEAPON_LOOK[eq.weapon] || null;
   const head = A('head'), chest = A('chest'), arms = A('arms'), legs = A('legs');
   const fullAnbu = ['head', 'chest', 'arms', 'legs'].every((s) => String(eq[s] || '').startsWith('anbu_'));
-  const hair = PALETTES.hair[L.hair] || PALETTES.hair[0];
-  const skin = PALETTES.skin[L.skin] || PALETTES.skin[1];
-  const out = fullAnbu ? '#3a3d48' : PALETTES.outfit[L.outfit] || PALETTES.outfit[0];
+  // special bodies for non-human enemies: wooden puppet, stone golem, living shadow, pale wraith
+  const BODY = { puppet: { skin: '#c8945a', hair: '#5a3418', out: '#7a4a2a' }, golem: { skin: '#9a9282', hair: '#6a6252', out: '#7a7266' },
+    shade: { skin: '#3a3450', hair: '#1d1828', out: '#241e34' }, wraith: { skin: '#cfe0ea', hair: '#e8f0f4', out: '#8aa4b8' } }[L.body] || null;
+  const hair = BODY ? BODY.hair : PALETTES.hair[L.hair] || PALETTES.hair[0];
+  const skin = BODY ? BODY.skin : PALETTES.skin[L.skin] || PALETTES.skin[1];
+  const out = L.robe || (BODY ? BODY.out : fullAnbu ? '#3a3d48' : PALETTES.outfit[L.outfit] || PALETTES.outfit[0]);
   const band = PALETTES.band[L.band] || PALETTES.band[0];
   const pants = '#33334a', pantsD = '#232333', pantsL = '#47476a';
   const metal = '#d6dae2', metalD = '#8a8f9c', metalL = '#ffffff';
   const outD = shade(out, -40), outDD = shade(out, -70), outL = shade(out, 32);
   const skinD = shade(skin, -28), skinDD = shade(skin, -60), skinL = shade(skin, 14);
   const hairD = shade(hair, -38), hairL = shade(hair, 38);
-  const eye = '#20162a', blush = mix(skin, '#ff6a6a', 0.28), mouth = shade(skin, -70);
+  const eye = L.glow || (L.body === 'shade' ? '#d8b0ff' : L.body === 'wraith' ? '#7ce8ff' : L.body === 'golem' ? '#ffb04a' : '#20162a');
+  const blush = BODY ? skin : mix(skin, '#ff6a6a', 0.28), mouth = shade(skin, -70);
   const sandal = '#4a3020', sandalD = '#2e1c12';
   const side = dir === 1 || dir === 2, back = dir === 3, front = dir === 0;
   const walkA = frame === 1, walkB = frame === 2, atk = frame === 3;
@@ -82,6 +86,12 @@ export function drawNinjaRaw(look, dir = 0, frame = 0) {
   const covered = head && (head.helm || head.hood);
 
   // ---------- behind the body ----------
+  if (L.tail === 'scorpion') { // segmented tail arcing up over the shoulder, stinger raised
+    const tc = L.tailCol || '#c8892f', td = shade(tc, -45), tl = shade(tc, 40);
+    const segs = side ? [[4, 19], [2, 16], [1, 12], [1, 8], [2, 5], [4, 3], [6, 2]] : [[12, 20], [15, 18], [17, 14], [18, 10], [17, 6], [15, 3], [13, 2]];
+    segs.forEach(([a, b], i) => { P(tc, a - 1, b - 1, 3, 3); P(tl, a - 1, b - 1, 1, 1); P(td, a + 1, b + 1, 1, 1); if (i % 2) P(td, a - 1, b, 3, 1); });
+    const [sx, sy] = segs[segs.length - 1]; P('#c43c32', sx + (side ? 2 : -2), sy, 2, 2); P('#ffd36b', sx + (side ? 3 : -2), sy + 2, 1, 2);
+  }
   if (chest && chest.cape) { // royal mantle hangs behind
     if (front) { P(chest.d, 2, 13, 2, 11); P(chest.d, 14, 13, 2, 11); P(chest.c, 3, 13, 1, 10); P(chest.c, 14, 13, 1, 10); }
     if (side) { P(chest.c, 3, 12, 3, 12); P(chest.d, 3, 21, 3, 3); P(chest.d, 3, 12, 1, 12); }
@@ -105,7 +115,9 @@ export function drawNinjaRaw(look, dir = 0, frame = 0) {
   }
 
   // ---------- legs + feet ----------
-  if (!side) {
+  if (L.body === 'wraith') { // fading ghostly trail instead of legs
+    P(out, side ? 6 : 5, 20, side ? 6 : 8, 2); P(shade(out, 25), side ? 6 : 5, 22, side ? 5 : 7, 2); P(shade(out, 45), side ? 7 : 6, 24, side ? 3 : 5, 1); P(shade(out, 60), side ? 8 : 7, 25, side ? 2 : 3, 1);
+  } else if (!side) {
     const lU = walkA ? 1 : 0, rU = walkB ? 1 : 0;
     // crotch + legs
     P(pants, 5, 20, 8, 2); P(pantsD, 8, 21, 2, 1);
@@ -131,6 +143,12 @@ export function drawNinjaRaw(look, dir = 0, frame = 0) {
     if (walkA) legPair(9, 5); else if (walkB) legPair(5, 9); else legPair(7, 8);
   }
 
+  // long robe over the legs (cultists, witches, priests, oracles)
+  if (L.robe) {
+    const rD = shade(L.robe, -40), rL = shade(L.robe, 28);
+    if (!side) { P(L.robe, 4, 19, 10, 7); P(rL, 4, 19, 1, 6); P(rD, 13, 19, 1, 7); P(rD, 8, 21, 1, 5); P(rD, 4, 25, 10, 1); }
+    else { P(L.robe, 5, 19, 8, 7); P(rL, 6, 19, 1, 6); P(rD, 5, 25, 8, 1); P(rD, 10, 21, 1, 4); }
+  }
   // ---------- torso ----------
   const tx0 = side ? 6 : 4, tw = side ? 6 : 10;
   P(out, tx0, 12, tw, 8); P(outL, tx0 + 1, 13, 1, 5); P(outD, tx0 + tw - 1, 13, 1, 6); P(outD, tx0, 18, tw, 1);
@@ -209,6 +227,16 @@ export function drawNinjaRaw(look, dir = 0, frame = 0) {
     P(skinD, 8, 7, 1, 2); P(skinDD, 8, 8, 1, 1); // ear
   }
 
+  // special-body details: puppet joints, golem cracks, wraith/shade glow
+  if (L.body === 'puppet' && !back) { P(shade(skin, -45), front ? 4 : 6, 9, front ? 10 : 8, 1); P(shade(skin, -45), front ? 8 : 12, 10, 1, 2); if (front) { P('#c43c32', 5, 9, 1, 1); P('#c43c32', 12, 9, 1, 1); } }
+  if (L.body === 'golem' && !back) { P(shade(skin, -40), front ? 6 : 10, 3, 1, 3); P(shade(skin, -40), front ? 11 : 12, 9, 2, 1); P('#6aa04a', front ? 4 : 6, 3, 2, 1); }
+  if ((L.body === 'shade' || L.body === 'wraith' || L.glow) && !back) { if (front) { P(eye, 6, 7, 2, 1); P(eye, 10, 7, 2, 1); P(shade(eye, 60), 6, 7, 1, 1); P(shade(eye, 60), 10, 7, 1, 1); } else { P(eye, 11, 7, 2, 1); } }
+  // face masks: cloth over nose and mouth, or a horned oni mask
+  if (L.mask === 'cloth' && !back) { const mc = L.maskCol || '#3a3e48'; if (front) { P(mc, 4, 9, 10, 3); P(shade(mc, 30), 4, 9, 10, 1); P(shade(mc, -30), 5, 11, 8, 1); } else { P(mc, 9, 9, 6, 3); P(shade(mc, 30), 9, 9, 6, 1); P(mc, 7, 9, 2, 1); } }
+  if (L.mask === 'oni' && !back) {
+    if (front) { P('#c43c32', 4, 4, 10, 8); P('#e0584a', 4, 4, 10, 1); P('#8a2a22', 13, 5, 1, 7); P('#ffe07a', 6, 7, 2, 1); P('#ffe07a', 10, 7, 2, 1); P('#2a1a1a', 7, 6, 1, 1); P('#2a1a1a', 10, 6, 1, 1); P('#fff4dc', 6, 10, 6, 1); P('#2a1a1a', 7, 10, 1, 1); P('#2a1a1a', 10, 10, 1, 1); P('#fff4dc', 4, 1, 1, 3); P('#fff4dc', 13, 1, 1, 3); }
+    else { P('#c43c32', 9, 4, 6, 8); P('#e0584a', 9, 4, 6, 1); P('#ffe07a', 11, 7, 2, 1); P('#fff4dc', 12, 10, 3, 1); P('#fff4dc', 10, 1, 1, 3); }
+  }
   // ---------- hair ----------
   if (!covered) {
     if (back) {
@@ -271,6 +299,11 @@ export function drawNinjaRaw(look, dir = 0, frame = 0) {
     } else headband(head.c, head.big); // genin / flak forehead protectors
   } else if (L.bandSpot === 0) headband(band, false);
 
+  if (L.hat === 'straw') { // conical straw hat (wandering swordsmen, scouts, monks)
+    const hc = '#d8b070', hl = '#f0d49a', hd = '#a8803e';
+    P(hc, 7, -1, 4, 1); P(hc, 5, 0, 8, 1); P(hc, 3, 1, 12, 1); P(hc, 1, 2, 16, 2); P(hl, 4, 1, 4, 1); P(hl, 2, 2, 5, 1); P(hd, 1, 3, 16, 1); P(hd, 12, 1, 2, 1); P(hd, 14, 2, 2, 1);
+    P('#7a4a24', 8, 0, 2, 1); if (front) { P('#7a4a24', 4, 4, 1, 4); P('#7a4a24', 13, 4, 1, 4); }
+  }
   // ---------- in front of the body ----------
   if (sheathed && wpn.len !== 'short' && back) drawSheath(15, 8, 3, 20, 17, 4, 16, 6);
   if (wpn && atk) { // blade drawn and raised
@@ -333,37 +366,95 @@ export function ninjaSprite(look, dir, frame) {
 }
 
 // Beast enemies, drawn facing left. kind: beast_cat | beast_boar | beast_wolf | beast_snake
-export function beastSprite(kind, tint = '#7a4a2a', frame = 0) {
-  const k = kind + tint + frame;
+export function beastSprite(kind, tint = '#7a4a2a', frame = 0, v = '') {
+  const k = kind + tint + frame + v;
   if (cache.has(k)) return cache.get(k);
-  const c = document.createElement('canvas'); c.width = 28; c.height = 22;
+  if (kind === 'beast_snake' && v === 'giant') { const g = giantSerpent(tint, frame); cache.set(k, g); return g; }
+  const c = document.createElement('canvas'); c.width = 30; c.height = 24;
   const x = c.getContext('2d');
   const P = (col, px, py, w = 1, h = 1) => { x.fillStyle = col; x.fillRect(px, py, w, h); };
-  const L = shade(tint, 40), D = shade(tint, -40), eye = '#ffe07a', bob = frame ? 1 : 0;
-  if (kind === 'beast_cat') {
-    P(tint, 9, 11 + bob, 13, 7); P(L, 10, 12 + bob, 10, 2); P(tint, 3, 7, 8, 7); P(tint, 3, 5, 2, 2); P(tint, 9, 5, 2, 2);
-    P(eye, 5, 9, 1, 1); P(eye, 8, 9, 1, 1); P('#ff8fb1', 6, 11, 2, 1);
-    P(tint, 21, 6 - bob, 2, 7); P(tint, 22, 4 - bob, 2, 3); P(D, 10, 18, 2, 3); P(D, 19, 18, 2, 3); P(D, 13, 18, 2, 3); P(D, 16, 18, 2, 3);
-    P(D, 12, 13 + bob, 1, 3); P(D, 15, 13 + bob, 1, 3); P(D, 18, 13 + bob, 1, 3);
+  const L = shade(tint, 38), LL = shade(tint, 70), D = shade(tint, -38), DD = shade(tint, -70), cream = mix(tint, '#fff4dc', 0.55);
+  const eyeC = v === 'shadow' ? '#ff4a3a' : v === 'eclipse' ? '#d8b0ff' : v === 'frost' ? '#7ce8ff' : '#ffe07a';
+  const b = frame ? 1 : 0;
+  if (kind === 'beast_wolf') {
+    // tail
+    P(tint, 25, 9 - b, 2, 4); P(tint, 26, 6 - b, 2, 4); P(L, 27, 4 - b, 2, 3); P(LL, 28, 3 - b, 1, 2); P(D, 25, 12 - b, 2, 1);
+    // back legs (far one darker), body, belly
+    P(DD, 21, 16, 2, 6); P(D, 23, 16, 2, 6); P(DD, 23, 22, 2, 1);
+    P(tint, 11, 9 + b, 15, 8); P(L, 12, 9 + b, 12, 2); P(LL, 13, 9 + b, 6, 1); P(D, 22, 11 + b, 4, 5); P(cream, 12, 15 + b, 10, 2); P(D, 11, 16 + b, 14, 1);
+    // chest ruff, front legs
+    P(tint, 7, 8, 6, 9); P(cream, 7, 11, 3, 5); P(L, 8, 8, 3, 2);
+    P(D, 8, 17, 2, 5); P(tint, 11, 17, 2, 5); P(DD, 8, 22, 2, 1); P(D, 11, 22, 2, 1);
+    // head with ears, muzzle, eye, nose, teeth
+    P(tint, 3, 4, 8, 7); P(L, 4, 4, 4, 2); P(tint, 0, 7, 4, 4); P(cream, 0, 9, 4, 2); P('#1b1424', 0, 7, 1, 1); P(D, 1, 11, 4, 1);
+    P(tint, 4, 1, 2, 3); P(tint, 8, 1, 2, 3); P(D, 5, 2, 1, 2); P(D, 9, 2, 1, 2); P(L, 4, 1, 1, 1);
+    P(eyeC, 5, 6, 2, 1); P('#1b1424', 5, 6, 1, 1); P('#fff4dc', 1, 11, 1, 1); P('#fff4dc', 3, 11, 1, 1);
+    if (v === 'thunder') { for (const [a, bb] of [[13, 10], [14, 11], [13, 12], [18, 10], [19, 11], [18, 12], [23, 11], [24, 12]]) P('#3a3020', a, bb + b); P('#9fd8ff', 27, 3 - b, 1, 1); P('#9fd8ff', 2, 2, 1, 1); }
+    if (v === 'frost') { for (let i2 = 0; i2 < 5; i2++) P(i2 % 2 ? '#ffffff' : '#bfe6ff', 10 + i2 * 3, 7 + b - (i2 % 2), 2, 2); P('#ffffff', 7, 7, 2, 1); }
+    if (v === 'eclipse') { P('#d8b0ff', 3, 0, 1, 2); P('#d8b0ff', 9, 0, 1, 2); P('#9a5ad0', 12, 8 + b, 12, 1); P('#d8b0ff', 6, 5, 1, 1); }
+    if (v === 'alpha') { P(LL, 6, 5, 7, 4); P(L, 6, 9, 7, 3); P('#ffffff', 7, 5, 4, 1); }
+    if (v === 'ash') { P('#ff8a3a', 14, 8 + b, 1, 1); P('#ffd36b', 19, 7 + b, 1, 1); P('#ff8a3a', 23, 9 + b, 1, 1); P('#ff8a3a', 9, 6, 1, 1); }
+    if (v === 'shadow') { P(DD, 12, 9 + b, 10, 1); }
+  } else if (kind === 'beast_cat') {
+    P(tint, 22, 6 - b, 2, 8); P(tint, 23, 3 - b, 2, 4); P(L, 24, 2 - b, 1, 2); P(D, 23, 8 - b, 1, 5);
+    P(D, 19, 17, 2, 5); P(D, 12, 17, 2, 5);
+    P(tint, 9, 11 + b, 14, 7); P(L, 10, 11 + b, 10, 2); P(cream, 11, 16 + b, 9, 2); P(D, 9, 17 + b, 14, 1);
+    for (const xx of [12, 15, 18]) { P(D, xx, 11 + b, 1, 4); }
+    P(tint, 10, 17, 2, 5); P(tint, 17, 17, 2, 5); P(cream, 10, 21, 2, 1); P(cream, 17, 21, 2, 1);
+    P(tint, 2, 6, 9, 8); P(L, 3, 6, 5, 2); P(cream, 2, 10, 4, 3); P(tint, 2, 3, 3, 3); P(tint, 8, 3, 3, 3); P('#ff9fbf', 3, 4, 1, 2); P('#ff9fbf', 9, 4, 1, 2);
+    P('#7ce08a', 4, 8, 1, 2); P('#7ce08a', 7, 8, 1, 2); P('#1b1424', 4, 9, 1, 1); P('#1b1424', 7, 9, 1, 1); P('#ff8fb1', 5, 11, 2, 1); P(D, 4, 7, 1, 1); P(D, 7, 7, 1, 1);
+    P('#fff4dc', 0, 10, 2, 1); P('#fff4dc', 0, 12, 2, 1);
   } else if (kind === 'beast_boar') {
-    P(tint, 7, 7 + bob, 18, 11); P(D, 8, 6 + bob, 16, 2); P(L, 9, 9 + bob, 12, 2); P(tint, 1, 9, 8, 8); P(D, 0, 12, 3, 4);
-    P('#1b1424', 0, 13, 1, 1); P('#1b1424', 0, 15, 1, 1); P('#fff4dc', 2, 16, 1, 3); P('#fff4dc', 5, 16, 1, 3); P('#c43c32', 4, 11, 2, 1);
-    P(D, 3, 7, 3, 2); P(D, 9, 18, 3, 3); P(D, 21, 18, 3, 3); P(D, 13, 18, 2, 3); P(D, 25, 9 + bob, 2, 2);
-  } else if (kind === 'beast_wolf') {
-    P(tint, 9, 9 + bob, 15, 8); P(L, 10, 13 + bob, 12, 2); P(tint, 2, 6, 9, 7); P(tint, 0, 9, 3, 3); P(tint, 3, 3, 2, 3); P(tint, 8, 3, 2, 3);
-    P('#1b1424', 0, 9, 1, 1); P(eye, 5, 8, 2, 1); P('#fff4dc', 1, 12, 3, 1);
-    P(tint, 23, 7 - bob, 4, 3); P(L, 25, 6 - bob, 2, 2); P(D, 10, 17, 2, 4); P(D, 14, 17, 2, 4); P(D, 18, 17, 2, 4); P(D, 22, 17, 2, 4);
-    P(D, 11, 9 + bob, 10, 1);
-  } else {
-    // snake: coiled body and raised head
-    P(tint, 8, 15, 18, 5); P(tint, 12, 11, 14, 5); P(L, 13, 12, 10, 1); P(D, 9, 19, 16, 1);
-    for (let i = 10; i < 26; i += 4) P(D, i, 16, 2, 2);
-    P(tint, 10, 5 + bob, 4, 8); P(tint, 3, 3 + bob, 9, 5); P(L, 4, 4 + bob, 6, 1); P(eye, 5, 5 + bob, 1, 1); P('#1b1424', 5, 5 + bob, 1, 1);
-    P(eye, 8, 5 + bob, 1, 1); P('#c43c32', 0, 6 + bob, 3, 1); P('#c43c32', 0, 5 + bob, 1, 1);
+    P(DD, 22, 18, 3, 4); P(DD, 11, 18, 3, 4);
+    P(tint, 8, 8 + b, 19, 11); P(L, 9, 9 + b, 14, 2); P(LL, 10, 9 + b, 6, 1); P(D, 22, 10 + b, 5, 8); P(D, 8, 18 + b, 19, 1);
+    for (let i2 = 9; i2 < 25; i2 += 2) P(DD, i2, 7 + b - (i2 % 4 ? 0 : 1), 1, 2); // bristly mane
+    P(tint, 13, 18, 3, 4); P(tint, 24, 18, 3, 4); P(DD, 13, 22, 3, 1); P(DD, 24, 22, 3, 1);
+    P(tint, 1, 10, 9, 8); P(L, 2, 10, 5, 2); P(D, 0, 13, 3, 4); P(mix(tint, '#ff9fbf', 0.4), 0, 13, 2, 3); P('#1b1424', 0, 14, 1, 1);
+    P(tint, 5, 8, 2, 3); P(D, 6, 9, 1, 1); P('#c43c32', 4, 12, 2, 1); P('#1b1424', 4, 12, 1, 1);
+    P('#fff4dc', 2, 16, 1, 3); P('#fff4dc', 1, 15, 1, 1); P('#fff4dc', 5, 17, 1, 2); P('#c8bfae', 2, 18, 1, 1);
+    P(D, 27, 10 + b, 2, 1); P(D, 28, 9 + b, 1, 1);
+  } else { // snakes: coiled body and raised head; variants add hoods, thorns, moss, horns
+    P(D, 8, 17, 20, 5); P(tint, 9, 15, 19, 5); P(L, 10, 15, 14, 1); P(cream, 10, 19, 16, 1); P(DD, 9, 20, 18, 1);
+    P(tint, 13, 11, 14, 5); P(L, 14, 11, 10, 1); P(D, 13, 15, 14, 1); P(cream, 15, 14, 9, 1);
+    for (let i2 = 11; i2 < 27; i2 += 4) { P(D, i2, 16, 2, 2); P(D, i2 + 2, 12, 2, 2); }
+    P(tint, 10, 5 + b, 4, 9); P(L, 10, 5 + b, 1, 8); P(cream, 13, 7 + b, 1, 6);
+    P(tint, 3, 3 + b, 9, 5); P(L, 4, 3 + b, 6, 1); P(D, 3, 7 + b, 9, 1);
+    P('#ffe07a', 5, 4 + b, 2, 1); P('#1b1424', 6, 4 + b, 1, 1); P('#1b1424', 3, 5 + b, 1, 1);
+    P('#c43c32', 0, 6 + b, 3, 1); P('#c43c32', 0, 5 + b, 1, 1); P('#c43c32', 0, 7 + b, 1, 1);
+    if (v === 'viper') { P(tint, 8, 2 + b, 3, 7); P(D, 9, 3 + b, 1, 5); P(L, 8, 2 + b, 1, 5); }
+    if (v === 'thorn') { for (let i2 = 12; i2 < 27; i2 += 3) P('#c43c8a', i2, 10, 1, 1); P('#c43c8a', 10, 4 + b, 1, 1); P('#c43c8a', 12, 5 + b, 1, 1); }
+    if (v === 'swamp') { P('#6aa04a', 15, 11, 3, 1); P('#6aa04a', 22, 15, 3, 1); P('#6aa04a', 5, 3 + b, 2, 1); }
+    if (v === 'wyrm') { P('#fff4dc', 9, 1 + b, 1, 3); P('#fff4dc', 11, 1 + b, 1, 3); for (let i2 = 13; i2 < 27; i2 += 3) P(LL, i2, 11, 2, 1); P('#ff8a3a', 5, 4 + b, 1, 1); }
   }
   const o = outline(c);
   cache.set(k, o);
   return o;
+}
+function mixC(a, b, t) { return mix(a, b, t); }
+// Venomfang: a giant coiled serpent with a hood, fangs and glowing eyes (drawn big, not scaled)
+function giantSerpent(tint, frame) {
+  const c = document.createElement('canvas'); c.width = 50; c.height = 44;
+  const x = c.getContext('2d');
+  const P = (col, px, py, w = 1, h = 1) => { x.fillStyle = col; x.fillRect(px, py, w, h); };
+  const L = shade(tint, 36), LL = shade(tint, 64), D = shade(tint, -36), DD = shade(tint, -64), belly = mixC(tint, '#f0e0a0', 0.6), b = frame ? 1 : 0;
+  // filled ellipse with lit top-left and shaded bottom-right
+  const ell = (cx, cy, rx, ry, base = tint) => { for (let yy = Math.floor(cy - ry); yy <= cy + ry; yy++) for (let xx = Math.floor(cx - rx); xx <= cx + rx; xx++) { const dx = (xx + 0.5 - cx) / rx, dy = (yy + 0.5 - cy) / ry, d = dx * dx + dy * dy; if (d > 1) continue; P(d > 0.72 && (dx + dy) > 0.3 ? D : d > 0.6 && (dx + dy) < -0.5 ? L : base, xx, yy); } };
+  // coils: back coil, front coil, tail
+  ell(31, 31, 15, 5.5); for (let i = 20; i < 44; i += 5) { P(D, i, 28, 3, 1); P(LL, i + 1, 27, 1, 1); }
+  ell(24, 37, 21, 5.5); for (let i = 8; i < 44; i += 5) { P(D, i, 34, 3, 1); P(LL, i + 1, 33, 1, 1); } P(belly, 10, 40, 28, 1);
+  P(tint, 44, 22, 3, 7); P(tint, 46, 18, 2, 5); P(L, 47, 16, 1, 3); P('#c43c32', 47, 15, 1, 1);
+  // neck rising from the coils
+  ell(17, 26, 5, 9); for (let yy = 18; yy < 34; yy += 3) P(belly, 15, yy + b, 4, 2);
+  // flared hood with red-and-gold eye markings
+  ell(17, 13 + b, 12, 10); ell(17, 13 + b, 9, 8, shade(tint, -12));
+  for (const mx of [10, 24]) { ell(mx, 15 + b, 2.6, 2.6, '#c43c32'); P('#ffd36b', mx - 1, 14 + b, 2, 2); }
+  for (let yy = 8; yy < 22; yy += 3) P(belly, 15, yy + b, 4, 2);
+  // head with glowing eyes, fangs dripping venom and a forked tongue
+  ell(17, 5 + b, 7, 4.5); P(L, 13, 2 + b, 5, 1); P(LL, 14, 2 + b, 2, 1);
+  P('#c6ff5a', 12, 4 + b, 3, 2); P('#1b1424', 13, 4 + b, 1, 2); P('#c6ff5a', 20, 4 + b, 3, 2); P('#1b1424', 21, 4 + b, 1, 2);
+  P(DD, 13, 8 + b, 9, 1); P('#fff4dc', 14, 9 + b, 1, 3); P('#fff4dc', 20, 9 + b, 1, 3); P('#c6ff5a', 14, 12 + b, 1, 1); P('#c6ff5a', 20, 12 + b, 1, 1);
+  P('#c43c32', 17, 9 + b, 1, 4); P('#c43c32', 16, 13 + b, 1, 1); P('#c43c32', 18, 13 + b, 1, 1);
+  return outline(c);
 }
 
 // Village emblems, 12x12

@@ -362,7 +362,7 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, worldRoom = null, lastSend = 0, lastTrack = 0, lastSave = performance.now();
-  const BUILD = '2026-11-11g';
+  const BUILD = '2026-11-11h';
   let newerSeen = false;
   const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   const onEvent = (ev, p) => {

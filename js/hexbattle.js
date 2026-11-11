@@ -5,6 +5,7 @@ import { fillTextPx, EMOJI_RE } from './pixemoji.js';
 import { gearIconHTML } from './itemicons.js';
 import * as G from './engine.js';
 import { ninjaSprite, beastSprite, lookOf } from './sprites.js';
+import { enemyLook, beastVariant } from './enemylooks.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -47,7 +48,7 @@ export function battleView(root, char, cfg) {
   let S0 = cfg.state, eng = S0.engine;
   const MY = cfg.my, team = () => eng.units[MY].team;
   // what each ninja wears: my own gear, and other players' weapons when the battle server shares them
-  const looks = {}, lookFor = (id, u) => looks[id] || (looks[id] = id === MY && !u.npc ? lookOf(u.look, char.gear) : u.gear && u.gear.weapon ? { ...(u.look || {}), eq: { weapon: u.gear.weapon } } : u.look || {});
+  const looks = {}, lookFor = (id, u) => looks[id] || (looks[id] = u.npc ? enemyLook(u.name, u.look) : id === MY ? lookOf(u.look, char.gear) : u.gear && u.gear.weapon ? { ...(u.look || {}), eq: { weapon: u.gear.weapon } } : u.look || {});
   const me = () => eng.units[MY];
   const foes = () => Object.values(eng.units).filter((u) => u.team !== team() && u.hp > 0);
   const foe = () => foes()[0] || Object.values(eng.units).find((u) => u.team !== team());
@@ -372,10 +373,15 @@ export function battleView(root, char, cfg) {
       if (th.id === eng.side && !busy) { ctx.strokeStyle = u.team === team() ? '#ffe07a' : '#ff8f7a'; ctx.lineWidth = 1; hexPath(ctx, x, y, S - 3); ctx.stroke(); }
       let spr;
       if (u.kind === 'ninja') spr = ninjaSprite(lookFor(th.id, u), dir, moving ? 1 + ((t >> 3) & 1) : fx.lunge && fx.lunge.who === th.id ? 3 : 0);
-      else spr = beastSprite(u.kind, u.look?.tint, (t >> 4) % 2);
+      else spr = beastSprite(u.kind, u.look?.tint, (t >> 4) % 2, beastVariant(u.name));
       ctx.save(); if (hurt && t % 4 < 2) ctx.globalAlpha = 0.35;
-      const k = u.boss ? 1.6 : 1, sw = spr.width * k, sh = spr.height * k;
-      if (u.boss) { ctx.fillStyle = 'rgba(120,20,20,.35)'; ctx.beginPath(); ctx.ellipse(x, y + 6, 13, 4, 0, 0, 7); ctx.fill(); }
+      const giant = u.boss && spr.width > 40, k = u.boss && !giant ? 2 : 1, sw = spr.width * k, sh = spr.height * k;
+      if (u.boss) { // boss aura: a pulsing ring in its element colour, and a heavy shadow
+        const ac = u.elements[0] ? G.ELEMENT_INFO[u.elements[0]].color : '#c43c32', pulse = 0.5 + 0.5 * Math.sin(t / 8);
+        ctx.save(); ctx.globalAlpha = 0.25 + 0.2 * pulse; ctx.fillStyle = ac; ctx.beginPath(); ctx.ellipse(x, y + 5, 16 + pulse * 2, 6 + pulse, 0, 0, 7); ctx.fill();
+        ctx.globalAlpha = 0.5; ctx.fillStyle = '#140c08'; ctx.beginPath(); ctx.ellipse(x, y + 6, 12, 4, 0, 0, 7); ctx.fill(); ctx.restore();
+        if (t % 6 === 0) fx.embers = (fx.embers || []).concat([{ x: x - 14 + Math.random() * 28, y: y + 4, life: 30, col: ac }]).slice(-24);
+      }
       if (u.kind !== 'ninja' && dir === 2) { ctx.translate(x, 0); ctx.scale(-1, 1); ctx.drawImage(spr, -sw / 2, y + 7 - sh, sw, sh); }
       else ctx.drawImage(spr, Math.round(x - sw / 2), Math.round(y + 7 - sh), sw, sh);
       ctx.restore();
@@ -399,6 +405,7 @@ export function battleView(root, char, cfg) {
       if (pr.k >= 1) { fx.proj = null; pr.done(); }
     }
     ctx.textAlign = 'center'; ctx.font = "8px 'Press Start 2P', monospace";
+    if (fx.embers) { fx.embers = fx.embers.filter((e) => e.life-- > 0); for (const e of fx.embers) { ctx.globalAlpha = e.life / 30; ctx.fillStyle = e.col; ctx.fillRect(Math.round(e.x + Math.sin(e.life / 4) * 2), Math.round(e.y - (30 - e.life) * 1.2), 1, 2); } ctx.globalAlpha = 1; }
     fx.floats = fx.floats.filter((f) => f.life-- > 0);
     for (const f of fx.floats) { const y = f.y - (50 - f.life) * 0.4; ctx.fillStyle = '#24160e'; ctx.fillText(f.text.replace(EMOJI_RE, '   '), f.x + 1, y + 1); ctx.fillStyle = f.color; fillTextPx(ctx, f.text, f.x, y); }
     requestAnimationFrame(draw);
