@@ -93,3 +93,6 @@ section { padding: 64px 18px; }
   h3 { font-size: 23px; } section { padding: 50px 16px; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+.pxe { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -0.22em; image-rendering: pixelated; image-rendering: crisp-edges; }
+.btn .pxe { width: 1.3em; height: 1.3em; }

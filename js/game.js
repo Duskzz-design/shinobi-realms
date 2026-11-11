@@ -1,5 +1,6 @@
 // The live village: movement, camera, other players, chat, interactions.
 import * as net from './net.js';
+import { fillTextPx, measurePx } from './pixemoji.js';
 import { gearIconHTML } from './itemicons.js';
 import { buildWorld, blocked, T, MW, MH, BUILDINGS, STATUES } from './world.js';
 import { openArena, statueSprite } from './arenaui.js';
@@ -361,7 +362,7 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, worldRoom = null, lastSend = 0, lastTrack = 0, lastSave = performance.now();
-  const BUILD = '2026-11-11d';
+  const BUILD = '2026-11-11e';
   let newerSeen = false;
   const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   const onEvent = (ev, p) => {
@@ -498,9 +499,9 @@ export async function enterWorld(app, char, hooks) {
     for (const d of list) {
       if (!d.label) continue;
       const L = d.label, sx = Math.round((L.x - camX) * sc), sy = Math.round((L.y - camY) * sc);
-      const w = ctx.measureText(L.name).width + 8;
+      const w = measurePx(ctx, L.name) + 8;
       ctx.fillStyle = 'rgba(36,22,14,.62)'; ctx.fillRect(sx - w / 2, sy - fsz - 2, w, fsz + 4);
-      ctx.fillStyle = L.me || L.statue ? '#ffe07a' : '#fff4dc'; ctx.fillText(L.name, sx, sy + 1);
+      ctx.fillStyle = L.me || L.statue ? '#ffe07a' : '#fff4dc'; fillTextPx(ctx, L.name, sx, sy + 1);
       const b = bubbles.get(L.id);
       if (b && b.until > now) drawBubble(sx, sy - fsz - 6, b.text, fsz);
     }
@@ -532,15 +533,15 @@ export async function enterWorld(app, char, hooks) {
   function drawBubble(x, y, text, fsz) {
     const maxW = Math.min(240 * (view.width / vw), view.width * 0.6);
     const words = text.split(' '); const lines = []; let line = '';
-    for (const w of words) { const tst = line ? line + ' ' + w : w; if (ctx.measureText(tst).width > maxW && line) { lines.push(line); line = w; } else line = tst; }
+    for (const w of words) { const tst = line ? line + ' ' + w : w; if (measurePx(ctx, tst) > maxW && line) { lines.push(line); line = w; } else line = tst; }
     if (line) lines.push(line);
-    const lh = fsz + 2, bw = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 14, bh = lines.length * lh + 8;
+    const lh = fsz + 2, bw = Math.max(...lines.map((l) => measurePx(ctx, l))) + 14, bh = lines.length * lh + 8;
     const bx = x - bw / 2, by = y - bh - 6;
     ctx.fillStyle = '#24160e'; ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 4);
     ctx.fillStyle = '#fffaf0'; ctx.fillRect(bx, by, bw, bh);
     ctx.fillRect(x - 3, by + bh, 6, 4); ctx.fillStyle = '#24160e'; ctx.fillRect(x - 5, by + bh, 2, 4); ctx.fillRect(x + 3, by + bh, 2, 4); ctx.fillRect(x - 3, by + bh + 4, 6, 2);
     ctx.fillStyle = '#3a2414';
-    lines.forEach((l, i) => ctx.fillText(l, x, by + 4 + (i + 1) * lh - 1));
+    lines.forEach((l, i) => fillTextPx(ctx, l, x, by + 4 + (i + 1) * lh - 1));
   }
 
   async function leave() {

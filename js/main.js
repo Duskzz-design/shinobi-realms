@@ -1,4 +1,5 @@
 import * as net from './net.js';
+import { startPixify } from './pixemoji.js';
 import { startTitleScene } from './scene.js';
 import { enterWorld } from './game.js';
 import { ELEMENT_INFO, BLOODLINES, ELEMENTS } from './engine.js';
@@ -282,4 +283,5 @@ async function boot() {
   if (u && location.search.includes('code=')) history.replaceState({}, '', location.pathname);
   route(u);
 }
+startPixify();
 boot();

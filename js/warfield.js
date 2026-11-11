@@ -1,5 +1,6 @@
 // War battlefield: a small walkable map at the territory. Walk around, tap an enemy ninja, press Attack.
 import * as net from './net.js';
+import { fillTextPx, measurePx } from './pixemoji.js';
 import { ninjaSprite, VILLAGES, lookOf, drawNinjaFit } from './sprites.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -172,15 +173,15 @@ export function openWarField(root, char, war, terrName, hooks = {}) {
       ctx.globalAlpha = 1;
       const enemy = mySide && m.side && m.side !== mySide;
       ctx.font = `${fsz}px 'Pixelify Sans', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-      const label = (m.asleep ? '💤 ' : '') + m.name, w = ctx.measureText(label).width + 8, sx = n.x * sc, sy = (n.y - 32) * sc;
+      const label = (m.asleep ? '💤 ' : '') + m.name, w = measurePx(ctx, label) + 8, sx = n.x * sc, sy = (n.y - 32) * sc;
       ctx.fillStyle = enemy ? 'rgba(160,30,24,.85)' : isMe ? 'rgba(36,22,14,.8)' : 'rgba(36,22,14,.6)'; ctx.fillRect(sx - w / 2, sy - fsz - 2, w, fsz + 4);
-      ctx.fillStyle = isMe ? '#ffe07a' : '#fff4dc'; ctx.fillText(label, sx, sy + 1);
+      ctx.fillStyle = isMe ? '#ffe07a' : '#fff4dc'; fillTextPx(ctx, label, sx, sy + 1);
       if (!isMe && canAttack(m)) { // the clickable crossed swords above an enemy's head
         const bs = Math.round(fsz * 1.9), bx = Math.round(sx - bs / 2), by = Math.round(sy - fsz - 6 - bs), pulse = 1 + 0.08 * Math.sin(performance.now() / 160);
         ctx.save(); ctx.translate(bx + bs / 2, by + bs / 2); ctx.scale(pulse, pulse);
         ctx.fillStyle = '#24160e'; ctx.fillRect(-bs / 2 - 2, -bs / 2 - 2, bs + 4, bs + 4); ctx.fillStyle = '#c43c32'; ctx.fillRect(-bs / 2, -bs / 2, bs, bs);
         ctx.fillStyle = '#f2c14a'; ctx.fillRect(-bs / 2, bs / 2 - 3, bs, 3);
-        ctx.font = `${Math.round(bs * 0.7)}px sans-serif`; ctx.textBaseline = 'middle'; ctx.fillText('⚔️', 0, 1); ctx.restore();
+        ctx.font = `${Math.round(bs * 0.7)}px sans-serif`; ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; fillTextPx(ctx, '⚔️', 0, 1); ctx.restore();
         swords.push({ x: bx, y: by, w: bs, h: bs, m });
       }
     }

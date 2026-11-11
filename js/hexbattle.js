@@ -1,5 +1,6 @@
 // Hex tactical battle screen (missions and exams). The battle server decides every roll; this file draws and animates.
 import * as net from './net.js';
+import { fillTextPx, EMOJI_RE } from './pixemoji.js';
 import { gearIconHTML } from './itemicons.js';
 import * as G from './engine.js';
 import { ninjaSprite, beastSprite, lookOf } from './sprites.js';
@@ -357,7 +358,7 @@ export function battleView(root, char, cfg) {
     }
     ctx.textAlign = 'center'; ctx.font = "8px 'Press Start 2P', monospace";
     fx.floats = fx.floats.filter((f) => f.life-- > 0);
-    for (const f of fx.floats) { const y = f.y - (50 - f.life) * 0.4; ctx.fillStyle = '#24160e'; ctx.fillText(f.text, f.x + 1, y + 1); ctx.fillStyle = f.color; ctx.fillText(f.text, f.x, y); }
+    for (const f of fx.floats) { const y = f.y - (50 - f.life) * 0.4; ctx.fillStyle = '#24160e'; ctx.fillText(f.text.replace(EMOJI_RE, '   '), f.x + 1, y + 1); ctx.fillStyle = f.color; fillTextPx(ctx, f.text, f.x, y); }
     requestAnimationFrame(draw);
   }
   requestAnimationFrame(draw);

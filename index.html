@@ -183,6 +183,8 @@
 
 <script type="module">
   import { startTitleScene } from './js/scene.js';
+  import { startPixify } from './js/pixemoji.js';
+  startPixify();
   const cv = document.getElementById('scene');
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) startTitleScene(cv);
   // returning players: say "Continue" instead of "Play free"

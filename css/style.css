@@ -363,7 +363,7 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .wm-pin .lb { font-size: clamp(9px, 1.6vw, 13px); font-weight: 700; color: #fff4dc; background: rgba(36,22,14,.75); padding: 0 4px; white-space: nowrap; margin-top: 1px; }
 .wm-pin.home .lb { color: #ffe07a; } .wm-pin.sel .lb { background: #c43c32; }
 .wm-pin.active .ic { animation: pinpulse 1s steps(3) infinite alternate; } .wm-pin.active .lb::after { content: ' !'; color: #ffe07a; }
-.wm-pin.k-lair .lb { background: rgba(90,20,20,.85); } .wm-pin.k-lair.open .lb::after { content: ' ⚔'; }
+.wm-pin.k-lair .lb { background: rgba(90,20,20,.85); } .wm-pin.k-lair.open .lb::after { content: ''; display: inline-block; width: 1.1em; height: 1.1em; margin-left: 3px; vertical-align: -0.2em; background: var(--px-swords) center / contain no-repeat; image-rendering: pixelated; }
 @keyframes pinpulse { to { transform: translateY(-4px) scale(1.12); } }
 .wm-panel { background: var(--paper); padding: 10px 14px 14px; flex: 1; font-size: 16px; }
 .wm-panel h3 { font-family: var(--title); font-size: 13px; margin: 4px 0 6px; }
@@ -603,3 +603,6 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .wm-drops .pxi { margin-right: 2px; }
 .hx-it { display: inline-flex; align-items: center; gap: 2px; } .hx-it .pxi { margin: -3px 0; }
 .lo-j b .pxi { margin: -3px 2px -3px 0; }
+
+/* pixel-art emoji (swapped in by pixemoji.js) */
+.pxe { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -0.22em; image-rendering: pixelated; image-rendering: crisp-edges; pointer-events: none; }
