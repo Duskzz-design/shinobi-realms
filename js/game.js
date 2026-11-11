@@ -15,6 +15,8 @@ import { openGear } from './gear.js';
 import { ninjaSprite, emblem, VILLAGES } from './sprites.js';
 import { openMissionBoard, openTraining, runBattle, openExamHall } from './battle.js';
 import { setupDuels } from './duelui.js';
+import { setupGuide } from './guide.js';
+import { openHandbook } from './handbook.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -51,6 +53,7 @@ export async function enterWorld(app, char, hooks) {
         <div class="online" title="Ninja in this village right now">👥 <span id="count">1</span> here</div>
         <button class="injured" id="injured" hidden title="Injured: tap to visit the Hospital">🤕 <span></span></button>
         <button class="btn small primary train-btn" id="trainBtn">⭐ Train<i id="ptsBadge" hidden></i></button>
+        <button class="btn small ghost hb-btn" id="hbBtn" title="Ninja Handbook" aria-label="Ninja Handbook">📖</button>
         <button class="btn small ghost" id="menuBtn">☰ Menu</button>
       </div>
     </div>
@@ -66,6 +69,7 @@ export async function enterWorld(app, char, hooks) {
     <div class="menu scroll" id="menu" hidden>
       <button class="btn ghost" id="mProfile">My Ninja & training</button>
       <button class="btn ghost" id="mGear">🎽 Equipment</button>
+      <button class="btn ghost" id="mHelp">📖 Ninja Handbook</button>
       <button class="btn ghost" id="mSleep">💤 Go to sleep</button>
       <button class="btn ghost" id="mOut">Sign out</button>
       <button class="btn ghost" id="mClose">Close</button>
@@ -205,7 +209,7 @@ export async function enterWorld(app, char, hooks) {
     chatIn.value = '';
     if (!isTouch) chatIn.blur();
   };
-  addMsg({ sys: true, text: `Welcome to ${v.name}. ${isTouch ? 'Tap' : 'Click'} the ground to walk, and ${isTouch ? 'tap' : 'click'} a building to go inside.` + (isTouch ? '' : ' Press Enter to chat.') });
+  addMsg({ sys: true, text: `Welcome to ${v.name}. ${isTouch ? 'Tap' : 'Click'} the ground to walk, and ${isTouch ? 'tap' : 'click'} a building to go inside.` + (isTouch ? '' : ' Press Enter to chat.') + ' Stuck? Open 📖 the Ninja Handbook' + (isTouch ? ' from the ☰ Menu.' : '.') });
 
   // ---------- menu / modal ----------
   const menu = root.querySelector('#menu'), modal = root.querySelector('#modal');
@@ -231,13 +235,18 @@ export async function enterWorld(app, char, hooks) {
   root.querySelector('#wakeBtn').onclick = () => toggleSleep(false);
   setTimeout(refreshSleep, 0);
   root.querySelector('#trainBtn').onclick = () => train();
-  function train(tab = 'stats') { openTraining(root, () => char, (c) => { Object.assign(char, c); refreshPlate(); }, tab); }
+  const handbook = (pg) => { menu.hidden = true; openHandbook(root, pg); };
+  root.querySelector('#hbBtn').onclick = () => handbook();
+  root.querySelector('#mHelp').onclick = () => handbook();
+  const guide = setupGuide(root, char, { openHandbook: () => handbook(), goToSpot: (id) => { const sp = world.spots.find((s) => s.id === id); if (!sp) return; if (Math.hypot(sp.x - me.x, sp.y - me.y) < 22) interact(sp); else goTo(sp.x, sp.y, sp); } });
+  function train(tab = 'stats') { openTraining(root, () => char, (c) => { Object.assign(char, c); guide.mark('trained'); refreshPlate(); }, tab); }
   function refreshPlate() {
     root.querySelector('#plateSub').textContent = `Lv ${char.level} · ${char.rank}`;
     root.querySelector('#ptsBadge').hidden = !(char.energy + Math.floor((Date.now() - (char._loadedAt || Date.now())) / 1000 / (char.energy_regen_sec || 9)) >= (char.energy_max || 100));
     me.level = char.level; me.rank = char.rank;
+    guide?.update();
   }
-  if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char, exam: () => startExam(), hall: () => openExamHall(root, char, startExam, startLesson), map: (f) => worldMap(f), shop: (t) => shop(t), library: () => openLibrary(root, char, () => refreshPlate()), market: () => openMarket(root, char, () => refreshPlate()), hospital: () => openHospital(root, char, () => refreshPlate()), gear: () => gear(), tower: (t) => kageTower(t), war: (id) => warAt(id), lesson: (id) => startLesson(id), click: (x, y) => { const sp = spotAt(x, y); sp ? goTo(sp.x, sp.y, sp) : goTo(x, y); }, me };
+  if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char, exam: () => startExam(), hall: () => openExamHall(root, char, startExam, startLesson), map: (f) => worldMap(f), shop: (t) => shop(t), library: () => openLibrary(root, char, () => refreshPlate()), market: () => openMarket(root, char, () => refreshPlate()), hospital: () => openHospital(root, char, () => refreshPlate()), gear: () => gear(), tower: (t) => kageTower(t), war: (id) => warAt(id), lesson: (id) => startLesson(id), guide: () => guide, handbook: (p) => handbook(p), click: (x, y) => { const sp = spotAt(x, y); sp ? goTo(sp.x, sp.y, sp) : goTo(x, y); }, me };
   function startExam() { startBattle(null, () => net.startExam()); }
   function startLesson(id) { startBattle(null, () => net.startLesson(id)); }
   let warReturn = null; // reopen the war camp after a war duel
@@ -296,6 +305,7 @@ export async function enterWorld(app, char, hooks) {
       }
       if (r && r.status === 'won' && r.result && r.result.leveled) room?.send('chat', { id: me.id, name: me.name, village: me.village, text: `reached level ${char.level}! 🎉`, ch: 'village' });
       if (r && r.train) train(r.result && r.result.promoted ? 'jutsu' : 'stats');
+      if (mid && r && r.status === 'won') guide.mark('mission');
       if (after) after(r);
     }, starter);
   }
@@ -348,7 +358,7 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, worldRoom = null, lastSend = 0, lastTrack = 0, lastSave = performance.now();
-  const BUILD = '2026-11-09b';
+  const BUILD = '2026-11-11a';
   let newerSeen = false;
   const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   const onEvent = (ev, p) => {
@@ -477,6 +487,7 @@ export async function enterWorld(app, char, hooks) {
     }
     list.sort((a, b) => a.y - b.y);
     for (const d of list) d.draw();
+    drawGuideArrow(sc, viewW, viewH);
     // labels + bubbles (screen space, crisp text)
     const fsz = Math.max(11, Math.round(sc * 3.3));
     ctx.font = `${fsz}px 'Pixelify Sans', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
@@ -490,6 +501,30 @@ export async function enterWorld(app, char, hooks) {
       const b = bubbles.get(L.id);
       if (b && b.until > now) drawBubble(sx, sy - fsz - 6, b.text, fsz);
     }
+  }
+  function drawGuideArrow(sc, viewW, viewH) {
+    const id = guide?.target(); if (!id) return;
+    const sp = world.spots.find((x) => x.id === id); if (!sp) return;
+    const bob = Math.round(Math.sin(t * 5) * 3);
+    const ax = sp.x, ay = sp.y - 22 + bob; // just above the door
+    const pad = 22, on = ax > camX + pad && ax < camX + viewW - pad && ay > camY + pad && ay < camY + viewH - pad;
+    const px = (x, y) => [Math.round((x - camX) * sc), Math.round((y - camY) * sc)];
+    ctx.save();
+    if (on) { // bouncing arrow pointing down at the door
+      const [x, y] = px(ax, ay), u = sc;
+      ctx.fillStyle = '#24160e'; ctx.beginPath(); ctx.moveTo(x - 8 * u, y - 10 * u); ctx.lineTo(x + 8 * u, y - 10 * u); ctx.lineTo(x, y + 1 * u); ctx.closePath(); ctx.fill();
+      ctx.fillRect(x - 4 * u, y - 18 * u, 8 * u, 9 * u);
+      ctx.fillStyle = '#ffd23a'; ctx.beginPath(); ctx.moveTo(x - 6 * u, y - 9 * u); ctx.lineTo(x + 6 * u, y - 9 * u); ctx.lineTo(x, y - 1 * u); ctx.closePath(); ctx.fill();
+      ctx.fillRect(x - 2 * u, y - 16 * u, 4 * u, 7 * u);
+    } else { // off screen: an arrow at the screen edge pointing towards it
+      const cx = camX + viewW / 2, cy = camY + viewH / 2, ang = Math.atan2(ay - cy, ax - cx);
+      const m = 26, ex = Math.max(camX + m, Math.min(camX + viewW - m, cx + Math.cos(ang) * viewW)), ey = Math.max(camY + m, Math.min(camY + viewH - m, cy + Math.sin(ang) * viewH));
+      const [x, y] = px(ex, ey), u = sc;
+      ctx.translate(x, y); ctx.rotate(ang);
+      ctx.fillStyle = '#24160e'; ctx.beginPath(); ctx.moveTo(11 * u + bob * u * 0.5, 0); ctx.lineTo(-5 * u, -9 * u); ctx.lineTo(-5 * u, 9 * u); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffd23a'; ctx.beginPath(); ctx.moveTo(8 * u + bob * u * 0.5, 0); ctx.lineTo(-3 * u, -6 * u); ctx.lineTo(-3 * u, 6 * u); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
   }
   function drawBubble(x, y, text, fsz) {
     const maxW = Math.min(240 * (view.width / vw), view.width * 0.6);

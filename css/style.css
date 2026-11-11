@@ -545,3 +545,53 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .hp-timer { font-size: 18px; }
 .hp-heal { display: block; width: 100%; margin: 6px 0; }
 @media (max-width: 480px) { .injured { padding: 2px 5px; font-size: 13px; } }
+
+/* ---------- first-session guide ---------- */
+.guide { position: absolute; left: 14px; top: max(84px, calc(env(safe-area-inset-top) + 74px)); width: min(320px, calc(100vw - 28px)); background: var(--paper); box-shadow: 0 0 0 4px var(--ink), inset 0 -4px 0 var(--paper2); padding: 8px 12px 10px; z-index: 6; animation: pop .2s steps(2); }
+.guide[hidden] { display: none; }
+.guide.min { width: auto; padding: 0; background: transparent; box-shadow: none; }
+.guide .g-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: var(--ink2); text-transform: uppercase; letter-spacing: .04em; }
+.guide .g-min { border: 0; background: var(--paper2); font: inherit; font-size: 18px; line-height: 1; width: 26px; height: 22px; cursor: pointer; color: var(--ink); }
+.guide .g-title { display: block; font-size: 18px; margin: 4px 0 2px; }
+.guide p { margin: 4px 0 8px; font-size: 15px; line-height: 1.3; }
+.guide .g-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.guide-chip { border: 0; font: inherit; font-weight: 700; font-size: 15px; background: var(--gold); color: var(--ink); padding: 6px 12px; box-shadow: 0 0 0 3px var(--ink); cursor: pointer; animation: glow 1.4s steps(2) infinite; }
+.guide-glow { animation: guideGlow 1s steps(2) infinite; }
+@keyframes guideGlow { 0%, 100% { box-shadow: 0 0 0 3px var(--ink), 0 0 0 7px #ffd23a; } 50% { box-shadow: 0 0 0 3px var(--ink), 0 0 0 3px #ffd23a; } }
+.hb-btn { font-size: 18px; padding-left: 10px; padding-right: 10px; }
+@media (pointer: coarse), (max-width: 760px) {
+  .guide { left: 10px; right: 10px; width: auto; top: max(100px, calc(env(safe-area-inset-top) + 92px)); }
+  .guide.min { right: auto; }
+  .guide p { font-size: 14px; }
+}
+
+/* ---------- handbook ---------- */
+.board.hb { width: min(760px, 100%); min-width: 0; }
+.hb-grid > * { min-width: 0; }
+.hb-grid { display: grid; grid-template-columns: 200px 1fr; gap: 12px; margin: 6px 0 10px; min-height: 0; }
+.hb-nav { display: flex; flex-direction: column; gap: 4px; }
+.hb-nav button { border: 0; font: inherit; font-size: 15px; text-align: left; background: var(--paper2); color: var(--ink); padding: 6px 8px; cursor: pointer; }
+.hb-nav button.on { background: var(--ink); color: #fff4dc; }
+.hb-page { text-align: left; background: #fffaf0; box-shadow: inset 0 0 0 2px var(--paper2); padding: 8px 14px; max-height: min(60vh, 520px); overflow-y: auto; font-size: 15px; line-height: 1.4; }
+.hb-page h4 { margin: 4px 0 8px; font-size: 20px; text-align: center; }
+.hb-page ul, .hb-page ol { padding-left: 22px; }
+.hb-page p, .hb-page ul, .hb-page ol { margin: 0 0 8px; } .hb-page li { margin-bottom: 3px; }
+.hb-tip { background: #2b1d3a; color: #e6dcff; padding: 6px 10px; }
+.hb-wheel { text-align: center; font-weight: 700; background: var(--paper2); padding: 6px; }
+.hb-t { border-collapse: collapse; width: 100%; margin-bottom: 8px; font-size: 14px; } .hb-t th, .hb-t td { border: 2px solid var(--paper2); padding: 3px 6px; text-align: left; }
+@media (max-width: 760px) {
+  .hb-grid { grid-template-columns: 1fr; }
+  .hb-nav { flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
+  .hb-nav button { white-space: nowrap; flex: none; }
+  .hb-nav button span { display: none; } .hb-nav button.on span { display: inline; }
+  .hb-page { max-height: 58vh; }
+}
+@media (max-width: 480px) { .hud-right .hb-btn { display: none; } }
+
+/* ---------- title pitch + creator explainers ---------- */
+.pitch { list-style: none; margin: 0 0 12px; padding: 0; text-align: left; font-size: 15px; line-height: 1.3; }
+.pitch li { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; }
+.pitch li i { font-style: normal; font-size: 18px; line-height: 1.1; flex: none; }
+.vhint { display: block; margin-top: 6px; line-height: 1.3; }
+.born { background: #fffaf0; box-shadow: inset 0 0 0 2px var(--paper2); padding: 8px 10px; font-size: 15px; line-height: 1.35; margin: 10px 0; text-align: left; }
+@media (max-width: 760px) { .pitch { font-size: 14px; } .pitch li { margin-bottom: 4px; } }

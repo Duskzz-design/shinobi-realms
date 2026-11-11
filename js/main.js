@@ -1,7 +1,7 @@
 import * as net from './net.js';
 import { startTitleScene } from './scene.js';
 import { enterWorld } from './game.js';
-import { ELEMENT_INFO, BLOODLINES } from './engine.js';
+import { ELEMENT_INFO, BLOODLINES, ELEMENTS } from './engine.js';
 import { ninjaSprite, emblem, PALETTES, HAIR_STYLES, BAND_SPOTS, VILLAGES, DEFAULT_LOOK } from './sprites.js';
 
 const app = document.getElementById('app');
@@ -52,6 +52,11 @@ function titleScreen() {
       <p class="tag">A world of hidden villages. Forge your path.</p>
     </div>
     <div class="scroll title-card">
+      <ul class="pitch">
+        <li><i>🥷</i><span><b>Raise a ninja</b> from Academy student to Jonin. Train every 15 minutes and level up.</span></li>
+        <li><i>⚔️</i><span><b>Tactical battles</b> on a hex grid, plus duels and the Arena against real players.</span></li>
+        <li><i>🏯</i><span><b>Fight for your village</b> in quests, boss raids and wars, and maybe become its Kage.</span></li>
+      </ul>
       <button class="btn google" id="g"><span class="gicon"></span>Sign in with Google</button>
       <p class="fine">Free to play. Your ninja is saved to your Google account.</p>
       ${new URLSearchParams(location.search).has('tester') ? '<button class="btn ghost small" id="guest">Tester: play as guest</button>' : ''}
@@ -88,7 +93,9 @@ function creatorScreen(existing) {
           <input id="name" maxlength="16" autocomplete="off" placeholder="3–16 letters or numbers" value="${esc(existing?.name || '')}">
           <small id="namehint" class="hint">Letters, numbers and spaces.</small>
         </label>
-        <div class="field"><span class="lbl">Village</span><div class="villages" id="villages"></div></div>
+        <div class="field"><span class="lbl">Village</span><div class="villages" id="villages"></div>
+          <small class="hint vhint">🏯 Your village is your team for life: you share its chat, earn points for it, join its wars and can rise to become its Kage. All villages are equally strong, so pick the one you like.</small>
+          <small class="hint vhint">🎲 You'll be born with a random <b>element</b> (Fire, Wind, Lightning, Earth or Water). A lucky few awaken a rare <b>bloodline</b> at the Genin exam.</small></div>
         <div class="field"><span class="lbl">Hair style</span><div class="stepper" id="hs"></div></div>
         <div class="field"><span class="lbl">Hair colour</span><div class="swatches" id="hair"></div></div>
         <div class="field"><span class="lbl">Skin tone</span><div class="swatches" id="skin"></div></div>
@@ -175,6 +182,12 @@ function creatorScreen(existing) {
   show(el);
 }
 
+function elementNote(el) {
+  const i = ELEMENTS.indexOf(el); if (i < 0) return '';
+  const E = (k) => `${ELEMENT_INFO[k].icon} <b>${ELEMENT_INFO[k].label}</b>`;
+  return `<p class="born">You were born with ${E(el)}. Your ${ELEMENT_INFO[el].label} jutsu deal <b>+25%</b> damage to ${E(ELEMENTS[(i + 1) % 5])} ninja, but ${E(ELEMENTS[(i + 4) % 5])} deals +25% to you. Your first steps: head to the <b>Academy</b>. A guide will show you the way.</p>`;
+}
+
 function profileScreen(c, fresh = false) {
   const v = VILLAGES[c.village];
   const xpNeed = c.xp_need || (c.level < 5 ? 3 : c.level < 15 ? 22 : c.level < 30 ? 85 : 190) * 100 * c.level;
@@ -196,6 +209,7 @@ function profileScreen(c, fresh = false) {
         </div>
       </div>
       <div class="styles">${styles.map(([n, val, col]) => `<div class="st"><span>${n}</span><div class="pips">${Array.from({ length: 10 }, (_, i) => `<i style="${i < Math.round(10 * val / cap) ? 'background:' + col : ''}"></i>`).join('')}</div><b>${val}</b></div>`).join('')}</div>
+      ${fresh && c.element ? elementNote(c.element) : ''}
       <div class="actions">
         <button class="btn primary big" id="enter">Enter ${v.short} Village</button>
         <button class="btn ghost small" id="edit">Change look</button>
