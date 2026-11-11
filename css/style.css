@@ -536,3 +536,12 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .mk-sell input { width: 120px; font: inherit; padding: 4px 6px; border: 2px solid #8a6a3a; background: #fffaf0; }
 .mk-get { background: #fff4d8; box-shadow: 0 0 0 2px #c9a46a; padding: 6px 8px; margin: 0; }
 .mk-sell .row { display: flex; gap: 8px; }
+.injured { border: 0; background: #b02a2a; color: #fff; font: inherit; padding: 4px 8px; cursor: pointer; box-shadow: 0 0 0 2px #5a1010; white-space: nowrap; }
+.injured[hidden] { display: none; }
+.hp-card { text-align: center; background: #eaf6e4; box-shadow: 0 0 0 2px #4a8a3a; padding: 10px; margin: 4px 3px 10px; }
+.hp-card.hurt { background: #fbe8e0; box-shadow: 0 0 0 2px #8a2a2a; }
+.hp-card .hp-ic { font-size: 34px; }
+.hp-card p { margin: 6px 0; font-size: 14px; }
+.hp-timer { font-size: 18px; }
+.hp-heal { display: block; width: 100%; margin: 6px 0; }
+@media (max-width: 480px) { .injured { padding: 2px 5px; font-size: 13px; } }

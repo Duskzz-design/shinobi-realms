@@ -61,7 +61,7 @@ export function enrich(c) {
   const bonus = new URLSearchParams(location.search).has('bonus') ? { place: 1, mult: 1.5 } : null;
   return { ...c, energy, energy_max: 100, energy_regen_sec: bonus ? 6 : 9, arena_bonus: bonus, hp_max: 80 + c.level * 10 + c.strength * 4 + c.willpower,
     stamina_max: 40 + c.level * 3 + c.strength * 2 + c.agility * 2, chakra_max: 40 + c.level * 3 + c.intelligence * 2 + c.willpower * 2,
-    stat_cap: SCAP[ri], level_cap: LCAP[ri], rank_index: ri, train_energy: 10, train_prog: c.train_prog || {},
+    stat_cap: SCAP[ri], level_cap: LCAP[ri], rank_index: ri, train_energy: 10, train_prog: c.train_prog || {}, injured_secs: Math.max(0, Math.ceil(((c.injured_until || 0) - Date.now()) / 1000)), _loadedAt: Date.now(),
     point_cost: { strength: pointCost(c.strength), agility: pointCost(c.agility), intelligence: pointCost(c.intelligence), willpower: pointCost(c.willpower) } };
 }
 function gain(c, id, n) {
@@ -159,7 +159,7 @@ function finish(c, b, win) {
     r = { xp: gx, ryo: m.ryo, level: c.level, leveled: c.level - before, capped: c.level >= cap };
     if (st.quest) r.quest = questAdvance(c, st.quest);
   } else if (st.exam) { lastExamFail = Date.now(); r = { ryo_lost: 0 }; }
-  else { const lost = Math.min(c.ryo, Math.round(m.ryo * 0.2)); c.ryo -= lost; r = { ryo_lost: lost }; }
+  else { const lost = Math.min(c.ryo, Math.round(m.ryo * 0.2)); c.ryo -= lost; if (m.kind === 'mission' || m.kind === 'quest' || !m.kind) c.injured_until = Date.now() + 15 * 60e3; r = { ryo_lost: lost }; }
   return { ...r, jutsu_up: ups };
 }
 

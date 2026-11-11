@@ -42,7 +42,7 @@ export function openMarket(root, char, onChange) {
     const owns = (id) => (char.owned_gear || []).includes(id);
     return `<div class="mk-filter">${[['all', 'All'], ['gear', '⚔️ Boss gear'], ['item', '💊 Items']].map(([k, t]) => `<button class="chip ${k === filter ? 'on' : ''}" data-f="${k}">${t}</button>`).join('')}</div>
       ${list.length ? `<div class="sh-list">${list.map((l) => { const it = info(l), have = (char.items || {})[l.item_id] || 0;
-        const why = char.ryo < l.price ? 'Not enough ryo' : l.kind === 'gear' && owns(l.item_id) ? 'You own one' : l.kind === 'item' && have + l.qty > G.ITEM_STACK ? `Carry limit (${have}/${G.ITEM_STACK})` : l.kind === 'item' && (it.rank || 0) > G.RANKS.indexOf(char.rank) ? 'Chunin and above' : '';
+        const why = char.ryo < l.price ? 'Not enough ryo' : l.kind === 'item' && have + l.qty > G.ITEM_STACK ? `Carry limit (${have}/${G.ITEM_STACK})` : l.kind === 'item' && (it.rank || 0) > G.RANKS.indexOf(char.rank) ? 'Chunin and above' : '';
         return `<div class="sh-it"><span class="ic">${it.icon}</span><span class="nm"><b>${esc(it.name)}${l.qty > 1 ? ` ×${l.qty}` : ''}${l.kind === 'gear' ? ' <em class="tag boss">Boss drop</em>' : ''}</b>
           <small>${l.kind === 'gear' ? esc(gearLine(it)) : esc(it.desc || '')}</small><small class="mk-meta">Seller: ${esc(l.seller_name)} · ${left(l.expires_at)}</small></span>
           <span class="buy"><button class="btn small primary" data-buy="${l.id}" ${busy || !genin() || why ? 'disabled' : ''}>Buy ${n(l.price)} 💰</button>${why ? `<small>${why}</small>` : ''}</span></div>`; }).join('')}</div>`
@@ -51,7 +51,8 @@ export function openMarket(root, char, onChange) {
 
   function sellTab() {
     const worn = Object.values(char.gear || {});
-    const gear = (char.owned_gear || []).filter((id) => G.GEAR[id] && G.GEAR[id].tier === 'boss');
+    const ownedAll = char.owned_gear || [], cnt = (id) => ownedAll.filter((x) => x === id).length;
+    const gear = [...new Set(ownedAll)].filter((id) => G.GEAR[id] && G.GEAR[id].tier === 'boss');
     const items = Object.entries(char.items || {}).filter(([id, q]) => G.ITEMS[id] && q > 0);
     const active = data.mine.filter((l) => l.status === 'active').length;
     if (sell) {
@@ -65,8 +66,8 @@ export function openMarket(root, char, onChange) {
     }
     return `<p class="sub">Sell rare boss gear or spare items to other ninja. ${active}/10 listings in use.</p>
       ${!genin() ? '<p class="mk-empty">🔒 The Auction House is for Genin and above.</p>' : ''}
-      <h4>Boss gear</h4>${gear.length ? `<div class="sh-list">${gear.map((id) => { const g = G.GEAR[id], on = worn.includes(id);
-        return `<div class="sh-it"><span class="ic">${g.icon}</span><span class="nm"><b>${esc(g.name)}</b><small>${esc(gearLine(g))}</small></span>
+      <h4>Boss gear</h4>${gear.length ? `<div class="sh-list">${gear.map((id) => { const g = G.GEAR[id], on = worn.includes(id) && cnt(id) < 2;
+        return `<div class="sh-it"><span class="ic">${g.icon}</span><span class="nm"><b>${esc(g.name)}${cnt(id) > 1 ? ` ×${cnt(id)}` : ''}</b><small>${esc(gearLine(g))}</small></span>
           <span class="buy">${on ? '<small>Equipped: take it off first</small>' : `<button class="btn small" data-sell="gear:${id}" ${busy || !genin() || active >= 10 ? 'disabled' : ''}>Sell…</button>`}</span></div>`; }).join('')}</div>` : '<p class="mk-empty">No boss drops yet. Beat bosses for a chance at rare gear.</p>'}
       <h4>Items</h4>${items.length ? `<div class="sh-list">${items.map(([id, q]) => { const it = G.ITEMS[id];
         return `<div class="sh-it"><span class="ic">${it.icon}</span><span class="nm"><b>${esc(it.name)} ×${q}</b><small>${esc(it.desc)}</small></span>

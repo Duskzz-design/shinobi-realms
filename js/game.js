@@ -10,6 +10,7 @@ import { openLoadout } from './loadout.js';
 import { openShop } from './shop.js';
 import { openLibrary } from './library.js';
 import { openMarket } from './market.js';
+import { openHospital, injuredLeft, mmss } from './hospital.js';
 import { openGear } from './gear.js';
 import { ninjaSprite, emblem, VILLAGES } from './sprites.js';
 import { openMissionBoard, openTraining, runBattle, openExamHall } from './battle.js';
@@ -48,6 +49,7 @@ export async function enterWorld(app, char, hooks) {
       </div>
       <div class="hud-right">
         <div class="online" title="Ninja in this village right now">👥 <span id="count">1</span> here</div>
+        <button class="injured" id="injured" hidden title="Injured: tap to visit the Hospital">🤕 <span></span></button>
         <button class="btn small primary train-btn" id="trainBtn">⭐ Train<i id="ptsBadge" hidden></i></button>
         <button class="btn small ghost" id="menuBtn">☰ Menu</button>
       </div>
@@ -235,7 +237,7 @@ export async function enterWorld(app, char, hooks) {
     root.querySelector('#ptsBadge').hidden = !(char.energy + Math.floor((Date.now() - (char._loadedAt || Date.now())) / 1000 / (char.energy_regen_sec || 9)) >= (char.energy_max || 100));
     me.level = char.level; me.rank = char.rank;
   }
-  if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char, exam: () => startExam(), hall: () => openExamHall(root, char, startExam, startLesson), map: (f) => worldMap(f), shop: (t) => shop(t), library: () => openLibrary(root, char, () => refreshPlate()), market: () => openMarket(root, char, () => refreshPlate()), gear: () => gear(), tower: (t) => kageTower(t), war: (id) => warAt(id), lesson: (id) => startLesson(id), click: (x, y) => { const sp = spotAt(x, y); sp ? goTo(sp.x, sp.y, sp) : goTo(x, y); }, me };
+  if (net.isOffline()) window.__game = { startBattle: (m) => startBattle(m), board: () => openMissionBoard(root, char, startBattle), char, exam: () => startExam(), hall: () => openExamHall(root, char, startExam, startLesson), map: (f) => worldMap(f), shop: (t) => shop(t), library: () => openLibrary(root, char, () => refreshPlate()), market: () => openMarket(root, char, () => refreshPlate()), hospital: () => openHospital(root, char, () => refreshPlate()), gear: () => gear(), tower: (t) => kageTower(t), war: (id) => warAt(id), lesson: (id) => startLesson(id), click: (x, y) => { const sp = spotAt(x, y); sp ? goTo(sp.x, sp.y, sp) : goTo(x, y); }, me };
   function startExam() { startBattle(null, () => net.startExam()); }
   function startLesson(id) { startBattle(null, () => net.startLesson(id)); }
   let warReturn = null; // reopen the war camp after a war duel
@@ -335,6 +337,7 @@ export async function enterWorld(app, char, hooks) {
     if (s.id === 'gate') { worldMap(); return; }
     if (s.id === 'kage') { kageTower(); return; }
     if (s.id === 'shop') { shop(); return; }
+    if (s.id === 'hospital') { openHospital(root, char, () => refreshPlate()); return; }
     if (s.id === 'market') { openMarket(root, char, () => refreshPlate()); return; }
     if (s.id === 'library') { openLibrary(root, char, () => refreshPlate()); return; }
     const [title, text] = SPOT_TEXT[s.id] || [s.name, ''];
@@ -367,6 +370,10 @@ export async function enterWorld(app, char, hooks) {
   };
   // connection health: shown on the "here" counter, with a note in chat when it drops or comes back
   const countBtn = countEl.closest('button') || countEl.parentElement;
+  // injury badge: counts down, tap to open the Hospital
+  const injBtn = root.querySelector('#injured');
+  injBtn.onclick = () => openHospital(root, char, () => refreshPlate());
+  const injTick = setInterval(() => { const left = injuredLeft(char); injBtn.hidden = !left; if (left) injBtn.querySelector('span').textContent = mmss(left); }, 1000);
   let wasLive = null;
   const onStatus = (st, why) => {
     const live = st === 'live';
@@ -503,7 +510,7 @@ export async function enterWorld(app, char, hooks) {
     removeEventListener('keydown', onKey); removeEventListener('resize', resize);
     document.body.classList.remove('in-world');
     try { await net.savePosition(me.x, me.y); } catch {}
-    room?.leave(); worldRoom?.leave(); duels.stop(); clearInterval(champTimer);
+    room?.leave(); worldRoom?.leave(); duels.stop(); clearInterval(champTimer); clearInterval(injTick);
   }
   // the page may be frozen and later restored (phones, back button): pause instead of leaving for good; joinRoom rejoins on return
   addEventListener('pagehide', (e) => { if (e.persisted) room?.pause?.(); else room?.leave(); });

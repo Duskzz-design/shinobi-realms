@@ -376,6 +376,12 @@ export async function marketBrowse() { if (OFFLINE) return (await import('./offl
 export async function marketList(kind, item, qty, price) { if (OFFLINE) { const c = mockChar(); const r = (await import('./offline.js')).mockMarket(c).list(kind, item, qty, price); saveMock(c); return loadCharacter(); } return rpcOk('market_list', { p_kind: kind, p_item: item, p_qty: qty, p_price: price }); }
 export async function marketBuy(id) { if (OFFLINE) { const c = mockChar(); (await import('./offline.js')).mockMarket(c).buy(id); saveMock(c); return loadCharacter(); } return rpcOk('market_buy', { p_id: id }); }
 export async function marketCancel(id) { if (OFFLINE) { const c = mockChar(); (await import('./offline.js')).mockMarket(c).cancel(id); saveMock(c); return loadCharacter(); } return rpcOk('market_cancel', { p_id: id }); }
+export async function hospitalHeal() {
+  if (OFFLINE) { const c = mockChar(); const left = Math.max(0, Math.ceil(((c.injured_until || 0) - Date.now()) / 1000)); if (!left) throw new Error('You are not injured.');
+    const cost = Math.max(5, Math.ceil((20 + c.level * 8) * left / 900)); if (c.ryo < cost) throw new Error(`Not enough ryo (${cost} needed). You can also rest until you heal.`);
+    c.ryo -= cost; c.injured_until = 0; saveMock(c); return { ...(await loadCharacter()), healed: cost }; }
+  const { data, error } = await sb.rpc('hospital_heal', {}); if (error) throw rpcErr(error); return data;
+}
 export async function buyScroll(id) {
   if (OFFLINE) {
     const G = await import('./engine.js'), c = mockChar(), m = G.MOVES[id]; c.scrolls = c.scrolls || [];

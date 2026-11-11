@@ -398,11 +398,11 @@ function missionResult(root, char, res, S0, battle, onEnd, finish) {
       <p class="sub">Tip: use elements your opponent is weak to, and debuff them before big attacks.</p><div class="row"><button class="btn ghost" data-t>Train</button><button class="btn primary" data-back>Back to village</button></div>`;
     else body = `<h3 class="${won ? 'win' : 'lose'}">${won ? 'Mission complete!' : 'Defeated…'}</h3>
       ${won ? `<p class="big">+${r.xp} XP &nbsp; +${r.ryo} ryo</p>
-        ${r.daily_limit ? (r.reduced ? `<p class="daily over">📋 Daily full rewards used (${r.daily_limit}). This mission paid 10% XP and no ryo. Full rewards return tomorrow.</p>` : r.daily >= r.daily_limit - 10 ? `<p class="daily">📋 Full-reward missions today: ${r.daily} / ${r.daily_limit}</p>` : '') : ''}
+        ${r.daily_limit ? (r.reduced ? `<p class="daily over">📋 Daily full rewards used (${r.daily_limit}). This mission paid 10%. Full rewards return tomorrow.</p>` : r.daily >= r.daily_limit - 10 ? `<p class="daily">📋 Full-reward missions today: ${r.daily} / ${r.daily_limit}</p>` : '') : ''}
         ${r.leveled ? `<p class="lvl">⬆ Level up! You are now level ${r.level}.<br>Your HP, stamina and chakra grew, and your energy is full!</p>` : ''}
         ${r.capped ? `<p class="cap">You've reached the highest level for your rank. Take the rank exam at the Academy to keep growing.</p>` : ''}
         ${r.quest ? (r.quest.done ? `<p class="lvl">🗺️ Quest line complete! The boss lair is now open to you.</p>` : `<p class="lvl">🗺️ Quest progress saved${r.quest.count ? ` (${r.quest.count} done)` : ': next step unlocked'}.</p>`) : ''}`
-        : `<p>You were carried back to the village to recover.${r.ryo_lost ? ` You dropped ${r.ryo_lost} ryo.` : ''}</p><p class="sub">Tip: keep out of melee foes' reach, hide behind rocks from ranged foes, and Focus when low on chakra.</p>`}${ups}
+        : `<p>You were carried back to the village to recover.${r.ryo_lost ? ` You dropped ${r.ryo_lost} ryo.` : ''}</p><p class="daily over">🤕 You are injured for 15 minutes. Rest, or visit the 🏥 Hospital to heal now for a fee.</p><p class="sub">Tip: keep out of melee foes' reach, hide behind rocks from ranged foes, and Focus when low on chakra.</p>`}${ups}
       <div class="row"><button class="btn ${won && r.leveled ? 'primary' : 'ghost'}" data-t>Train</button><button class="btn ${won && r.leveled ? 'ghost' : 'primary'}" data-back>Back to village</button></div>`;
     const box = h(`<div class="b-result"><div class="scroll">${body}</div></div>`);
     el.appendChild(box);
