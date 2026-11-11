@@ -85,7 +85,7 @@ section { padding: 64px 18px; }
 }
 @media (max-width: 560px) {
   body { font-size: 17px; }
-  .top { padding: 8px 12px; } .brand { font-size: 0; } .brand img { width: 30px; height: 30px; }
+  .top { padding: 8px 12px; } .brand { font-size: 0; } .brand img { width: 48px; height: 30px; }
   .top nav { gap: 12px; font-size: 15px; } .top nav a[href="#how"] { display: none; }
   .hero { padding: 34px 14px 44px; } .lead { font-size: 18px; }
   .btn.big { font-size: 12px; padding: 16px 18px; width: 100%; margin: 4px 0; }
@@ -96,3 +96,9 @@ section { padding: 64px 18px; }
 
 .pxe { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -0.22em; image-rendering: pixelated; image-rendering: crisp-edges; }
 .btn .pxe { width: 1.3em; height: 1.3em; }
+
+/* Pixel logo: always a whole-number multiple of its 53x59 art grid */
+.logo img { display: block; margin: 0 auto; image-rendering: pixelated; width: 212px; height: 236px; filter: drop-shadow(4px 4px 0 rgba(0,0,0,.35)); }
+.logo h1 img { margin: 0 auto; }
+@media (min-width: 720px) { .logo img { width: 265px; height: 295px; } }
+@media (max-height: 640px) { .logo img { width: 159px; height: 177px; } }

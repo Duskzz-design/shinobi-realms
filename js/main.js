@@ -48,8 +48,7 @@ function titleScreen() {
   const el = h(`
   <div class="screen title">
     <div class="logo">
-      <div class="logo-kanji">忍</div>
-      <h1>SHINOBI<span>REALMS</span></h1>
+      <h1><img src="../assets/brand/logo-stacked.svg" alt="Shinobi Realms" width="212" height="236"></h1>
       <p class="tag">A world of hidden villages. Forge your path.</p>
     </div>
     <div class="scroll title-card">

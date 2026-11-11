@@ -627,3 +627,9 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .hx-log li.turn { border: 0; padding: 2px 0; color: var(--ink2); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
 .hx-log .dmg { color: #c43c32; } .hx-log .crit { color: #b8862a; }
 .hexb > :not(.hx-arena) { flex-shrink: 0; }
+
+/* Pixel logo: always a whole-number multiple of its 53x59 art grid */
+.logo img { display: block; margin: 0 auto; image-rendering: pixelated; width: 212px; height: 236px; filter: drop-shadow(4px 4px 0 rgba(0,0,0,.35)); }
+.logo h1 img { margin: 0 auto; }
+@media (min-width: 720px) { .logo img { width: 265px; height: 295px; } }
+@media (max-height: 640px) { .logo img { width: 159px; height: 177px; } }
