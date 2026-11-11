@@ -1,6 +1,7 @@
 // Auction House: fixed-price listings between players. Boss gear and shop consumables only.
 // 48-hour listings (unsold goods come back), 10% sales tax taken from the seller and removed from the game.
 import * as net from './net.js';
+import { gearIconHTML } from './itemicons.js';
 import * as G from './engine.js';
 import { gearLine } from './shop.js';
 
@@ -11,6 +12,7 @@ const n = (x) => Number(x || 0).toLocaleString('en-GB');
 const TAX = 0.10;
 const netLine = (price) => { const tax = Math.ceil(price * TAX); return `If it sells you get <b>${n(price - tax)} ryo</b> (10% sales tax: ${n(tax)}).`; };
 const info = (l) => (l.kind === 'gear' ? G.GEAR[l.item_id] : G.ITEMS[l.item_id]) || { name: l.item_id, icon: '❔' };
+const ico = (kind, id, it) => (kind === 'gear' ? gearIconHTML(id, 36, it.icon) : it.icon);
 function left(ts) {
   const ms = new Date(ts).getTime() - Date.now(); if (ms <= 0) return 'ending';
   const hrs = Math.floor(ms / 3600e3), m = Math.floor((ms % 3600e3) / 60e3);
@@ -43,7 +45,7 @@ export function openMarket(root, char, onChange) {
     return `<div class="mk-filter">${[['all', 'All'], ['gear', '⚔️ Boss gear'], ['item', '💊 Items']].map(([k, t]) => `<button class="chip ${k === filter ? 'on' : ''}" data-f="${k}">${t}</button>`).join('')}</div>
       ${list.length ? `<div class="sh-list">${list.map((l) => { const it = info(l), have = (char.items || {})[l.item_id] || 0;
         const why = char.ryo < l.price ? 'Not enough ryo' : l.kind === 'item' && have + l.qty > G.ITEM_STACK ? `Carry limit (${have}/${G.ITEM_STACK})` : l.kind === 'item' && (it.rank || 0) > G.RANKS.indexOf(char.rank) ? 'Chunin and above' : '';
-        return `<div class="sh-it"><span class="ic">${it.icon}</span><span class="nm"><b>${esc(it.name)}${l.qty > 1 ? ` ×${l.qty}` : ''}${l.kind === 'gear' ? ' <em class="tag boss">Boss drop</em>' : ''}</b>
+        return `<div class="sh-it"><span class="ic">${ico(l.kind, l.item_id, it)}</span><span class="nm"><b>${esc(it.name)}${l.qty > 1 ? ` ×${l.qty}` : ''}${l.kind === 'gear' ? ' <em class="tag boss">Boss drop</em>' : ''}</b>
           <small>${l.kind === 'gear' ? esc(gearLine(it)) : esc(it.desc || '')}</small><small class="mk-meta">Seller: ${esc(l.seller_name)} · ${left(l.expires_at)}</small></span>
           <span class="buy"><button class="btn small primary" data-buy="${l.id}" ${busy || !genin() || why ? 'disabled' : ''}>Buy ${n(l.price)} 💰</button>${why ? `<small>${why}</small>` : ''}</span></div>`; }).join('')}</div>`
       : `<p class="mk-empty">Nothing for sale${filter === 'all' ? '' : ' in this section'} right now. Check back later, or list something of your own!</p>`}`;
@@ -57,7 +59,7 @@ export function openMarket(root, char, onChange) {
     const active = data.mine.filter((l) => l.status === 'active').length;
     if (sell) {
       const it = sell.kind === 'gear' ? G.GEAR[sell.id] : G.ITEMS[sell.id], max = sell.kind === 'gear' ? 1 : Math.min(10, (char.items || {})[sell.id] || 0);
-      return `<div class="mk-sell"><div class="sh-it"><span class="ic">${it.icon}</span><span class="nm"><b>${esc(it.name)}</b><small>${sell.kind === 'gear' ? esc(gearLine(it)) : esc(it.desc)}</small></span></div>
+      return `<div class="mk-sell"><div class="sh-it"><span class="ic">${ico(sell.kind, sell.id, it)}</span><span class="nm"><b>${esc(it.name)}</b><small>${sell.kind === 'gear' ? esc(gearLine(it)) : esc(it.desc)}</small></span></div>
         ${sell.kind === 'item' ? `<label>How many <input type="number" min="1" max="${max}" value="${sell.qty}" data-in="qty"> <small>of ${max}</small></label>` : ''}
         <label>Price for ${sell.kind === 'item' && sell.qty > 1 ? `all ${sell.qty}` : 'it'} <input type="number" min="1" max="10000000" value="${sell.price}" data-in="price"> 💰</label>
         ${sell.kind === 'item' ? `<small>Tool Shop price: ${n(it.price * sell.qty)} ryo</small>` : ''}
@@ -67,7 +69,7 @@ export function openMarket(root, char, onChange) {
     return `<p class="sub">Sell rare boss gear or spare items to other ninja. ${active}/10 listings in use.</p>
       ${!genin() ? '<p class="mk-empty">🔒 The Auction House is for Genin and above.</p>' : ''}
       <h4>Boss gear</h4>${gear.length ? `<div class="sh-list">${gear.map((id) => { const g = G.GEAR[id], on = worn.includes(id) && cnt(id) < 2;
-        return `<div class="sh-it"><span class="ic">${g.icon}</span><span class="nm"><b>${esc(g.name)}${cnt(id) > 1 ? ` ×${cnt(id)}` : ''}</b><small>${esc(gearLine(g))}</small></span>
+        return `<div class="sh-it"><span class="ic">${gearIconHTML(id, 36, g.icon)}</span><span class="nm"><b>${esc(g.name)}${cnt(id) > 1 ? ` ×${cnt(id)}` : ''}</b><small>${esc(gearLine(g))}</small></span>
           <span class="buy">${on ? '<small>Equipped: take it off first</small>' : `<button class="btn small" data-sell="gear:${id}" ${busy || !genin() || active >= 10 ? 'disabled' : ''}>Sell…</button>`}</span></div>`; }).join('')}</div>` : '<p class="mk-empty">No boss drops yet. Beat bosses for a chance at rare gear.</p>'}
       <h4>Items</h4>${items.length ? `<div class="sh-list">${items.map(([id, q]) => { const it = G.ITEMS[id];
         return `<div class="sh-it"><span class="ic">${it.icon}</span><span class="nm"><b>${esc(it.name)} ×${q}</b><small>${esc(it.desc)}</small></span>
@@ -75,7 +77,7 @@ export function openMarket(root, char, onChange) {
   }
 
   function mineTab() {
-    const row = (l, extra) => { const it = info(l); return `<div class="sh-it ${l.status !== 'active' ? 'lock' : ''}"><span class="ic">${it.icon}</span><span class="nm"><b>${esc(it.name)}${l.qty > 1 ? ` ×${l.qty}` : ''} · ${n(l.price)} 💰</b><small>${extra}</small></span>${l.status === 'active' && l.seller === char.user_id ? `<span class="buy"><button class="btn small ghost" data-cancel="${l.id}" ${busy ? 'disabled' : ''}>Cancel</button></span>` : ''}</div>`; };
+    const row = (l, extra) => { const it = info(l); return `<div class="sh-it ${l.status !== 'active' ? 'lock' : ''}"><span class="ic">${ico(l.kind, l.item_id, it)}</span><span class="nm"><b>${esc(it.name)}${l.qty > 1 ? ` ×${l.qty}` : ''} · ${n(l.price)} 💰</b><small>${extra}</small></span>${l.status === 'active' && l.seller === char.user_id ? `<span class="buy"><button class="btn small ghost" data-cancel="${l.id}" ${busy ? 'disabled' : ''}>Cancel</button></span>` : ''}</div>`; };
     const mine = data.mine.map((l) => row(l, l.status === 'active' ? `On sale · ${left(l.expires_at)}` : l.status === 'sold' ? `✅ Sold to ${esc(l.buyer_name)} · you got ${n(l.price - (l.tax || 0))} ryo` : l.status === 'expired' ? '⌛ Expired · returned to you' : 'Cancelled · returned to you'));
     const bought = data.bought.map((l) => row(l, `🛍️ Bought from ${esc(l.seller_name)}`));
     return `<h4>My listings</h4>${mine.length ? `<div class="sh-list">${mine.join('')}</div>` : '<p class="mk-empty">You have nothing listed.</p>'}

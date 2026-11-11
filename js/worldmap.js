@@ -1,5 +1,6 @@
 // World map (through the Village Gate): travel to quest locations and boss lairs.
 import * as net from './net.js';
+import { gearIconHTML } from './itemicons.js';
 import * as G from './engine.js';
 import { VILLAGES } from './sprites.js';
 
@@ -130,9 +131,9 @@ export async function openWorldMap(root, char, { onQuest, onLair, onHome, onWar,
         : `<p class="sub">${esc(VILLAGES[id]?.name || L.name)} is an allied village. Visiting other villages comes later.</p>`;
     } else if (L.kind === 'lair') {
       const line = data.lines.find((l) => l.id === L.line), s = states[L.line];
-      const drops = (G.BOSS_DROPS[line.id] || []).map((id) => G.GEAR[id]).filter(Boolean);
+      const drops = (G.BOSS_DROPS[line.id] || []).filter((id) => G.GEAR[id]).map((id) => ({ ...G.GEAR[id], id }));
       const reward = { riches: '💰 Huge XP and ryo', scroll: '📜 Chance of a rare boss-only jutsu scroll', title: '🏆 Titles and trophies', gear: '💰 Big XP and ryo, plus a title for your first kill' }[line.reward];
-      body = `<div class="wm-boss"><b>Boss: ${esc(line.boss_name)}</b><small>Reward: ${reward}</small>${drops.length ? `<small class="wm-drops">Rare drops: ${drops.map((g) => `<span title="${esc(g.note || '')}">${g.icon} ${esc(g.name)}</span>`).join(' ')}</small>` : ''}</div>` +
+      body = `<div class="wm-boss"><b>Boss: ${esc(line.boss_name)}</b><small>Reward: ${reward}</small>${drops.length ? `<small class="wm-drops">Rare drops: ${drops.map((g) => `<span title="${esc(g.note || '')}">${gearIconHTML(g.id, 18, g.icon)} ${esc(g.name)}</span>`).join(' ')}</small>` : ''}</div>` +
         (s.locked ? `<p class="sub">🔒 ${lockMsg(line)}</p>`
           : !s.done ? `<p class="sub">🔒 Finish the quest line <b>${esc(line.name)}</b> to find the way in.</p>`
           : `<button class="btn primary" data-lair="${id}">⚔️ Enter the lair (team up to 3)</button>`);

@@ -1,5 +1,6 @@
 // The live village: movement, camera, other players, chat, interactions.
 import * as net from './net.js';
+import { gearIconHTML } from './itemicons.js';
 import { buildWorld, blocked, T, MW, MH, BUILDINGS, STATUES } from './world.js';
 import { openArena, statueSprite } from './arenaui.js';
 import { openWorldMap } from './worldmap.js';
@@ -68,7 +69,7 @@ export async function enterWorld(app, char, hooks) {
     <button class="chat-toggle btn icon" id="chatToggle" aria-label="Open chat">💬<i id="unread" hidden></i></button>
     <div class="menu scroll" id="menu" hidden>
       <button class="btn ghost" id="mProfile">My Ninja & training</button>
-      <button class="btn ghost" id="mGear">🎽 Equipment</button>
+      <button class="btn ghost" id="mGear">${gearIconHTML('genin_head', 18)} Equipment</button>
       <button class="btn ghost" id="mHelp">📖 Ninja Handbook</button>
       <button class="btn ghost" id="mSleep">💤 Go to sleep</button>
       <button class="btn ghost" id="mOut">Sign out</button>
@@ -360,7 +361,7 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, worldRoom = null, lastSend = 0, lastTrack = 0, lastSave = performance.now();
-  const BUILD = '2026-11-11b';
+  const BUILD = '2026-11-11c';
   let newerSeen = false;
   const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   const onEvent = (ev, p) => {

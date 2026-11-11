@@ -1,5 +1,6 @@
 // Hex tactical battle screen (missions and exams). The battle server decides every roll; this file draws and animates.
 import * as net from './net.js';
+import { gearIconHTML } from './itemicons.js';
 import * as G from './engine.js';
 import { ninjaSprite, beastSprite, lookOf } from './sprites.js';
 
@@ -471,7 +472,7 @@ export function runRaid(root, char, raid, bossName, onEnd) {
       const won = res.status === 'won', r = (res.result || {}).rewards || {};
       const rw = !won ? '<p>The team was defeated. Train, regroup and try again. Defeat costs nothing.</p>'
         : r.capped ? '<p class="sub">You have already claimed this boss\'s rewards 3 times today. Thanks for helping your team!</p>'
-        : `<p class="big">+${r.xp || 0} XP &nbsp; +${r.ryo || 0} ryo</p>${r.scroll ? `<div class="blood"><div class="bico">📜</div><h4>Rare drop: ${esc(G.MOVES[r.scroll]?.name || r.scroll)} scroll!</h4><p>You learned a boss-only technique. Find it in your Bukijutsu tab.</p></div>` : ''}${r.gear && G.GEAR[r.gear] ? `<div class="blood"><div class="bico">${G.GEAR[r.gear].icon}</div><h4>Rare drop: ${esc(G.GEAR[r.gear].name)}!</h4><p>${esc(G.GEAR[r.gear].note || '')}. Equip it from the menu: 🎽 Equipment.</p></div>` : ''}
+        : `<p class="big">+${r.xp || 0} XP &nbsp; +${r.ryo || 0} ryo</p>${r.scroll ? `<div class="blood"><div class="bico">📜</div><h4>Rare drop: ${esc(G.MOVES[r.scroll]?.name || r.scroll)} scroll!</h4><p>You learned a boss-only technique. Find it in your Bukijutsu tab.</p></div>` : ''}${r.gear && G.GEAR[r.gear] ? `<div class="blood"><div class="bico">${gearIconHTML(r.gear, 54, G.GEAR[r.gear].icon)}</div><h4>Rare drop: ${esc(G.GEAR[r.gear].name)}!</h4><p>${esc(G.GEAR[r.gear].note || '')}. Equip it from the menu: Equipment.</p></div>` : ''}
            ${r.title ? `<div class="blood"><div class="bico">🏆</div><h4>New title: "${esc(r.title)}"</h4><p>It now shows under your name.</p></div>` : ''}${r.leveled ? `<p class="lvl">⬆ Level up! You are now level ${r.level}.</p>` : ''}
            <p class="sub">Rewarded wins left today for this boss: ${r.claims_left ?? 0}</p>`;
       const box = h(`<div class="b-result"><div class="scroll"><h3 class="${won ? 'win' : 'lose'}">${won ? `${esc(bossName)} is defeated!` : 'Your team fell…'}</h3>${rw}

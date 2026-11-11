@@ -596,3 +596,8 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .vhint { display: block; margin-top: 6px; line-height: 1.3; }
 .born { background: #fffaf0; box-shadow: inset 0 0 0 2px var(--paper2); padding: 8px 10px; font-size: 15px; line-height: 1.35; margin: 10px 0; text-align: left; }
 @media (max-width: 760px) { .pitch { font-size: 14px; } .pitch li { margin-bottom: 4px; } }
+
+/* pixel-art item icons */
+.pxi { image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; vertical-align: middle; }
+.ge-slot .ic .pxi, .sh-it .ic .pxi { display: block; margin: 0 auto; }
+.wm-drops .pxi { margin-right: 2px; }

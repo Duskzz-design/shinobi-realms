@@ -1,5 +1,6 @@
 // Tool Shop: consumable items, weapons and armour (Basic for everyone, Advanced from Chunin), plus the ANBU counter.
 import * as net from './net.js';
+import { gearIconHTML } from './itemicons.js';
 import * as G from './engine.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -44,7 +45,7 @@ export function openShop(root, char, onChange, startTab = 'items') {
     else if (lock) act = `<small>🔒 ${g.tier === 'anbu' ? 'ANBU only' : 'Chunin and above'}</small>`;
     else act = `<button class="btn small primary" data-g="${id}" ${char.ryo < g.price || busy ? 'disabled' : ''}>Buy ${n(g.price)} 💰</button>`;
     const tag = g.tier === 'adv' ? '<em class="tag adv">Advanced</em>' : g.tier === 'anbu' ? '<em class="tag anbu">ANBU</em>' : '<em class="tag">Basic</em>';
-    return `<div class="sh-it ${lock && !have ? 'lock' : ''} ${on ? 'worn' : ''}"><span class="ic">${g.icon}</span><span class="nm"><b>${esc(g.name)} ${tag}${on ? ' <em class="tag on">Equipped</em>' : have ? ' <em class="tag own">Owned</em>' : ''}</b><small>${SLOT_LABEL[g.slot]} · ${esc(gearLine(g))}</small></span><span class="buy">${act}</span></div>`;
+    return `<div class="sh-it ${lock && !have ? 'lock' : ''} ${on ? 'worn' : ''}"><span class="ic">${gearIconHTML(id, 36, g.icon)}</span><span class="nm"><b>${esc(g.name)} ${tag}${on ? ' <em class="tag on">Equipped</em>' : have ? ' <em class="tag own">Owned</em>' : ''}</b><small>${SLOT_LABEL[g.slot]} · ${esc(gearLine(g))}</small></span><span class="buy">${act}</span></div>`;
   }
   const sold = (pred) => Object.keys(G.GEAR).filter((id) => G.GEAR[id].tier !== 'boss' && pred(G.GEAR[id]));
   function weaponsTab() {
@@ -63,7 +64,7 @@ export function openShop(root, char, onChange, startTab = 'items') {
       <h4>ANBU Uniform <small>· full set +10% health, +5% dodge</small></h4><div class="sh-list">${sold((g) => g.tier === 'anbu').map(gearRow).join('')}</div>`;
   }
   function render() {
-    const tabs = [['items', '🎒 Items'], ['weapons', '⚔️ Weapons'], ['armour', '🛡️ Armour'], ['anbu', '🎭 ANBU']];
+    const tabs = [['items', '🎒 Items'], ['weapons', `${gearIconHTML('katana', 18)} Weapons`], ['armour', `${gearIconHTML('flak_chest', 18)} Armour`], ['anbu', '🎭 ANBU']];
     body.innerHTML = `<div class="sh-ryo">💰 <b>${n(char.ryo)}</b> ryo</div>
       <div class="ttabs">${tabs.map(([k, l]) => `<button data-t="${k}" class="${k === tab ? 'on' : ''}">${l}</button>`).join('')}</div>
       ${tab === 'items' ? itemsTab() : tab === 'weapons' ? weaponsTab() : tab === 'armour' ? armourTab() : anbuTab()}`;
