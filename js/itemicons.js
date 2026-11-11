@@ -174,7 +174,61 @@ const LEGS = {
   moonshadow_greaves: (c) => greave(c, '#4a2a6a', '#8a6ac8', '#2e1a44', (P) => { for (const [a, b] of [[7, 2], [6, 3], [6, 4], [6, 5], [7, 6], [8, 6]]) P('#f2e8ff', a, b); P('#f2c14a', 9, 8); P('#f2c14a', 5, 1); }, false),
 };
 
-const DRAW = { ...WEAPONS, ...ARMOUR, ...ARMS, ...LEGS };
+
+// ---------- consumables ----------
+const ITEMS = {
+  pill_heal: (c) => { // red and white capsule
+    const { rows } = kit(c);
+    rows({ r: '#d8402e', R: '#ff7a5a', d: '#8a2418', w: '#f4f0e6', W: '#ffffff', g: '#b8ae9c' }, 2, 2, [
+      '.......rrr..', '......rRRrr.', '.....rRrrrrd', '....wrrrrrrd', '...wWwrrrrd.', '..wWwwwrrd..', '.wWwwwwwd...', 'wWwwwwwg....', 'wwwwwwg.....', 'wwwwgg......', '.ggg........']);
+  },
+  pill_chakra: (c) => { // glowing blue chakra pill
+    const { rows } = kit(c);
+    rows({ b: '#3a7fd4', l: '#7cc4ff', w: '#e8f6ff', d: '#1d4f8a' }, 3, 3, [
+      '...bbbb...', '..bllbbb..', '.blwlbbbb.', 'blwlbbbbbd', 'bllbbbbbbd', 'bbbbbbbbbd', 'bbbbbbbbdd', '.bbbbbbdd.', '..dbbbdd..', '...dddd...']);
+  },
+  smoke: (c) => { // smoke bomb: dark ball, fuse, puff of smoke
+    const { rows } = kit(c);
+    rows({ k: '#3a3e48', l: '#6a707c', w: '#a0a6ae', d: '#1d1d24', f: '#c8a070', y: '#ffd36b', o: '#e8742c', s: '#d6dae2', S: '#f4f6f8' }, 1, 0, [
+      '.........sSs..', '........sSSss.', '.......y.sss..', '......of......', '.....f........', '....kkkk......', '..kkwlkkkk....', '.kkwlkkkkkk...', '.kwlkkkkkkkd..', 'kklkkkkkkkkd..',
+      'kkkkkkkkkkkd..', 'kkkkkkkkkkdd..', '.kkkkkkkkdd...', '..kkkkkddd....', '....dddd......']);
+  },
+  antidote: (c) => { // green potion flask with a cork
+    const { rows } = kit(c);
+    rows({ c: '#a87444', C: '#c8945a', g: '#cfe8f0', G: '#ffffff', n: '#3aa85a', N: '#7ce08a', d: '#1f6a34' }, 3, 0, [
+      '...CCcc...', '...Cccc...', '....gg....', '....gg....', '...gGgg...', '..gGgggg..', '.gGnnnnng.', 'gGnNNnnnng', 'gnNnnnnnnd', 'gnnnnnnnnd', 'gnnnnnnnnd', 'gnnnnnnndd', '.gnnnnndd.', '..dddddd..']);
+  },
+  kunai: (c) => kunai(c, false),
+  kunai_x: (c) => kunai(c, true),
+  shuriken: (c) => { // four-point throwing star with a centre hole
+    const { rows } = kit(c);
+    rows({ m: '#b4b9c2', l: '#e4e8ee', d: '#5a5f6a', h: '#24160e' }, 1, 1, [
+      '......l......', '......l......', '.....lmd.....', '.....lmd.....', '....lmmmd....', '..llmmhmmdd..', 'llmmmhhhmmmdd', '..ddmmhmmdd..',
+      '....dmmmd....', '.....dmd.....', '.....dmd.....', '......d......', '......d......']);
+  },
+  shuriken_w: (c) => { // big windmill shuriken with a wrapped centre ring
+    const { rows } = kit(c);
+    rows({ m: '#b4b9c2', l: '#e4e8ee', d: '#5a5f6a', r: '#c43c32', R: '#e8584a', h: '#24160e' }, 0, 0, [
+      '......l.........', '.....lld........', '.....lmd........', '....lmmd........', '....lmmd....lll.', '...lmmmd..llmmd.', '...lmmrrrrlmmd..', '...lmrRhhrmmd...',
+      '...lmrhhhrmd....', '..lmmrhhrrd.....', '.lmmlrrrrd......', 'lmmd..dmmd......', 'ldd...dmmd......', '......dmd.......', '......dmd.......', '.......d........']);
+  },
+};
+function kunai(c, tag) {
+  const { P, pts } = kit(c);
+  // blade: leaf-shaped, diagonal to the top-right
+  pts('#d6dae2', [[9, 6], [10, 5], [11, 4], [12, 3], [13, 2], [10, 6], [11, 5], [12, 4], [8, 7], [9, 7]]);
+  pts('#ffffff', [[9, 5], [10, 4], [11, 3], [12, 2], [14, 1]]);
+  pts('#8a8f9c', [[8, 8], [9, 8], [10, 7], [11, 6], [12, 5], [13, 3]]);
+  // grip with wrap, ring pommel
+  for (let i = 0; i < 4; i++) { P(i % 2 ? '#2b2b38' : '#5a5f6a', 7 - i, 8 + i); P('#2b2b38', 7 - i, 9 + i); }
+  pts('#8a8f9c', [[1, 12], [2, 11], [3, 12], [2, 13], [1, 13], [3, 13]]); P('#c9ccd4', 2, 11);
+  if (tag) { // explosive paper tag with a red seal, and a spark
+    P('#f4ecd0', 4, 6, 3, 5); P('#d8cca8', 6, 6, 1, 5); P('#c43c32', 5, 7, 1, 3); P('#c43c32', 4, 8, 3, 1);
+    pts('#ffd36b', [[1, 3], [2, 2], [3, 3], [2, 4]]); P('#e8742c', 2, 3);
+  }
+}
+
+const DRAW = { ...WEAPONS, ...ARMOUR, ...ARMS, ...LEGS, ...ITEMS };
 // faint silhouettes for empty equipment slots
 const EMPTY = { weapon: 'katana', head: 'genin_head', chest: 'flak_chest', arms: 'flak_arms', legs: 'flak_legs' };
 
@@ -201,3 +255,5 @@ export function emptySlotHTML(slot, px = 36) {
   return url ? `<img class="pxi" src="${url}" width="${px}" height="${px}" alt="">` : '';
 }
 export const GEAR_ICON_IDS = Object.keys(DRAW);
+// consumables use the same drawing table
+export const itemIconHTML = gearIconHTML;

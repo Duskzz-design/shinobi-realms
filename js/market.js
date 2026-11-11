@@ -12,7 +12,7 @@ const n = (x) => Number(x || 0).toLocaleString('en-GB');
 const TAX = 0.10;
 const netLine = (price) => { const tax = Math.ceil(price * TAX); return `If it sells you get <b>${n(price - tax)} ryo</b> (10% sales tax: ${n(tax)}).`; };
 const info = (l) => (l.kind === 'gear' ? G.GEAR[l.item_id] : G.ITEMS[l.item_id]) || { name: l.item_id, icon: '❔' };
-const ico = (kind, id, it) => (kind === 'gear' ? gearIconHTML(id, 36, it.icon) : it.icon);
+const ico = (kind, id, it) => gearIconHTML(id, 36, it.icon);
 function left(ts) {
   const ms = new Date(ts).getTime() - Date.now(); if (ms <= 0) return 'ending';
   const hrs = Math.floor(ms / 3600e3), m = Math.floor((ms % 3600e3) / 60e3);
@@ -72,7 +72,7 @@ export function openMarket(root, char, onChange) {
         return `<div class="sh-it"><span class="ic">${gearIconHTML(id, 36, g.icon)}</span><span class="nm"><b>${esc(g.name)}${cnt(id) > 1 ? ` ×${cnt(id)}` : ''}</b><small>${esc(gearLine(g))}</small></span>
           <span class="buy">${on ? '<small>Equipped: take it off first</small>' : `<button class="btn small" data-sell="gear:${id}" ${busy || !genin() || active >= 10 ? 'disabled' : ''}>Sell…</button>`}</span></div>`; }).join('')}</div>` : '<p class="mk-empty">No boss drops yet. Beat bosses for a chance at rare gear.</p>'}
       <h4>Items</h4>${items.length ? `<div class="sh-list">${items.map(([id, q]) => { const it = G.ITEMS[id];
-        return `<div class="sh-it"><span class="ic">${it.icon}</span><span class="nm"><b>${esc(it.name)} ×${q}</b><small>${esc(it.desc)}</small></span>
+        return `<div class="sh-it"><span class="ic">${gearIconHTML(id, 36, it.icon)}</span><span class="nm"><b>${esc(it.name)} ×${q}</b><small>${esc(it.desc)}</small></span>
           <span class="buy"><button class="btn small" data-sell="item:${id}" ${busy || !genin() || active >= 10 ? 'disabled' : ''}>Sell…</button></span></div>`; }).join('')}</div>` : '<p class="mk-empty">No items to sell.</p>'}`;
   }
 

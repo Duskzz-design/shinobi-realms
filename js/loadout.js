@@ -1,5 +1,6 @@
 // Pre-fight loadout: 60 seconds to pick which jutsu and items to bring. "Ready" skips the wait.
 import * as net from './net.js';
+import { itemIconHTML } from './itemicons.js';
 import * as G from './engine.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -37,7 +38,7 @@ export function openLoadout(root, char, opts) {
         ${slots < 8 ? '<div class="lo-lock">🔒 <b>+2 jutsu slots</b><small>Premium upgrade, coming soon</small></div>' : ''}</div>
       <h4>Items <b>${items.length}/${G.ITEM_SLOTS}</b> <small>· buy more at the Tool Shop</small></h4>
       <div class="lo-grid">${Object.entries(G.ITEMS).map(([id, it]) => { const n = owned[id] || 0, on = items.includes(id);
-        return `<button class="lo-j it ${on ? 'on' : ''}" data-it="${id}" ${n ? '' : 'disabled'}><b>${it.icon} ${esc(it.name)} <em>×${n}</em></b><small>${it.ap} AP · ${esc(it.desc)}</small></button>`; }).join('')}</div>
+        return `<button class="lo-j it ${on ? 'on' : ''}" data-it="${id}" ${n ? '' : 'disabled'}><b>${itemIconHTML(id, 20, it.icon)} ${esc(it.name)} <em>×${n}</em></b><small>${it.ap} AP · ${esc(it.desc)}</small></button>`; }).join('')}</div>
       ${opts.status ? `<p class="lo-status">${opts.status()}</p>` : ''}
       <button class="btn primary lo-go" data-go ${saving ? 'disabled' : ''}>⚔️ Ready, fight now!</button>`;
     body.querySelectorAll('[data-j]').forEach((b) => (b.onclick = () => {

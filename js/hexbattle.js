@@ -120,10 +120,10 @@ export function battleView(root, char, cfg) {
     el.querySelector('[data-end]').disabled = !myTurn; el.querySelector('[data-flee]').disabled = busy && !cfg.duel;
     const its = el.querySelector('.hx-items');
     if (its) {
-      its.innerHTML = Object.entries(p.items || {}).filter(([, n]) => n > 0).map(([id, n]) => { const it = G.ITEMS[id]; return it ? `<button class="btn small ghost hx-it" data-i="${id}" title="${esc(it.name)}: ${esc(it.desc)}" ${!myTurn || p.ap < it.ap ? 'disabled' : ''}>${it.icon}<b>×${n}</b> <small>${it.ap} AP</small></button>` : ''; }).join('');
+      its.innerHTML = Object.entries(p.items || {}).filter(([, n]) => n > 0).map(([id, n]) => { const it = G.ITEMS[id]; return it ? `<button class="btn small ghost hx-it" data-i="${id}" title="${esc(it.name)}: ${esc(it.desc)}" ${!myTurn || p.ap < it.ap ? 'disabled' : ''}>${gearIconHTML(id, 22, it.icon)}<b>×${n}</b> <small>${it.ap} AP</small></button>` : ''; }).join('');
       its.querySelectorAll('[data-i]').forEach((b) => (b.onclick = () => {
         if (busy || eng.side !== MY) return; const it = G.ITEMS[b.dataset.i];
-        if (it.power) { sel = sel === 'it:' + b.dataset.i ? null : 'it:' + b.dataset.i; panel(); return say(sel ? `<b>${it.icon} ${esc(it.name)}</b><br><small>${esc(it.desc)}</small><br><b>Tap ${it.aoe ? 'a hex in the orange area' : 'the enemy'}</b> to throw.` : ''); }
+        if (it.power) { sel = sel === 'it:' + b.dataset.i ? null : 'it:' + b.dataset.i; panel(); return say(sel ? `<b>${gearIconHTML(b.dataset.i, 18, it.icon)} ${esc(it.name)}</b><br><small>${esc(it.desc)}</small><br><b>Tap ${it.aoe ? 'a hex in the orange area' : 'the enemy'}</b> to throw.` : ''); }
         sel = null; send({ t: 'item', item: b.dataset.i });
       }));
       its.querySelectorAll('[data-i]').forEach((b) => b.classList.toggle('sel', sel === 'it:' + b.dataset.i));
@@ -257,7 +257,7 @@ export function battleView(root, char, cfg) {
         cards(); await pause(ev.hits?.length ? 620 : 300);
       } else if (ev.t === 'item') {
         const u = unit(ev.who), it = G.ITEMS[ev.item] || { icon: '🎒' };
-        say(`${ev.who === MY ? 'You use' : esc(name) + ' uses'} <b>${it.icon} ${esc(ev.name)}</b>!`);
+        say(`${ev.who === MY ? 'You use' : esc(name) + ' uses'} <b>${gearIconHTML(ev.item, 18, it.icon)} ${esc(ev.name)}</b>!`);
         if (u.items && u.items[ev.item] > 0) u.items[ev.item]--;
         fx.flash = { at: [u.c, u.r], r: ev.item === 'smoke' ? 1 : 0, col: ev.item === 'smoke' ? '#c9ccd4' : '#7ce08a', life: 18 };
         if (ev.heal) { u.hp = Math.min(u.hpmax, u.hp + ev.heal); float(ev.who, `+${ev.heal}`, '#7ce08a'); }

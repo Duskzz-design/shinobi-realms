@@ -1,5 +1,6 @@
 // Tool Shop: consumable items, weapons and armour (Basic for everyone, Advanced from Chunin), plus the ANBU counter.
 import * as net from './net.js';
+import { itemIconHTML } from './itemicons.js';
 import { gearIconHTML } from './itemicons.js';
 import * as G from './engine.js';
 
@@ -34,7 +35,7 @@ export function openShop(root, char, onChange, startTab = 'items') {
     const owned = char.items || {};
     return `<p class="sub">Pack up to <b>${G.ITEM_SLOTS}</b> kinds before each fight. Carry up to ${G.ITEM_STACK} of each.</p>
       <div class="sh-list">${Object.entries(G.ITEMS).map(([id, it]) => { const have = owned[id] || 0, full = have >= G.ITEM_STACK, lock = (it.rank || 0) > ri();
-        return `<div class="sh-it ${lock ? 'lock' : ''}"><span class="ic">${it.icon}</span><span class="nm"><b>${esc(it.name)}${it.rank ? ' <em class="tag adv">Advanced</em>' : it.power ? ' <em class="tag">Basic</em>' : ''}</b><small>${esc(it.desc)} · ${it.ap} AP</small><small>You have <b>${have}</b>/${G.ITEM_STACK}</small></span>
+        return `<div class="sh-it ${lock ? 'lock' : ''}"><span class="ic">${itemIconHTML(id, 36, it.icon)}</span><span class="nm"><b>${esc(it.name)}${it.rank ? ' <em class="tag adv">Advanced</em>' : it.power ? ' <em class="tag">Basic</em>' : ''}</b><small>${esc(it.desc)} · ${it.ap} AP</small><small>You have <b>${have}</b>/${G.ITEM_STACK}</small></span>
           <span class="buy">${lock ? `<small>🔒 ${RANKS[it.rank]} and above</small>` : `<button class="btn small primary" data-b="${id}" data-q="1" ${full || char.ryo < it.price || busy ? 'disabled' : ''}>Buy ${it.price} 💰</button>
           <button class="btn small ghost" data-b="${id}" data-q="5" ${G.ITEM_STACK - have < 5 || char.ryo < it.price * 5 || busy ? 'disabled' : ''}>×5 · ${it.price * 5}</button>`}</span></div>`; }).join('')}</div>`;
   }
@@ -64,7 +65,7 @@ export function openShop(root, char, onChange, startTab = 'items') {
       <h4>ANBU Uniform <small>· full set +10% health, +5% dodge</small></h4><div class="sh-list">${sold((g) => g.tier === 'anbu').map(gearRow).join('')}</div>`;
   }
   function render() {
-    const tabs = [['items', '🎒 Items'], ['weapons', `${gearIconHTML('katana', 18)} Weapons`], ['armour', `${gearIconHTML('flak_chest', 18)} Armour`], ['anbu', '🎭 ANBU']];
+    const tabs = [['items', `${itemIconHTML('pill_heal', 18)} Items`], ['weapons', `${gearIconHTML('katana', 18)} Weapons`], ['armour', `${gearIconHTML('flak_chest', 18)} Armour`], ['anbu', '🎭 ANBU']];
     body.innerHTML = `<div class="sh-ryo">💰 <b>${n(char.ryo)}</b> ryo</div>
       <div class="ttabs">${tabs.map(([k, l]) => `<button data-t="${k}" class="${k === tab ? 'on' : ''}">${l}</button>`).join('')}</div>
       ${tab === 'items' ? itemsTab() : tab === 'weapons' ? weaponsTab() : tab === 'armour' ? armourTab() : anbuTab()}`;

@@ -601,3 +601,5 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .pxi { image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; vertical-align: middle; }
 .ge-slot .ic .pxi, .sh-it .ic .pxi { display: block; margin: 0 auto; }
 .wm-drops .pxi { margin-right: 2px; }
+.hx-it { display: inline-flex; align-items: center; gap: 2px; } .hx-it .pxi { margin: -3px 0; }
+.lo-j b .pxi { margin: -3px 2px -3px 0; }
