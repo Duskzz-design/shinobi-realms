@@ -61,7 +61,7 @@ function titleScreen() {
       <p class="fine">Free to play. Your ninja is saved to your Google account.</p>
       ${net.isTester() ? '<button class="btn ghost small" id="guest">Tester: play as guest</button>' : ''}
     </div>
-    <div class="credits">Season 1 · Early Access · <a href="../">About the game</a> · <a href="../privacy.html">Privacy</a> · <a href="../terms.html">Terms</a></div>
+    <div class="credits">Season 1 · Early Access · <a href="../">About the game</a> · <a href="https://discord.gg/t2K3uCGrJv" target="_blank" rel="noopener">Discord</a> · <a href="../privacy.html">Privacy</a> · <a href="../terms.html">Terms</a></div>
   </div>`);
   el.querySelector('#g').onclick = async (e) => {
     e.currentTarget.disabled = true; e.currentTarget.lastChild.textContent = 'Opening Google…';

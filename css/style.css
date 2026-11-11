@@ -633,3 +633,6 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .logo h1 img { margin: 0 auto; }
 @media (min-width: 720px) { .logo img { width: 265px; height: 295px; } }
 @media (max-height: 640px) { .logo img { width: 159px; height: 177px; } }
+
+/* links styled as menu buttons */
+.menu a.btn { text-decoration: none; color: inherit; text-align: center; }
