@@ -1,6 +1,13 @@
 // Data layer: Supabase in production, an in-memory stand-in for offline testing (?offline).
-export const SUPABASE_URL = 'https://azetseowvqyqhcnjzvnb.supabase.co';
-export const SUPABASE_KEY = 'sb_publishable_wIQUai52KRMk3WTRCm4mzg_5itXxKF4';
+// Two servers: LIVE (real players) and TEST (fake ninjas, for trying changes first).
+// The address the game is opened on decides which one it talks to.
+const SERVERS = {
+  live: { url: 'https://azetseowvqyqhcnjzvnb.supabase.co', key: 'sb_publishable_wIQUai52KRMk3WTRCm4mzg_5itXxKF4' },
+  test: { url: 'https://lkvlpbdjuokemtucjnlk.supabase.co', key: 'sb_publishable_e3Mm5KrTJlnrrYhweYlEAg_FPtXqGfq' },
+};
+export const IS_TEST = /^(test\.shinobirealms\.com|localhost|127\.0\.0\.1)$/.test(location.hostname);
+export const SUPABASE_URL = SERVERS[IS_TEST ? 'test' : 'live'].url;
+export const SUPABASE_KEY = SERVERS[IS_TEST ? 'test' : 'live'].key;
 
 const OFFLINE = new URLSearchParams(location.search).has('offline');
 let sb = null;

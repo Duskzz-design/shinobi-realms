@@ -58,13 +58,13 @@ function titleScreen() {
         <li><i>⚔️</i><span><b>Tactical battles</b> on a hex grid, plus duels and the Arena against real players.</span></li>
         <li><i>🏯</i><span><b>Fight for your village</b> in quests, boss raids and wars, and maybe become its Kage.</span></li>
       </ul>
-      <button class="btn google" id="g"><span class="gicon"></span>Sign in with Google</button>
-      <p class="fine">Free to play. Your ninja is saved to your Google account.</p>
+      ${net.IS_TEST ? '<p class="fine test-note">🧪 This is the private <b>test server</b>. Ninjas here are for testing only. To play the real game, go to <a href="https://shinobirealms.com/play/">shinobirealms.com</a>.</p>'
+        : '<button class="btn google" id="g"><span class="gicon"></span>Sign in with Google</button><p class="fine">Free to play. Your ninja is saved to your Google account.</p>'}
       ${net.isTester() ? '<button class="btn ghost small" id="guest">Tester: play as guest</button>' : ''}
     </div>
     <div class="credits">Season 1 · Early Access · <a href="../">About the game</a> · <a href="https://discord.gg/t2K3uCGrJv" target="_blank" rel="noopener">Discord</a> · <a href="../privacy.html">Privacy</a> · <a href="../terms.html">Terms</a></div>
   </div>`);
-  el.querySelector('#g').onclick = async (e) => {
+  if (el.querySelector('#g')) el.querySelector('#g').onclick = async (e) => {
     e.currentTarget.disabled = true; e.currentTarget.lastChild.textContent = 'Opening Google…';
     try { await net.signInGoogle(); } catch (err) { toast(friendly(err)); e.currentTarget.disabled = false; e.currentTarget.lastChild.textContent = 'Sign in with Google'; }
   };
@@ -283,6 +283,8 @@ async function boot() {
   if (u && location.search.includes('code=')) history.replaceState({}, '', location.pathname + location.search.replace(/[?&]code=[^&]*/, '').replace(/^&/, '?'));
   route(u);
 }
+// a badge on every screen of the test server, so it is never mistaken for the real game
+if (net.IS_TEST) document.body.insertAdjacentHTML('beforeend', '<div class="test-badge">TEST SERVER</div>');
 startPixify();
 sharpenText();
 boot();

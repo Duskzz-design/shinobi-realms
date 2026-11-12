@@ -725,3 +725,7 @@ em.n { font-style: normal; font-family: var(--title); font-weight: 400; letter-s
 .bdg .bi .lk { position: absolute; right: -2px; bottom: -4px; font-style: normal; font-size: 14px; filter: none; }
 .bdg .bi .lk .pxe { width: 16px; height: 16px; }
 .board.pf { overflow-x: hidden; }
+
+/* test server markers */
+.test-badge { position: fixed; left: 50%; bottom: 4px; transform: translateX(-50%); z-index: 9999; pointer-events: none; font-family: var(--title); font-size: 10px; letter-spacing: 1px; color: #fff; background: #7a2fd0; padding: 4px 8px; box-shadow: 0 0 0 2px #2a0f4a; opacity: .9; }
+.test-note { background: #efe2ff; box-shadow: 0 0 0 2px #7a2fd0; padding: 8px 10px; color: #2a0f4a; }
