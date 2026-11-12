@@ -661,3 +661,13 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .tinfo b { white-space: nowrap; }
 /* battle info chips may wrap rather than run off the card */
 .mu { white-space: normal; overflow-wrap: anywhere; }
+
+/* ---- combat numbers: easy to tell 3, 6 and 8 apart ----
+   In this pixel font the only difference between 3, 6 and 8 is a one-pixel gap. Bold fills that gap in
+   and a soft glow smudges it, so numbers in battle use the regular weight, a bigger size, no glow,
+   and a little space between digits. Emphasis comes from colour instead of bold. */
+.hx-card .gbar, .hx-allies .gbar { height: 19px; }
+.hx-card .gbar span, .hx-allies .gbar span { font-size: 15px; font-weight: 400; line-height: 19px; letter-spacing: 1px; text-shadow: none; color: #1a0f08; padding-left: 6px; }
+.hexb b, .hexb strong, .hx-info .good, .hx-info .bad, .pv .pvd, .hx-allies .ally small { font-weight: 400; }
+.pv { font-size: 15px; letter-spacing: .5px; }
+.hx-logbox, .hx-info { letter-spacing: .3px; }
