@@ -54,11 +54,11 @@ export async function enterWorld(app, char, hooks) {
         <div><b>${esc(char.name)}</b><small id="plateSub">Lv ${char.level} · ${esc(char.rank)}</small></div>
       </div>
       <div class="hud-right">
-        <div class="online" title="Ninja in this village right now">👥 <span id="count">1</span> here</div>
+        <div class="online" title="Ninja in this village right now">👥 <span id="count">1</span><span class="ow"> here</span></div>
         <button class="injured" id="injured" hidden title="Injured: tap to visit the Hospital">🤕 <span></span></button>
         <button class="btn small primary train-btn" id="trainBtn">⭐ Train<i id="ptsBadge" hidden></i></button>
         <button class="btn small ghost hb-btn" id="hbBtn" title="Ninja Handbook" aria-label="Ninja Handbook">📖</button>
-        <button class="btn small ghost" id="menuBtn">☰ Menu</button>
+        <button class="btn small ghost" id="menuBtn" aria-label="Menu">☰<span class="ml"> Menu</span></button>
       </div>
     </div>
     <div class="vname"><span class="em"></span>${esc(v.name)} Village</div>
@@ -427,7 +427,7 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, chatRooms = [], lastTrack = 0, lastSave = performance.now(), savedAt = { x: 0, y: 0 };
-  const BUILD = '2026-11-13k';
+  const BUILD = '2026-11-13l';
   let newerSeen = false;
   const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   // Movement is sent as "I'm here, heading there" once per click; everyone replays the walk locally.

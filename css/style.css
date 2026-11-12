@@ -729,3 +729,19 @@ em.n { font-style: normal; font-family: var(--title); font-weight: 400; letter-s
 /* test server markers */
 .test-badge { position: fixed; left: 50%; bottom: 4px; transform: translateX(-50%); z-index: 9999; pointer-events: none; font-family: var(--title); font-size: 10px; letter-spacing: 1px; color: #fff; background: #7a2fd0; padding: 4px 8px; box-shadow: 0 0 0 2px #2a0f4a; opacity: .9; }
 .test-note { background: #efe2ff; box-shadow: 0 0 0 2px #7a2fd0; padding: 8px 10px; color: #2a0f4a; }
+
+/* phones: the top bar must fit on a 320px-wide screen (Menu was pushed off the edge) */
+.plate { min-width: 0; flex: 0 1 auto; } .plate > div { min-width: 0; } .hud-right { flex: none; }
+@media (max-width: 480px) {
+  .hud-top { left: 6px; right: 6px; }
+  .hud-right { gap: 6px; }
+  .online .ow, #menuBtn .ml { display: none; }
+  .plate { gap: 6px; padding-right: 8px; }
+  .plate b, .plate small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hud-right .btn.small { padding-left: 9px; padding-right: 9px; }
+}
+@media (max-width: 400px) {
+  .hud-right .train-btn { font-size: 8px; padding-left: 7px; padding-right: 7px; }
+  .plate .face { width: 30px; height: 30px; }
+  .plate { padding: 5px 7px 5px 5px; }
+}
