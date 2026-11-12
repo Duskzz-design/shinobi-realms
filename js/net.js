@@ -57,6 +57,35 @@ export async function signOut() {
   await sb.auth.signOut(); location.reload();
 }
 
+// ---------- chat (server-run: the server stamps the name, filters words and limits spam) ----------
+let mockChatId = 1;
+export async function say(text, ch) {
+  if (OFFLINE) {
+    const c = JSON.parse(sessionStorage.getItem('mockChar') || 'null') || {};
+    const m = { id: mockChatId++, uid: c.user_id || 'me', name: c.name || 'You', village: c.village || 'pine', ch, text: String(text).slice(0, 120), at: new Date().toISOString() };
+    try { const bc = new BroadcastChannel('mock-chat:' + (ch === 'world' ? 'world' : 'village:' + m.village)); bc.postMessage({ t: 'ev', ev: 'msg', p: m }); bc.close(); } catch {}
+    return m;
+  }
+  const { data, error } = await sb.rpc('chat_say', { p_text: text, p_channel: ch });
+  if (error) throw new Error(error.message);
+  return data;
+}
+export async function reportChat(id, reason) {
+  if (OFFLINE) return { ok: true };
+  const { data, error } = await sb.rpc('chat_report', { p_id: id, p_reason: reason || null });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// ---------- account ----------
+export async function deleteAccount() {
+  if (OFFLINE) { sessionStorage.clear(); return { deleted: true }; }
+  const { data, error } = await sb.rpc('delete_my_account');
+  if (error) throw new Error(error.message);
+  try { await sb.auth.signOut({ scope: 'local' }); } catch {}
+  return data;
+}
+
 // ---------- character ----------
 export async function loadCharacter() {
   if (OFFLINE) { const c = sessionStorage.getItem('mockChar'); if (!c) return null; const o = await import('./offline.js'); const x = JSON.parse(c); o.enrich(x); saveMock(x); return o.enrich(x); }

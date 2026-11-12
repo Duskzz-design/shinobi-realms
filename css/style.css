@@ -636,3 +636,14 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 
 /* links styled as menu buttons */
 .menu a.btn { text-decoration: none; color: inherit; text-align: center; }
+
+/* chat moderation + account deletion */
+.chat-log .who { cursor: pointer; }
+.chat-log .who:hover { text-decoration: underline; }
+.btn.danger { --b: #8a2a22; --bd: #5a1a14; color: #fff4dc; }
+.menu .danger-text { color: #a8321f; }
+.modal .col { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.modal .q { font-style: italic; color: var(--ink2); word-wrap: break-word; }
+.modal label.lbl { display: block; margin: 12px 0; }
+.modal label.lbl input { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; padding: 8px 10px; font: 16px var(--body, inherit); border: 3px solid var(--wood); background: #fffaf0; }
+.modal .err { color: #a8321f; margin: 8px 0 0; }

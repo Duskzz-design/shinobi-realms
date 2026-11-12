@@ -74,7 +74,9 @@ export async function enterWorld(app, char, hooks) {
       <button class="btn ghost" id="mHelp">📖 Ninja Handbook</button>
       <a class="btn ghost" id="mDiscord" href="https://discord.gg/t2K3uCGrJv" target="_blank" rel="noopener">💬 Join our Discord</a>
       <button class="btn ghost" id="mSleep">💤 Go to sleep</button>
+      <button class="btn ghost" id="mUnmute" hidden>🔊 Unmute everyone</button>
       <button class="btn ghost" id="mOut">Sign out</button>
+      <button class="btn ghost danger-text" id="mDelete">Delete my account</button>
       <button class="btn ghost" id="mClose">Close</button>
     </div>
     <div class="modal-wrap" id="modal" hidden><div class="scroll modal"></div></div>
@@ -189,7 +191,10 @@ export async function enterWorld(app, char, hooks) {
   const log = root.querySelector('#log'), chatIn = root.querySelector('#chatIn'), chatBox = root.querySelector('#chat');
   const unread = root.querySelector('#unread');
   let chatTab = 'village', lastSent = 0;
-  const msgs = [];
+  const msgs = [], seenMsg = new Set();
+  const muteKey = 'sr_muted_' + char.user_id;
+  let muted = new Set(); try { muted = new Set(JSON.parse(localStorage.getItem(muteKey) || '[]')); } catch {}
+  const saveMuted = () => { try { localStorage.setItem(muteKey, JSON.stringify([...muted])); } catch {} };
   root.querySelectorAll('.chat-tabs [data-ch]').forEach((b) => (b.onclick = () => {
     chatTab = b.dataset.ch; root.querySelectorAll('.chat-tabs [data-ch]').forEach((x) => x.classList.toggle('on', x === b)); renderLog();
   }));
@@ -204,20 +209,47 @@ export async function enterWorld(app, char, hooks) {
   function renderLog() {
     log.innerHTML = msgs.filter((m) => m.ch === chatTab || m.sys).slice(-60).map((m) => m.sys
       ? `<p class="sys">${esc(m.text)}</p>`
-      : `<p><b style="color:${(VILLAGES[m.village] || v).dark}">${esc(m.name)}</b> ${esc(m.text)}</p>`).join('');
+      : `<p><b class="who" data-mid="${m.mid || ''}" style="color:${(VILLAGES[m.village] || v).dark}">${esc(m.name)}</b> ${esc(m.text)}</p>`).join('');
     log.scrollTop = log.scrollHeight;
   }
+  // tap a name in chat: mute that player (only for you) or report the message to the moderators
+  log.addEventListener('click', (e) => {
+    const b = e.target.closest('.who'); if (!b) return;
+    const m = msgs.find((x) => String(x.mid) === b.dataset.mid); if (!m || m.id === me.id) return;
+    showModal(`<h3>${esc(m.name)}</h3><p class="q">"${esc(m.text)}"</p>
+      <div class="col"><button class="btn" data-mute>🔇 Mute ${esc(m.name)} (only you stop seeing them)</button>
+      <button class="btn danger" data-report>🚩 Report this message</button></div>`, (el) => {
+      el.querySelector('[data-mute]').onclick = () => {
+        muted.add(m.id); saveMuted();
+        for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].id === m.id && !msgs[i].sys) msgs.splice(i, 1);
+        renderLog(); closeModal(); addMsg({ sys: true, text: `You muted ${m.name}. Unmute them from the ☰ Menu.` });
+      };
+      el.querySelector('[data-report]').onclick = async () => {
+        try { const r = await net.reportChat(m.mid); closeModal(); addMsg({ sys: true, text: r && r.muted ? `Thanks. ${m.name} has been muted for an hour while we look into it.` : 'Thanks. The report has been sent to the moderators.' }); }
+        catch (err) { closeModal(); addMsg({ sys: true, text: err.message }); }
+      };
+    });
+  });
+  // a message from the server: the name and village are stamped by the server, so they can't be faked
+  function onChat(ev, p) {
+    if (ev !== 'msg' || !p || seenMsg.has(p.id)) return;
+    seenMsg.add(p.id);
+    if (muted.has(p.uid)) return;
+    addMsg({ mid: p.id, id: p.uid, name: String(p.name), village: p.village, text: String(p.text), ch: p.ch === 'world' ? 'world' : 'village' });
+    if (p.ch === 'village' && p.uid !== me.id) bubbles.set(p.uid, { text: String(p.text), until: performance.now() + 5000 });
+  }
+  async function announce(text, ch) { try { onChat('msg', await net.say(text, ch)); } catch {} }
   root.querySelector('#chatForm').onsubmit = (e) => {
     e.preventDefault();
     const text = chatIn.value.replace(/\s+/g, ' ').trim().slice(0, 120);
     if (!text) { chatIn.blur(); return; }
     if (Date.now() - lastSent < 1200) return;
     lastSent = Date.now();
-    const m = { id: me.id, name: me.name, village: me.village, text, ch: chatTab };
-    (chatTab === 'world' ? worldRoom : room)?.send('chat', m);
-    addMsg(m); bubbles.set(me.id, { text, until: performance.now() + 5000 });
+    const ch = chatTab;
     chatIn.value = '';
     if (!isTouch) chatIn.blur();
+    net.say(text, ch).then((m) => { onChat('msg', m); if (ch === 'village') bubbles.set(me.id, { text: m.text, until: performance.now() + 5000 }); })
+      .catch((err) => { chatIn.value = text; addMsg({ sys: true, text: err.message }); });
   };
   addMsg({ sys: true, text: `Welcome to ${v.name}. ${isTouch ? 'Tap' : 'Click'} the ground to walk, and ${isTouch ? 'tap' : 'click'} a building to go inside.` + (isTouch ? '' : ' Press Enter to chat.') + ' Stuck? Open 📖 the Ninja Handbook' + (isTouch ? ' from the ☰ Menu.' : '.') });
 
@@ -226,6 +258,25 @@ export async function enterWorld(app, char, hooks) {
   root.querySelector('#menuBtn').onclick = () => (menu.hidden = !menu.hidden);
   root.querySelector('#mClose').onclick = () => (menu.hidden = true);
   root.querySelector('#mOut').onclick = async () => { await leave(); net.signOut(); };
+  const unmuteBtn = root.querySelector('#mUnmute');
+  root.querySelector('#menuBtn').addEventListener('click', () => { unmuteBtn.hidden = !muted.size; unmuteBtn.textContent = `🔊 Unmute ${muted.size} player${muted.size === 1 ? '' : 's'}`; });
+  unmuteBtn.onclick = () => { muted.clear(); saveMuted(); menu.hidden = true; addMsg({ sys: true, text: 'Everyone is unmuted. New messages from them will show again.' }); };
+  root.querySelector('#mDelete').onclick = () => {
+    menu.hidden = true;
+    showModal(`<h3>Delete my account</h3>
+      <p>This permanently deletes <b>${esc(char.name)}</b>, everything they own, your chat messages and your login. It cannot be undone, and we cannot bring it back.</p>
+      <label class="lbl">Type your ninja's name to confirm<input id="delName" autocomplete="off" maxlength="16" placeholder="${esc(char.name)}"></label>
+      <button class="btn danger" id="delGo" disabled>Delete everything</button>`, (el) => {
+      const inp = el.querySelector('#delName'), go = el.querySelector('#delGo');
+      const okBtn = el.querySelector('[data-close]'); okBtn.textContent = 'Keep my account'; okBtn.className = 'btn ghost';
+      inp.oninput = () => (go.disabled = inp.value.trim().toLowerCase() !== char.name.toLowerCase());
+      go.onclick = async () => {
+        go.disabled = true; go.textContent = 'Deleting…';
+        try { await net.deleteAccount(); await leave(); el.innerHTML = '<h3>Account deleted</h3><p>Your ninja and your data are gone. Thank you for playing Shinobi Realms.</p>'; setTimeout(() => location.reload(), 2500); }
+        catch (err) { go.disabled = false; go.textContent = 'Delete everything'; go.insertAdjacentHTML('afterend', `<p class="err">${esc(err.message)}</p>`); }
+      };
+    });
+  };
   root.querySelector('#mProfile').onclick = () => { menu.hidden = true; train(); };
   async function toggleSleep(on) {
     try { Object.assign(char, await net.setSleep(on), { _loadedAt: Date.now() }); } catch (e) { showModal(`<h3>💤 Sleep</h3><p>${esc(e.message)}</p>`); return; }
@@ -280,7 +331,7 @@ export async function enterWorld(app, char, hooks) {
       onQuest: (line) => startBattle(null, () => net.startQuest(line), (r) => { if (!r || !r.train) worldMap(); }),
       onLair: (line) => openLair(root, char, line, async (r) => {
         try { Object.assign(char, await net.loadCharacter(), { _loadedAt: Date.now() }); refreshPlate(); } catch {}
-        if (r && r.status === 'won') { const m = { id: me.id, name: me.name, village: me.village, text: `helped defeat ${line.boss_name}! ☠️`, ch: 'world' }; worldRoom?.send('chat', m); addMsg(m); }
+        if (r && r.status === 'won') announce(`helped defeat ${line.boss_name}! ☠️`, 'world');
         worldMap();
       }),
       onHome: () => {},
@@ -293,8 +344,8 @@ export async function enterWorld(app, char, hooks) {
       try { Object.assign(char, await net.loadCharacter(), { _loadedAt: Date.now() }); } catch {}
       refreshPlate(); loadChampions();
       if (d && d.kind === 'war' && warReturn) setTimeout(() => warCamp(warReturn.war, warReturn.name), 300);
-      if (r && r.status === 'won' && d && d.kind === 'kage' && d.a === char.user_id) { const m = { id: me.id, name: me.name, village: me.village, text: 'is the new Kage! 👑', ch: 'village' }; room?.send('chat', m); addMsg(m); }
-      if (r && r.status === 'won') { const foe = d.a === char.user_id ? d.b_name : d.a_name; const m = { id: me.id, name: me.name, village: me.village, text: `won a duel against ${foe}! ⚔️`, ch: 'village' }; room?.send('chat', m); addMsg(m); }
+      if (r && r.status === 'won' && d && d.kind === 'kage' && d.a === char.user_id) announce('is the new Kage! 👑', 'village');
+      if (r && r.status === 'won') { const foe = d.a === char.user_id ? d.b_name : d.a_name; announce(`won a duel against ${foe}! ⚔️`, 'village'); }
     },
   });
   if (net.isOffline()) window.__duels = duels;
@@ -311,10 +362,9 @@ export async function enterWorld(app, char, hooks) {
       try { Object.assign(char, await net.loadCharacter(), { _loadedAt: Date.now() }); } catch {}
       refreshPlate(); room?.track(meta());
       if (r && r.result && r.result.promoted) {
-        const m = { id: me.id, name: me.name, village: me.village, text: `passed the exam and is now a ${r.result.promoted}! 🎉`, ch: 'world' };
-        worldRoom?.send('chat', m); addMsg(m); bubbles.set(me.id, { text: `I'm a ${r.result.promoted} now!`, until: performance.now() + 5000 });
+        announce(`passed the exam and is now a ${r.result.promoted}! 🎉`, 'world'); bubbles.set(me.id, { text: `I'm a ${r.result.promoted} now!`, until: performance.now() + 5000 });
       }
-      if (r && r.status === 'won' && r.result && r.result.leveled) room?.send('chat', { id: me.id, name: me.name, village: me.village, text: `reached level ${char.level}! 🎉`, ch: 'village' });
+      if (r && r.status === 'won' && r.result && r.result.leveled) announce(`reached level ${char.level}! 🎉`, 'village');
       if (r && r.train) train(r.result && r.result.promoted ? 'jutsu' : 'stats');
       if (mid && r && r.status === 'won') guide.mark('mission');
       if (after) after(r);
@@ -368,8 +418,8 @@ export async function enterWorld(app, char, hooks) {
   const promptEl = root.querySelector('#prompt');
 
   // ---------- network ----------
-  let room = null, worldRoom = null, lastTrack = 0, lastSave = performance.now(), savedAt = { x: 0, y: 0 };
-  const BUILD = '2026-11-12e';
+  let room = null, chatRooms = [], lastTrack = 0, lastSave = performance.now(), savedAt = { x: 0, y: 0 };
+  const BUILD = '2026-11-13a';
   let newerSeen = false;
   const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   // Movement is sent as "I'm here, heading there" once per click; everyone replays the walk locally.
@@ -385,11 +435,6 @@ export async function enterWorld(app, char, hooks) {
         if (Math.hypot(o.x - p.x, o.y - p.y) > 24) { o.x = p.x; o.y = p.y; }
         const r = planPath(o.x, o.y, p.tx, p.ty); o.path = r ? r.path : null; o.tx = p.tx; o.ty = p.ty;
       } else { o.path = null; o.tx = p.x; o.ty = p.y; o.moving = !!p.m; } // older clients and practice bots
-    }
-    if (ev === 'chat') {
-      // never trust the sender's own label: no fake system lines, and the name comes from who is actually here when we know them
-      const known = others.get(p.id);
-      addMsg({ id: String(p.id), village: known ? known.meta.village : String(p.village), ch: p.ch === 'world' ? 'world' : 'village', text: String(p.text).slice(0, 120), name: (known ? known.meta.name : String(p.name).replace(/[^A-Za-z0-9_ ]/g, '')).slice(0, 16) }); if (p.ch === 'village') bubbles.set(p.id, { text: String(p.text).slice(0, 120), until: performance.now() + 5000 });
     }
   };
   const countEl = root.querySelector('#count');
@@ -425,9 +470,11 @@ export async function enterWorld(app, char, hooks) {
     if (live) { room && room.track(meta()); lastTrack = performance.now(); sayHello(); }
   };
   try {
-    room = await net.joinRoom('village:' + char.village, { me: meta(), onEvent, onPresence, onStatus, events: ['mv', 'chat'], pauseWhenHidden: 60000 });
+    room = await net.joinRoom('village:' + char.village, { me: meta(), onEvent, onPresence, onStatus, events: ['mv'], pauseWhenHidden: 60000 });
     if (!room.ready()) addMsg({ sys: true, text: 'Still connecting to your village… other players will appear when connected.' });
-    worldRoom = await net.joinRoom('world', { onEvent, events: ['chat'], pauseWhenHidden: 60000 });
+    chatRooms = await Promise.all([
+      net.joinRoom('chat:village:' + char.village, { onEvent: onChat, events: ['msg'], pauseWhenHidden: 60000 }),
+      net.joinRoom('chat:world', { onEvent: onChat, events: ['msg'], pauseWhenHidden: 60000 })]);
   } catch (e) { addMsg({ sys: true, text: 'Could not connect to other players. You can still explore.' }); console.error(e); }
 
   // ---------- loop ----------
@@ -577,7 +624,7 @@ export async function enterWorld(app, char, hooks) {
     removeEventListener('keydown', onKey); removeEventListener('resize', resize);
     document.body.classList.remove('in-world');
     try { await net.savePosition(me.x, me.y); } catch {}
-    room?.leave(); worldRoom?.leave(); duels.stop(); clearInterval(champTimer); clearInterval(injTick);
+    room?.leave(); chatRooms.forEach((r) => r.leave()); duels.stop(); clearInterval(champTimer); clearInterval(injTick);
   }
   // the page may be frozen and later restored (phones, back button): pause instead of leaving for good; joinRoom rejoins on return
   addEventListener('pagehide', (e) => { if (e.persisted) room?.pause?.(); else room?.leave(); });
