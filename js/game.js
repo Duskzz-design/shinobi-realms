@@ -1,6 +1,6 @@
 // The live village: movement, camera, other players, chat, interactions.
 import * as net from './net.js';
-import { fillTextPx, measurePx } from './pixemoji.js';
+import { fillTextPx, measurePx, crispBody } from './pixemoji.js';
 import { gearIconHTML } from './itemicons.js';
 import { buildWorld, blocked, T, MW, MH, BUILDINGS, STATUES } from './world.js';
 import { openArena, statueSprite } from './arenaui.js';
@@ -419,7 +419,7 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, chatRooms = [], lastTrack = 0, lastSave = performance.now(), savedAt = { x: 0, y: 0 };
-  const BUILD = '2026-11-13c';
+  const BUILD = '2026-11-13d';
   let newerSeen = false;
   const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   // Movement is sent as "I'm here, heading there" once per click; everyone replays the walk locally.
@@ -569,8 +569,8 @@ export async function enterWorld(app, char, hooks) {
     drawGuideArrow(sc, viewW, viewH);
     // labels + bubbles (screen space, crisp text)
     const dprNow = view.width / Math.max(1, vw);
-    const fsz = Math.round(Math.min(18, Math.max(14, (sc / dprNow) * 4.5)) * dprNow); // name labels and speech bubbles: 14–18 screen px
-    ctx.font = `${fsz}px 'Shinobi Text', monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    const fsz = crispBody(Math.min(18, Math.max(14, (sc / dprNow) * 4.5)) * dprNow); // name labels and speech bubbles: ~14–18 screen px, snapped sharp
+    ctx.font = `${fsz}px 'Pixelify Sans', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     const now = performance.now();
     for (const d of list) {
       if (!d.label) continue;

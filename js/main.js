@@ -1,4 +1,5 @@
 import * as net from './net.js';
+import { sharpenText } from './crisp.js';
 import { startPixify } from './pixemoji.js';
 import { startTitleScene } from './scene.js';
 import { enterWorld } from './game.js';
@@ -283,4 +284,5 @@ async function boot() {
   route(u);
 }
 startPixify();
+sharpenText();
 boot();

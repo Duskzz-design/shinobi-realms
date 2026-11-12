@@ -4,11 +4,11 @@
   --red: #c43c32; --redD: #8a2a22; --orange: #e8742c; --orangeD: #a8481a; --gold: #f2c14a; --green: #3a8a4a;
   --px: 4px;
   --title: 'Press Start 2P', 'Courier New', monospace;
-  --body: 'Shinobi Text', 'Courier New', monospace;
+  --body: 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
-body { letter-spacing: -0.03em; font-family: var(--body); color: var(--ink); background: #ff9a63; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+body { font-family: var(--body); color: var(--ink); background: #ff9a63; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
 #bg { position: fixed; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; z-index: 0; }
 #app { position: relative; z-index: 1; min-height: 100%; overflow-x: hidden; }
 canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
@@ -648,8 +648,8 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .modal label.lbl input { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; padding: 8px 10px; font: 16px var(--body, inherit); border: 3px solid var(--wood); background: #fffaf0; }
 .modal .err { color: #a8321f; margin: 8px 0 0; }
 
-/* ---- legibility pass (pixel text font) ---- */
-/* the pixel text font has no italic or bold of its own: use colour for emphasis instead of a fake slant */
+/* ---- legibility pass ---- */
+/* pixel fonts have no real italic: use colour for emphasis instead of a fake slant */
 .chat-log .sys, .lm.empty, .modal .q { font-style: normal; }
 .chat-log .sys { color: #6a4a2e; }
 /* keep short labels on one line */

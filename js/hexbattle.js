@@ -1,7 +1,7 @@
 // Hex tactical battle screen (missions and exams). The battle server decides every roll; this file draws and animates.
 import * as net from './net.js';
 import { paintTerrain, obstacleSprite, LINE_BIOME, VILLAGE_BIOME } from './terrain.js';
-import { fillTextPx, EMOJI_RE } from './pixemoji.js';
+import { fillTextPx, EMOJI_RE, crispBody, crispTitle } from './pixemoji.js';
 import { gearIconHTML } from './itemicons.js';
 import * as G from './engine.js';
 import { ninjaSprite, beastSprite, lookOf } from './sprites.js';
@@ -348,6 +348,9 @@ export function battleView(root, char, cfg) {
   // text size in arena units that lands at a readable size on screen (px = wanted CSS pixels)
   const tsz = (px, lo, hi) => Math.max(lo, Math.min(hi, px / sizing.disp));
   function outlined(text, x, y, fill, size, family = "'Press Start 2P', monospace") {
+    // snap to a size where every font pixel lands on whole screen pixels, and to whole-pixel positions
+    const dev = size * sizing.k, snapped = family.includes('Press') ? crispTitle(dev) : crispBody(dev);
+    size = snapped / sizing.k; x = Math.round(x * sizing.k) / sizing.k; y = Math.round(y * sizing.k) / sizing.k;
     ctx.font = `${size}px ${family}`; ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(1.5, size / 4); ctx.strokeStyle = '#1a0f08';
     ctx.strokeText(text.replace(EMOJI_RE, '   '), x, y); ctx.fillStyle = fill; fillTextPx(ctx, text, x, y);
   }
@@ -412,7 +415,7 @@ export function battleView(root, char, cfg) {
       ctx.fillStyle = th.id === MY ? '#5ccf5c' : u.team === team() ? '#9fd88a' : '#e8542c'; ctx.fillRect(x - bw / 2, by + 1, Math.max(0, bw * u.hp / u.hpmax), 2);
       const nameUp = eng.raid && u.team === team() && th.id !== MY;
       const nsz = tsz(13, 6, 10);
-      if (nameUp) { ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; outlined(u.name.slice(0, 10), x, by - 2, '#fff4dc', nsz, "'Shinobi Text', monospace"); }
+      if (nameUp) { ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; outlined(u.name.slice(0, 10), x, by - 2, '#fff4dc', nsz, "'Pixelify Sans', sans-serif"); }
       const sts = (u.effects || []).filter((e2) => e2.turns > 0 && G.STATUS[e2.k]).slice(0, 4).map((e2) => G.STATUS[e2.k].icon).join('');
       if (sts) { ctx.font = `${tsz(15, 7, 10)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; fillTextPx(ctx, sts, x, by - 1 - (nameUp ? nsz + 1 : 0)); ctx.textBaseline = 'alphabetic'; }
       if (G.hasStatus(u, 'stun')) { ctx.fillStyle = '#ffe07a'; for (let i = 0; i < 3; i++) { const a = t / 8 + i * 2.1; ctx.fillRect(x + Math.cos(a) * 7 - 1, y - spr.height - 3 + Math.sin(a) * 2, 2, 2); } }

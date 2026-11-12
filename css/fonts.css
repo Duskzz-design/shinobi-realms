@@ -1,5 +1,6 @@
 /* Self-hosted game fonts (no third-party requests).
-   Headings and buttons: Press Start 2P. Everything players read: VT323, a pixel font with unambiguous letters
-   and numbers, scaled up because it is drawn small for its size. */
+   Headings and buttons: Press Start 2P. Everything else: Pixelify Sans, our own copy with clearer
+   5, B and Z so numbers can't be misread (5 vs S, 8 vs B, 2 vs Z). */
 @font-face { font-family: 'Press Start 2P'; src: url(../assets/fonts/PressStart2P-Regular.woff) format('woff'); font-display: swap; }
-@font-face { font-family: 'Shinobi Text'; src: url(../assets/fonts/VT323.woff) format('woff'); size-adjust: 128%; font-display: swap; }
+@font-face { font-family: 'Pixelify Sans'; font-weight: 400 500; src: url(../assets/fonts/PixelifySans-Regular.woff) format('woff'); font-display: swap; }
+@font-face { font-family: 'Pixelify Sans'; font-weight: 600 900; src: url(../assets/fonts/PixelifySans-Bold.woff) format('woff'); font-display: swap; }

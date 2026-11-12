@@ -1,7 +1,9 @@
 // Landing page: the animated title scene, pixel icons, and "Continue" for returning players.
   import { startTitleScene } from './scene.js';
   import { startPixify } from './pixemoji.js';
+  import { sharpenText } from './crisp.js';
   startPixify();
+  sharpenText();
   const cv = document.getElementById('scene');
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) startTitleScene(cv);
   // returning players: say "Continue" instead of "Play free"

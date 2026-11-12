@@ -212,6 +212,12 @@ export function startPixify() {
   }).observe(document.body, { childList: true, subtree: true, characterData: true });
 }
 
+// ---------- crisp pixel-font sizes ----------
+// Pixel fonts are only sharp when each font pixel covers a whole number of screen pixels.
+// Pixelify Sans draws a pixel every 1/10.886 em; Press Start 2P every 1/8 em.
+export function crispBody(devicePx) { const u = 10.886; return Math.max(1, Math.round(devicePx / u)) * u; }
+export function crispTitle(devicePx) { return Math.max(1, Math.round(devicePx / 8)) * 8; }
+
 // ---------- canvas text ----------
 const imgs = new Map();
 function iconImg(ch) {
