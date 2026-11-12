@@ -280,7 +280,7 @@ async function boot() {
   let routed = false;
   net.onAuth((u) => { if (routed && u) return; });
   const u = await net.getUser(); routed = true;
-  if (u && location.search.includes('code=')) history.replaceState({}, '', location.pathname);
+  if (u && location.search.includes('code=')) history.replaceState({}, '', location.pathname + location.search.replace(/[?&]code=[^&]*/, '').replace(/^&/, '?'));
   route(u);
 }
 startPixify();

@@ -49,7 +49,7 @@ export async function signInGuest() {
 }
 export async function signInGoogle() {
   if (OFFLINE) { sessionStorage.setItem('mockUser', JSON.stringify({ id: 'u' + Math.random().toString(36).slice(2, 8), email: 'tester@example.com' })); location.reload(); return; }
-  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
+  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname + (TESTER ? location.search : '') } });
   if (error) throw error;
 }
 export async function signOut() {
