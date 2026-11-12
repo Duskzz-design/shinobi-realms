@@ -12,6 +12,7 @@ function sizeFor(parent) {
   if (/Press Start/.test(cs.fontFamily)) return null; // already in the heading font
   const px = parseFloat(cs.fontSize) * 0.72;            // match the height of the surrounding letters
   if (!(px > 0)) return null;
+  if (dpr < 2) return Math.max(8, Math.round(px / 4) * 4); // ordinary screens: steps of 4px (8px steps would be too coarse)
   return Math.max(8, crispTitle(px * dpr)) / dpr;
 }
 function wrapIn(root) {

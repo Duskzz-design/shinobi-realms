@@ -3,6 +3,7 @@
 import * as net from './net.js';
 import { VILLAGES, lookOf, drawNinjaFit } from './sprites.js';
 import { ELEMENT_INFO, BLOODLINES } from './engine.js';
+import { numbersInHeadingFont } from './numfont.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -47,7 +48,8 @@ export async function openProfile(root, { userId = null, name = null, onChange =
   root.querySelector('.ov.pf-wrap')?.remove();
   const el = h(`<div class="ov board-wrap pf-wrap"><div class="scroll board pf"><p class="pf-loading">Opening profile…</p></div></div>`);
   root.appendChild(el);
-  const close = () => el.remove();
+  const stopNums = numbersInHeadingFont(el); // numbers in the clear heading font, as in battle
+  const close = () => { stopNums(); el.remove(); };
   el.addEventListener('click', (e) => { if (e.target === el) close(); });
   let p;
   try { p = await net.getProfile({ userId, name }); }
