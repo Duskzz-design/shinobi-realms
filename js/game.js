@@ -73,7 +73,7 @@ export async function enterWorld(app, char, hooks) {
     <div class="menu scroll" id="menu" hidden>
       <button class="btn ghost" id="mProfile">My Ninja & training</button>
       <button class="btn ghost" id="mGear">${gearIconHTML('genin_head', 18)} Equipment</button>
-      <button class="btn ghost" id="mProfile">🥷 My profile</button>
+      <button class="btn ghost" id="mPlayer">🥷 My profile</button>
       <button class="btn ghost" id="mHelp">📖 Ninja Handbook</button>
       <a class="btn ghost" id="mDiscord" href="https://discord.gg/t2K3uCGrJv" target="_blank" rel="noopener">💬 Join our Discord</a>
       <button class="btn ghost" id="mSleep">💤 Go to sleep</button>
@@ -262,7 +262,7 @@ export async function enterWorld(app, char, hooks) {
   root.querySelector('#menuBtn').onclick = () => (menu.hidden = !menu.hidden);
   root.querySelector('#mClose').onclick = () => (menu.hidden = true);
   root.querySelector('#mOut').onclick = async () => { await leave(); net.signOut(); };
-  root.querySelector('#mProfile').onclick = () => { menu.hidden = true; openProfile(root); };
+  root.querySelector('#mPlayer').onclick = () => { menu.hidden = true; openProfile(root); };
   const plateEl = root.querySelector('.plate'); plateEl.style.cursor = 'pointer'; plateEl.title = 'My profile';
   plateEl.addEventListener('click', () => openProfile(root));
   const unmuteBtn = root.querySelector('#mUnmute');
@@ -427,7 +427,7 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, chatRooms = [], lastTrack = 0, lastSave = performance.now(), savedAt = { x: 0, y: 0 };
-  const BUILD = '2026-11-13g';
+  const BUILD = '2026-11-13h';
   let newerSeen = false;
   const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   // Movement is sent as "I'm here, heading there" once per click; everyone replays the walk locally.
