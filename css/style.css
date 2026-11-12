@@ -659,3 +659,5 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 /* nothing in the pixel heading font smaller than 10px */
 .btn.small, .tst .btn small { font-size: 10px; }
 .tinfo b { white-space: nowrap; }
+/* battle info chips may wrap rather than run off the card */
+.mu { white-space: normal; overflow-wrap: anywhere; }

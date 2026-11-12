@@ -66,7 +66,7 @@ export function battleView(root, char, cfg) {
       <button class="btn small primary" data-end>End turn ▶</button><button class="btn small ghost" data-flee>🏃</button></div>
   </div>`);
   root.appendChild(el);
-  const cv = el.querySelector('canvas'), ctx = cv.getContext('2d'), info = el.querySelector('.hx-info'), banner = el.querySelector('.hx-banner');
+  const cv = el.querySelector('canvas'), ctx = cv.getContext('2d'), sizing = { k: 1, disp: 1 }, info = el.querySelector('.hx-info'), banner = el.querySelector('.hx-banner');
   let sel = null, hover = null, busy = false, alive = true, tab = null, t = 0;
   const fx = { floats: [], proj: null, flash: null, anim: {} };
   const mine = () => me().moves.filter((id) => id !== 'focus' && id !== 'guard' && !G.MOVES[id]?.counter);
@@ -250,7 +250,12 @@ export function battleView(root, char, cfg) {
 
   // ---------- event animation ----------
   const unit = (who) => eng.units[who];
-  const float = (who, text, color, dy = 0) => { const u = unit(who); const [x, y] = hx(u.c, u.r); fx.floats.push({ x, y: y - 26 - dy, text, color, life: 50 }); };
+  // floating numbers and words over a unit: several at once stack upwards instead of piling on top of each other
+  const float = (who, text, color, dy = 0, big = false) => {
+    const u = unit(who); const [x, y] = hx(u.c, u.r), life = big ? 60 : 50;
+    const slot = fx.floats.filter((f) => f.who === who && f.life > f.max - 30).length;
+    fx.floats.push({ who, x, y: y - 26, text, color, life, max: life, big, slot });
+  };
   function showBanner(text, cls) { banner.textContent = text; banner.className = 'hx-banner ' + cls; banner.hidden = false; setTimeout(() => (banner.hidden = true), 900); }
   // animations run on screen refreshes, which stop in a hidden tab: never let them hold up the fight
   const pause = (ms) => wait(document.hidden ? 0 : ms);
@@ -276,7 +281,7 @@ export function battleView(root, char, cfg) {
           if (ev.aoe) { fx.flash = { at: to, r: ev.aoe, col, life: 22 }; await pause(200); }
         }
         if (ev.focus) { float(ev.who, `+${ev.focus} 💪💧`, '#7cc4ec'); lg.push(`+${ev.focus} stamina and chakra`); }
-        if (ev.heal) { u.hp = Math.min(u.hpmax, u.hp + ev.heal); float(ev.who, `+${ev.heal}`, '#7ce08a'); lg.push(`healed ${ev.heal}`); }
+        if (ev.heal) { u.hp = Math.min(u.hpmax, u.hp + ev.heal); float(ev.who, `+${ev.heal}`, '#7ce08a', 0, true); lg.push(`healed ${ev.heal}`); }
         if (ev.self) lg.push(ev.self.map((k) => `${G.STATUS[k].icon} ${G.STATUS[k].label}`).join(', '));
         if (ev.cured) { float(ev.who, ev.cured.length ? '✨ Cleansed' : '✨ Nothing to clear', '#9fe0a0', 14); u.effects = (u.effects || []).filter((x) => !ev.cured.includes(x.k)); }
         if (ev.self) ev.self.forEach((k, i) => setTimeout(() => float(ev.who, G.STATUS[k].icon + ' ' + G.STATUS[k].label, '#ffe07a', 12 + i * 10), i * 150));
@@ -285,7 +290,7 @@ export function battleView(root, char, cfg) {
           if (hit.dispelled) { float(hit.who, hit.dispelled.length ? '🚫 Dispelled!' : '🚫 Nothing to dispel', '#e0a0ff'); const v = unit(hit.who); v.effects = (v.effects || []).filter((x) => !hit.dispelled.includes(x.k)); continue; }
           if (!hit.hit) { float(hit.who, hit.dodge ? 'DODGE' : 'MISS', hit.dodge ? '#9fe0a0' : '#c9ccd4'); lg.push(hit.dodge ? `${whoN(hit.who)} dodged` : `missed ${hit.who === MY ? 'you' : whoN(hit.who)}`); continue; }
           const v = unit(hit.who); v.hp = Math.max(0, v.hp - hit.dmg); fx.hurt = { who: hit.who, start: t };
-          float(hit.who, hit.crit ? `CRIT ${hit.dmg}` : String(hit.dmg), hit.crit ? '#ffe07a' : hit.who === MY ? '#ff8f7a' : '#fff4dc');
+          float(hit.who, hit.crit ? `CRIT -${hit.dmg}` : `-${hit.dmg}`, hit.crit ? '#ffe07a' : hit.who === MY ? '#ff8f7a' : '#fff4dc', 0, true);
           if (hit.mult > 1) float(hit.who, 'Super effective!', '#ffb04a', 14); else if (hit.mult < 1) float(hit.who, 'Resisted', '#9ab0c0', 14);
           lg.push(`${hit.who === MY ? 'hit you' : 'hit ' + whoN(hit.who)} for <b class="dmg">${hit.dmg}</b>${hit.crit ? ' <b class="crit">CRIT</b>' : ''}${hit.mult > 1 ? ' · super effective' : hit.mult < 1 ? ' · resisted' : ''}${(hit.effects || []).length ? ' · ' + hit.effects.map((k) => `${G.STATUS[k].icon} ${G.STATUS[k].label}`).join(', ') : ''}${hit.drain ? ` · drained ${hit.drain}` : ''}`);
           if (hit.drain) { u.hp = Math.min(u.hpmax, u.hp + hit.drain); float(ev.who, `🩸 +${hit.drain}`, '#7ce08a', 20); }
@@ -299,7 +304,7 @@ export function battleView(root, char, cfg) {
         say(`${ev.who === MY ? 'You use' : esc(name) + ' uses'} <b>${gearIconHTML(ev.item, 18, it.icon)} ${esc(ev.name)}</b>!`);
         if (u.items && u.items[ev.item] > 0) u.items[ev.item]--;
         fx.flash = { at: [u.c, u.r], r: ev.item === 'smoke' ? 1 : 0, col: ev.item === 'smoke' ? '#c9ccd4' : '#7ce08a', life: 18 };
-        if (ev.heal) { u.hp = Math.min(u.hpmax, u.hp + ev.heal); float(ev.who, `+${ev.heal}`, '#7ce08a'); }
+        if (ev.heal) { u.hp = Math.min(u.hpmax, u.hp + ev.heal); float(ev.who, `+${ev.heal}`, '#7ce08a', 0, true); }
         if (ev.focus) float(ev.who, `+${ev.focus} 💪💧`, '#7cc4ec');
         if (ev.cured && ev.cured.length) float(ev.who, '✨ Cured', '#9fe0a0', 14);
         log(`${whoN(ev.who)} used ${gearIconHTML(ev.item, 16, it.icon)} <b>${esc(ev.name)}</b>${ev.heal ? `: healed ${ev.heal}` : ev.focus ? `: +${ev.focus} stamina and chakra` : ev.cured && ev.cured.length ? ': cured' : ''}.`, sideOf(ev.who));
@@ -331,8 +336,25 @@ export function battleView(root, char, cfg) {
   const seed = [...String(S0.mission?.id || S0.id || 'x')].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7);
   const ground = paintTerrain(biome, centres, S, HW, W, H, seed);
   function rock(x, y, c, r) { const img = obstacleSprite(biome, (c * 7 + r * 3) % 2); ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y + 7 - img.height)); }
+  // The arena is drawn on a 320x200 art grid, but the canvas itself matches the real screen pixels:
+  // sprites stay pixel-art (nearest-neighbour), while numbers and names are drawn sharp at full resolution.
+  function fitCanvas() {
+    const r = cv.getBoundingClientRect(); if (!r.width) return;
+    const dpr = window.devicePixelRatio || 1, w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    sizing.k = w / W; sizing.disp = r.width / W;
+  }
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(fitCanvas) : null; ro?.observe(cv);
+  // text size in arena units that lands at a readable size on screen (px = wanted CSS pixels)
+  const tsz = (px, lo, hi) => Math.max(lo, Math.min(hi, px / sizing.disp));
+  function outlined(text, x, y, fill, size, family = "'Press Start 2P', monospace") {
+    ctx.font = `${size}px ${family}`; ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(1.5, size / 4); ctx.strokeStyle = '#1a0f08';
+    ctx.strokeText(text.replace(EMOJI_RE, '   '), x, y); ctx.fillStyle = fill; fillTextPx(ctx, text, x, y);
+  }
   function draw() {
     if (!alive) return; t++;
+    if (!cv.width || cv.width === W) fitCanvas();
+    ctx.setTransform(sizing.k, 0, 0, sizing.k, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(ground, 0, 0);
     const p = me(), e = foe(), myTurn = eng.side === MY && !busy && p.hp > 0;
@@ -389,9 +411,10 @@ export function battleView(root, char, cfg) {
       const bw = u.boss ? 34 : 22, by = y + 7 - sh - 5; ctx.fillStyle = '#24160e'; ctx.fillRect(x - bw / 2 - 1, by, bw + 2, 4);
       ctx.fillStyle = th.id === MY ? '#5ccf5c' : u.team === team() ? '#9fd88a' : '#e8542c'; ctx.fillRect(x - bw / 2, by + 1, Math.max(0, bw * u.hp / u.hpmax), 2);
       const nameUp = eng.raid && u.team === team() && th.id !== MY;
-      if (nameUp) { ctx.font = "6px 'Press Start 2P', monospace"; ctx.textAlign = 'center'; ctx.fillStyle = '#fff4dc'; ctx.fillText(u.name.slice(0, 8), x, by - 2); }
+      const nsz = tsz(13, 6, 10);
+      if (nameUp) { ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; outlined(u.name.slice(0, 10), x, by - 2, '#fff4dc', nsz, "'Shinobi Text', monospace"); }
       const sts = (u.effects || []).filter((e2) => e2.turns > 0 && G.STATUS[e2.k]).slice(0, 4).map((e2) => G.STATUS[e2.k].icon).join('');
-      if (sts) { ctx.font = '7px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; fillTextPx(ctx, sts, x, by - (nameUp ? 8 : 0)); ctx.textBaseline = 'alphabetic'; }
+      if (sts) { ctx.font = `${tsz(15, 7, 10)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; fillTextPx(ctx, sts, x, by - 1 - (nameUp ? nsz + 1 : 0)); ctx.textBaseline = 'alphabetic'; }
       if (G.hasStatus(u, 'stun')) { ctx.fillStyle = '#ffe07a'; for (let i = 0; i < 3; i++) { const a = t / 8 + i * 2.1; ctx.fillRect(x + Math.cos(a) * 7 - 1, y - spr.height - 3 + Math.sin(a) * 2, 2, 2); } }
     }
     // projectile
@@ -404,10 +427,19 @@ export function battleView(root, char, cfg) {
       else { const s = pr.big ? 6 : 4; ctx.beginPath(); ctx.arc(x, y, s, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(x - 1, y - 2, 2, 2); }
       if (pr.k >= 1) { fx.proj = null; pr.done(); }
     }
-    ctx.textAlign = 'center'; ctx.font = "8px 'Press Start 2P', monospace";
+    ctx.textAlign = 'center';
     if (fx.embers) { fx.embers = fx.embers.filter((e) => e.life-- > 0); for (const e of fx.embers) { ctx.globalAlpha = e.life / 30; ctx.fillStyle = e.col; ctx.fillRect(Math.round(e.x + Math.sin(e.life / 4) * 2), Math.round(e.y - (30 - e.life) * 1.2), 1, 2); } ctx.globalAlpha = 1; }
     fx.floats = fx.floats.filter((f) => f.life-- > 0);
-    for (const f of fx.floats) { const y = f.y - (50 - f.life) * 0.4; ctx.fillStyle = '#24160e'; ctx.fillText(f.text.replace(EMOJI_RE, '   '), f.x + 1, y + 1); ctx.fillStyle = f.color; fillTextPx(ctx, f.text, f.x, y); }
+    const fsz = tsz(16, 7, 12);
+    for (const f of fx.floats) {
+      const max = f.max, size = fsz * (f.big ? 1.25 : 1), pop = f.life > max - 6 ? 1 + (f.life - (max - 6)) * 0.06 : 1; // a quick pop when it appears
+      const y = f.y - (max - f.life) * 0.4 - f.slot * fsz * 1.35;
+      ctx.font = `${size}px 'Press Start 2P', monospace`;
+      const half = ctx.measureText(f.text).width / 2 + 3, x = Math.max(half, Math.min(W - half, f.x)); // keep it on screen
+      ctx.globalAlpha = f.life < 10 ? f.life / 10 : 1;
+      outlined(f.text, x, Math.max(size + 2, y), f.color, size * pop);
+      ctx.globalAlpha = 1;
+    }
     requestAnimationFrame(draw);
   }
   requestAnimationFrame(draw);
@@ -426,7 +458,7 @@ export function battleView(root, char, cfg) {
     }, 500);
   }
 
-  function finish() { alive = false; el.remove(); }
+  function finish() { alive = false; ro?.disconnect(); el.remove(); }
   function showResult(res) { cfg.result(res, finish, el); }
 }
 
