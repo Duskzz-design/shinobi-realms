@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <script src="js/oauth-forward.js"></script>
 <title>Shinobi Realms · Free Pixel-Art Ninja MMORPG in Your Browser</title>
 <meta name="description" content="Shinobi Realms is a free ninja MMORPG you play in your browser, on desktop or phone. Join a hidden village, train from Academy student to Jonin, and fight in tactical turn-based battles, duels, boss raids and village wars.">
@@ -31,9 +31,9 @@
 <meta name="twitter:description" content="Train your ninja, master tactical hex battles, and fight for your village. Free, no download.">
 <meta name="twitter:image" content="https://duskzz-design.github.io/shinobi-realms/assets/og-image.png">
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="preload" href="assets/fonts/VT323.woff" as="font" type="font/woff" crossorigin>
+<link rel="preload" href="assets/fonts/PressStart2P-Regular.woff" as="font" type="font/woff" crossorigin>
+<link rel="stylesheet" href="css/fonts.css">
 <link rel="preload" as="image" href="assets/shots/village.webp" type="image/webp">
 <link rel="stylesheet" href="css/landing.css">
 

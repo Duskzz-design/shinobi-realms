@@ -419,7 +419,7 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, chatRooms = [], lastTrack = 0, lastSave = performance.now(), savedAt = { x: 0, y: 0 };
-  const BUILD = '2026-11-13a';
+  const BUILD = '2026-11-13b';
   let newerSeen = false;
   const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   // Movement is sent as "I'm here, heading there" once per click; everyone replays the walk locally.
@@ -568,8 +568,9 @@ export async function enterWorld(app, char, hooks) {
     for (const d of list) d.draw();
     drawGuideArrow(sc, viewW, viewH);
     // labels + bubbles (screen space, crisp text)
-    const fsz = Math.max(11, Math.round(sc * 3.3));
-    ctx.font = `${fsz}px 'Pixelify Sans', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    const dprNow = view.width / Math.max(1, vw);
+    const fsz = Math.round(Math.min(18, Math.max(14, (sc / dprNow) * 4.5)) * dprNow); // name labels and speech bubbles: 14–18 screen px
+    ctx.font = `${fsz}px 'Shinobi Text', monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     const now = performance.now();
     for (const d of list) {
       if (!d.label) continue;

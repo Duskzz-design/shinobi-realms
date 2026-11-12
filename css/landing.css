@@ -3,11 +3,11 @@
   --ink: #3a2414; --ink2: #6a4a2e; --paper: #f7e8c8; --paper2: #ecd5a6; --wood: #7a4a24; --woodD: #4e2c12;
   --red: #c43c32; --redD: #8a2a22; --orange: #e8742c; --orangeD: #a8481a; --gold: #f2c14a;
   --title: 'Press Start 2P', 'Courier New', monospace;
-  --body: 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
+  --body: 'Shinobi Text', 'Courier New', monospace;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; font-family: var(--body); color: var(--ink); background: var(--paper); font-size: 18px; line-height: 1.45; -webkit-tap-highlight-color: transparent; }
+body { margin: 0; letter-spacing: -0.03em; font-family: var(--body); color: var(--ink); background: var(--paper); font-size: 18px; line-height: 1.45; -webkit-tap-highlight-color: transparent; }
 img { display: block; max-width: 100%; height: auto; image-rendering: pixelated; }
 a { color: var(--redD); }
 h2 { font-family: var(--title); font-size: clamp(16px, 3.4vw, 24px); text-align: center; margin: 0 0 32px; line-height: 1.5; }

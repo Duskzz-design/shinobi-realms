@@ -4,11 +4,11 @@
   --red: #c43c32; --redD: #8a2a22; --orange: #e8742c; --orangeD: #a8481a; --gold: #f2c14a; --green: #3a8a4a;
   --px: 4px;
   --title: 'Press Start 2P', 'Courier New', monospace;
-  --body: 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
+  --body: 'Shinobi Text', 'Courier New', monospace;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
-body { font-family: var(--body); color: var(--ink); background: #ff9a63; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+body { letter-spacing: -0.03em; font-family: var(--body); color: var(--ink); background: #ff9a63; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
 #bg { position: fixed; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; z-index: 0; }
 #app { position: relative; z-index: 1; min-height: 100%; overflow-x: hidden; }
 canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
@@ -69,7 +69,7 @@ button { font-family: inherit; }
 .tag { font-size: 18px; color: #fff; text-shadow: 2px 2px 0 var(--ink); margin: 16px 0 0; }
 .title-card { width: min(380px, calc(100vw - 56px)); text-align: center; margin-bottom: 4vh; }
 .fine { font-size: 14px; color: var(--ink2); margin: 12px 0 0; }
-.credits { font-family: var(--title); font-size: 8px; color: #fff; text-shadow: 2px 2px 0 var(--ink); margin-bottom: 8px; }
+.credits { font-family: var(--title); font-size: 10px; color: #fff; text-shadow: 2px 2px 0 var(--ink); margin-bottom: 8px; }
 .credits a { color: #fff4dc; }
 
 /* ---------- creator ---------- */
@@ -273,7 +273,7 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .tst.jt.locked { opacity: .55; }
 .tst .btn small { font-family: var(--body); font-size: 11px; }
 .gbar.sta i { background: #e8a42c; }
-.mv .jl { font-family: var(--title); font-size: 8px; color: var(--wood); vertical-align: middle; }
+.mv .jl { font-family: var(--title); font-size: 10px; color: var(--wood); vertical-align: middle; }
 .toast.ok { box-shadow: 0 0 0 4px var(--green), 0 0 0 8px var(--ink); }
 .tbtns { display: flex; flex-direction: column; gap: 2px; flex: none; }
 .tbtns .btn { margin: 4px; min-width: 64px; }
@@ -298,28 +298,28 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .elc { display: inline-block; font-size: 12px; font-weight: 700; padding: 0 5px; background: color-mix(in srgb, var(--c) 25%, #fff); box-shadow: 0 0 0 2px var(--c); color: var(--ink); white-space: nowrap; }
 .aprow { display: flex; align-items: center; gap: 3px; margin-top: 4px; min-height: 14px; }
 .aprow i { width: 10px; height: 10px; background: #d8c49a; box-shadow: 0 0 0 2px var(--ink); transform: rotate(45deg); margin: 0 2px; }
-.aprow i.on { background: #ffd23a; } .aprow b { font-family: var(--title); font-size: 8px; margin-left: 6px; } .aprow .wait { margin: 0; color: var(--red); }
+.aprow i.on { background: #ffd23a; } .aprow b { font-family: var(--title); font-size: 10px; margin-left: 6px; } .aprow .wait { margin: 0; color: var(--red); }
 .sts { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; min-height: 4px; }
 .sti { font-size: 13px; background: #fff1b8; padding: 0 3px; box-shadow: 0 0 0 2px var(--gold); } .sti.bad { background: #f4d0e8; box-shadow: 0 0 0 2px #9a5ad0; }
-.sti small { font-size: 9px; font-weight: 700; margin-left: 1px; }
+.sti small { font-size: 11px; font-weight: 700; margin-left: 1px; }
 .hx-info { background: #fff4dc; color: var(--ink); padding: 7px 12px; font-size: 15px; min-height: 52px; box-shadow: inset 0 -3px 0 #d8c49a; }
 .hx-info .good { color: var(--green); font-weight: 700; } .hx-info .bad { color: var(--red); font-weight: 700; } .hx-info small { color: var(--ink2); }
 .hx-moves { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; padding: 8px; background: var(--paper); flex: 1; align-content: start; }
 .mv.hx { margin: 0; } .mv.hx.sel { background: #fff1b8; box-shadow: 0 0 0 3px var(--ink), 0 0 0 6px #ffd23a, inset 6px 0 0 var(--c); }
 .mv .ap { font-style: normal; font-weight: 700; color: var(--wood); }
 .hx-bar { display: flex; gap: 6px; padding: 8px; padding-bottom: max(8px, env(safe-area-inset-bottom)); background: var(--wood); }
-.hx-bar .btn { flex: 1; font-size: 11px; } .hx-bar [data-flee] { flex: 0 0 auto; } .hx-bar .btn small { display: block; font-size: 8px; opacity: .8; } .hx-bar .btn.sel { box-shadow: 0 0 0 3px #ffd23a; }
+.hx-bar .btn { flex: 1; font-size: 11px; } .hx-bar [data-flee] { flex: 0 0 auto; } .hx-bar .btn small { display: block; font-size: 10px; opacity: .8; } .hx-bar .btn.sel { box-shadow: 0 0 0 3px #ffd23a; }
 .blood { background: linear-gradient(#fbe3f0, #fff4dc); box-shadow: 0 0 0 3px #c43c8a; padding: 8px; margin: 8px 0; }
 .blood.none { background: #f3ead6; box-shadow: 0 0 0 3px #8a7a5a; } .blood h4 { margin: 2px 0 4px; font-size: 17px; } .blood p { font-size: 15px; margin: 0; }
 .bico { font-size: 40px; animation: pop 1s steps(5) infinite alternate; } @keyframes pop { to { transform: scale(1.15); } }
 .elbox { background: #fff8e6; box-shadow: 0 0 0 3px var(--gold); padding: 8px; margin: 6px 2px 10px; display: flex; flex-direction: column; gap: 4px; }
-.elbox small { color: var(--ink2); } .elbox .bl { color: #8a2a6a; } .el2b { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0; } .el2b .btn small { font-size: 9px; }
+.elbox small { color: var(--ink2); } .elbox .bl { color: #8a2a6a; } .el2b { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0; } .el2b .btn small { font-size: 10px; }
 @media (max-width: 760px) {
   .hx-arena canvas { max-height: none; }
   .hx-cards { grid-template-columns: 1.2fr 1fr; gap: 5px; padding: 5px; } .hx-card .nm { font-size: 13px; } .elc { font-size: 10px; }
   .hx-info { font-size: 13px; padding: 5px 9px; min-height: 46px; }
   .hx-moves { grid-template-columns: 1fr 1fr; gap: 5px; padding: 6px; } .mv.hx { padding: 8px 6px 8px 13px; } .mv.hx b { font-size: 13px; } .mv.hx small { font-size: 11px; }
-  .hx-bar .btn { font-size: 9px; padding: 10px 6px; }
+  .hx-bar .btn { font-size: 10px; padding: 10px 6px; }
 }
 .elbox .elc { width: fit-content; }
 @media (max-width: 760px) { .hexb .b-top { font-size: 14px; gap: 6px; } .hexb .b-top .rnd { font-size: 11px; } }
@@ -419,7 +419,7 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .kg-up .ic, .kg-t .ic { font-size: 22px; text-align: center; }
 .kg-up .nm, .kg-t .nm { display: flex; flex-direction: column; min-width: 0; } .kg-up small, .kg-t small { font-size: 13px; color: var(--ink2); }
 .kg-up .lv { display: flex; gap: 2px; } .kg-up .lv i { width: 8px; height: 14px; background: #e6d2a8; box-shadow: 0 0 0 1px var(--ink2); } .kg-up .lv i.on { background: var(--gold); }
-.kg-up .max { font-family: var(--title); font-size: 9px; color: var(--green); } .kg-up .cost { font-size: 12px; color: var(--ink2); white-space: nowrap; }
+.kg-up .max { font-family: var(--title); font-size: 10px; color: var(--green); } .kg-up .cost { font-size: 12px; color: var(--ink2); white-space: nowrap; }
 .kg-t .war { font-size: 13px; color: var(--red); font-weight: 700; } .kg-t .cd { font-size: 13px; color: #2f7fc4; } .kg-t .open { font-size: 13px; color: var(--green); }
 .kg-top { display: flex; flex-direction: column; gap: 3px; margin: 4px 3px; }
 .kg-top div { display: grid; grid-template-columns: 26px 1fr auto; background: #fffaf0; padding: 3px 8px; box-shadow: 0 0 0 1px #d8c49a; }
@@ -647,3 +647,15 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .modal label.lbl { display: block; margin: 12px 0; }
 .modal label.lbl input { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; padding: 8px 10px; font: 16px var(--body, inherit); border: 3px solid var(--wood); background: #fffaf0; }
 .modal .err { color: #a8321f; margin: 8px 0 0; }
+
+/* ---- legibility pass (pixel text font) ---- */
+/* the pixel text font has no italic or bold of its own: use colour for emphasis instead of a fake slant */
+.chat-log .sys, .lm.empty, .modal .q { font-style: normal; }
+.chat-log .sys { color: #6a4a2e; }
+/* keep short labels on one line */
+.plate small, .lo-j b { white-space: nowrap; }
+.lo-j b { overflow: hidden; text-overflow: ellipsis; }
+.lo-j.on b::after { content: '✓'; margin-left: 4px; }
+/* nothing in the pixel heading font smaller than 10px */
+.btn.small, .tst .btn small { font-size: 10px; }
+.tinfo b { white-space: nowrap; }

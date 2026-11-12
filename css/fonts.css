@@ -1,0 +1,5 @@
+/* Self-hosted game fonts (no third-party requests).
+   Headings and buttons: Press Start 2P. Everything players read: VT323, a pixel font with unambiguous letters
+   and numbers, scaled up because it is drawn small for its size. */
+@font-face { font-family: 'Press Start 2P'; src: url(../assets/fonts/PressStart2P-Regular.woff) format('woff'); font-display: swap; }
+@font-face { font-family: 'Shinobi Text'; src: url(../assets/fonts/VT323.woff) format('woff'); size-adjust: 128%; font-display: swap; }

@@ -172,7 +172,7 @@ export function openWarField(root, char, war, terrName, hooks = {}) {
       ctx.drawImage(spr, Math.round((n.x - spr.width / 2) * sc), Math.round((n.y - spr.height + 1) * sc), spr.width * sc, spr.height * sc);
       ctx.globalAlpha = 1;
       const enemy = mySide && m.side && m.side !== mySide;
-      ctx.font = `${fsz}px 'Pixelify Sans', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.font = `${fsz}px 'Shinobi Text', monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       const label = (m.asleep ? '💤 ' : '') + m.name, w = measurePx(ctx, label) + 8, sx = n.x * sc, sy = (n.y - 32) * sc;
       ctx.fillStyle = enemy ? 'rgba(160,30,24,.85)' : isMe ? 'rgba(36,22,14,.8)' : 'rgba(36,22,14,.6)'; ctx.fillRect(sx - w / 2, sy - fsz - 2, w, fsz + 4);
       ctx.fillStyle = isMe ? '#ffe07a' : '#fff4dc'; fillTextPx(ctx, label, sx, sy + 1);
