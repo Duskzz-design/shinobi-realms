@@ -21,7 +21,10 @@ TARGETS = {
 }
 
 def run(*cmd, cwd=None):
-    return subprocess.run(cmd, cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
+    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    if r.returncode:
+        raise subprocess.CalledProcessError(r.returncode, cmd, r.stdout, r.stderr + f'\n[{" ".join(cmd)}] {r.stderr.strip()}')
+    return r.stdout.strip()
 
 args = sys.argv[1:]
 target = 'live' if 'live' in args else 'test'
