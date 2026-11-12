@@ -3,10 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<script>
-  // Google sign-in can land here instead of on the game page: send it straight on to the game.
-  (function () { var q = location.search + location.hash; if (/[?&#](code|access_token|error_description)=/.test(q)) location.replace('play/' + location.search + location.hash); })();
-</script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<script src="js/oauth-forward.js"></script>
 <title>Shinobi Realms · Free Pixel-Art Ninja MMORPG in Your Browser</title>
 <meta name="description" content="Shinobi Realms is a free ninja MMORPG you play in your browser, on desktop or phone. Join a hidden village, train from Academy student to Jonin, and fight in tactical turn-based battles, duels, boss raids and village wars.">
 <meta name="keywords" content="ninja game, ninja MMORPG, browser MMORPG, free online RPG, pixel art RPG, turn-based tactics, shinobi game, anime ninja game">
@@ -179,17 +177,6 @@
   <p><a href="play/">Play</a> · <a href="https://discord.gg/t2K3uCGrJv" target="_blank" rel="noopener">Discord</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p>
 </footer>
 
-<script type="module">
-  import { startTitleScene } from './js/scene.js';
-  import { startPixify } from './js/pixemoji.js';
-  startPixify();
-  const cv = document.getElementById('scene');
-  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) startTitleScene(cv);
-  // returning players: say "Continue" instead of "Play free"
-  try {
-    if (Object.keys(localStorage).some((k) => k.startsWith('sb-') && k.endsWith('-auth-token')))
-      document.querySelectorAll('.cta').forEach((a) => { a.textContent = a.classList.contains('small') ? 'Continue' : '▶ Continue your ninja'; });
-  } catch {}
-</script>
+<script type="module" src="js/landing.js"></script>
 </body>
 </html>

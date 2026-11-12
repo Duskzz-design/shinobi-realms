@@ -369,7 +369,7 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, worldRoom = null, lastTrack = 0, lastSave = performance.now(), savedAt = { x: 0, y: 0 };
-  const BUILD = '2026-11-12d';
+  const BUILD = '2026-11-12e';
   let newerSeen = false;
   const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   // Movement is sent as "I'm here, heading there" once per click; everyone replays the walk locally.
@@ -386,13 +386,20 @@ export async function enterWorld(app, char, hooks) {
         const r = planPath(o.x, o.y, p.tx, p.ty); o.path = r ? r.path : null; o.tx = p.tx; o.ty = p.ty;
       } else { o.path = null; o.tx = p.x; o.ty = p.y; o.moving = !!p.m; } // older clients and practice bots
     }
-    if (ev === 'chat') { addMsg({ ...p, text: String(p.text).slice(0, 120), name: String(p.name).slice(0, 16) }); if (p.ch === 'village') bubbles.set(p.id, { text: String(p.text).slice(0, 120), until: performance.now() + 5000 }); }
+    if (ev === 'chat') {
+      // never trust the sender's own label: no fake system lines, and the name comes from who is actually here when we know them
+      const known = others.get(p.id);
+      addMsg({ id: String(p.id), village: known ? known.meta.village : String(p.village), ch: p.ch === 'world' ? 'world' : 'village', text: String(p.text).slice(0, 120), name: (known ? known.meta.name : String(p.name).replace(/[^A-Za-z0-9_ ]/g, '')).slice(0, 16) }); if (p.ch === 'village') bubbles.set(p.id, { text: String(p.text).slice(0, 120), until: performance.now() + 5000 });
+    }
   };
   const countEl = root.querySelector('#count');
   const onPresence = (list) => {
     const seen = new Set();
-    for (const m of list) {
-      if (!m || m.id === me.id) continue; seen.add(m.id);
+    for (const raw of list) {
+      if (!raw || raw.id === me.id || typeof raw.id !== 'string') continue;
+      // other players' data comes from their browsers: keep it to sane sizes before we use it
+      const m = { ...raw, name: String(raw.name || '?').replace(/[^A-Za-z0-9_ ]/g, '').slice(0, 16) || '?', title: raw.title ? String(raw.title).slice(0, 32) : null, x: +raw.x || 0, y: +raw.y || 0 };
+      seen.add(m.id);
       if (!newerSeen && m.v && m.v > BUILD) { newerSeen = true; addMsg({ sys: true, text: 'A newer version of the game is out. Refresh the page to update.' }); }
       if (!others.has(m.id)) { sayHello(); others.set(m.id, { meta: m, x: m.x, y: m.y, tx: m.x, ty: m.y, dir: m.dir || 0, moving: false, anim: 0, last: performance.now() }); addMsg({ sys: true, text: `${m.name} arrived.`, ch: 'village' }); }
       else others.get(m.id).meta = m;
