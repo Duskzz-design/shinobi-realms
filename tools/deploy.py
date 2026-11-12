@@ -20,7 +20,7 @@ run('git', 'worktree', 'add', '-f', os.path.join(tmp, 'site'), 'HEAD', '--detach
 site = os.path.join(tmp, 'site')
 try:
     js_import = re.compile(r"""((?:import|export)\s[^'"]*?from\s*|import\s*\(\s*|import\s+)(['"])(\.{1,2}/[^'"?]+\.js)\2""")
-    html_ref = re.compile(r"""((?:src|href)=")((?:\.\./|\./)?(?:js|css)/[^"?]+\.(?:js|css))(")""")
+    html_ref = re.compile(r"""((?:src|href)=")((?:\.\./|\./)?(?:js/[^"?]+\.js|css/[^"?]+\.css|assets/fonts/[^"?]+\.ttf))(")""")
     css_ref = re.compile(r"""(url\()(\.\./assets/fonts/[^)?]+)(\))""")
     for d, _, files in os.walk(site):
         if '.git' in d or '/.dev' in d or '/tools' in d:
