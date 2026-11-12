@@ -89,7 +89,7 @@ try:
             if os.path.exists(os.path.join(site, f)): os.remove(os.path.join(site, f))
     run('git', 'add', '-A', cwd=site)
     run('git', '-c', 'user.name=Duskzz-design', '-c', 'user.email=chinkstanator@gmail.com', 'commit', '-q', '-m', f'Publish {ver}', cwd=site)
-    run('git', 'push', '-q', '-f', cfg['remote'], 'HEAD:gh-pages', cwd=site)
+    run('git', 'push', '-q', '-f', cfg['remote'], 'HEAD:refs/heads/gh-pages', cwd=site)
     print(f'published {ver} to {target.upper()} (https://{cfg["domain"]})')
 finally:
     run('git', 'worktree', 'remove', '--force', site, cwd=root)
