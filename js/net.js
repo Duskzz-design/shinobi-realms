@@ -77,9 +77,59 @@ export async function reportChat(id, reason) {
   return data;
 }
 
+// ---------- profiles, pictures and badges ----------
+export function avatarURL(userId, at) {
+  if (!at) return null;
+  if (OFFLINE) return sessionStorage.getItem('mockAvatar');
+  return `${SUPABASE_URL}/storage/v1/object/public/avatars/${userId}/avatar.webp?v=${Date.parse(at) || 0}`;
+}
+export async function getProfile({ userId = null, name = null } = {}) {
+  if (OFFLINE) {
+    const c = JSON.parse(sessionStorage.getItem('mockChar') || 'null') || {};
+    const mine = !userId && !name || userId === c.user_id || (name && name.toLowerCase() === String(c.name).toLowerCase());
+    const base = mine ? c : { user_id: userId || 'bot', name: name || 'Ren', level: 14, rank: 'Genin', village: c.village || 'pine', appearance: { hair: 2, outfit: 1 } };
+    return { user_id: base.user_id, name: base.name, level: base.level || 1, rank: base.rank, village: base.village, title: base.title || null, element: base.element || 'fire', element2: base.element2 || null,
+      bloodline: base.bloodline || null, since: (base.created_at || new Date().toISOString()).slice(0, 10), arena_points: base.arena_points || 0, mission_wins: base.mission_wins || 0,
+      look: base.appearance || {}, gear: base.gear || {}, stats: { strength: base.strength || 5, agility: base.agility || 5, intelligence: base.intelligence || 5, willpower: base.willpower || 5 },
+      kage: false, anbu: null, quests_done: Object.values(base.quests || {}).filter((q) => q.done).length, quests_total: 6,
+      avatar_at: mine ? sessionStorage.getItem('mockAvatarAt') : null, avatar_hidden: false, can_upload: mine ? true : null,
+      badges: mine ? [{ id: 'legend_iron', at: new Date().toISOString() }] : [{ id: 'kage', at: new Date().toISOString() }], me: mine };
+  }
+  const { data, error } = await sb.rpc('get_profile', { p_user: userId, p_name: name });
+  if (error) throw new Error(error.message);
+  return data;
+}
+export async function uploadAvatar(blob) {
+  if (OFFLINE) {
+    const url = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
+    const at = new Date().toISOString(); sessionStorage.setItem('mockAvatar', url); sessionStorage.setItem('mockAvatarAt', at); return { avatar_at: at };
+  }
+  const u = await getUser(); if (!u) throw new Error('Sign in first.');
+  const { error } = await sb.storage.from('avatars').upload(`${u.id}/avatar.webp`, blob, { upsert: true, contentType: blob.type || 'image/webp', cacheControl: '3600' });
+  if (error) throw new Error(/row-level|policy|Unauthorized/i.test(error.message) ? 'Picture uploads are turned off for your account.' : error.message);
+  const { data, error: e2 } = await sb.rpc('set_avatar');
+  if (e2) throw new Error(e2.message);
+  return data;
+}
+export async function removeAvatar() {
+  if (OFFLINE) { sessionStorage.removeItem('mockAvatar'); sessionStorage.removeItem('mockAvatarAt'); return { avatar_at: null }; }
+  const u = await getUser(); if (!u) throw new Error('Sign in first.');
+  await sb.storage.from('avatars').remove([`${u.id}/avatar.webp`]);
+  const { data, error } = await sb.rpc('clear_avatar');
+  if (error) throw new Error(error.message);
+  return data;
+}
+export async function reportAvatar(userId) {
+  if (OFFLINE) return { ok: true };
+  const { data, error } = await sb.rpc('report_avatar', { p_user: userId });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 // ---------- account ----------
 export async function deleteAccount() {
   if (OFFLINE) { sessionStorage.clear(); return { deleted: true }; }
+  try { const u = await getUser(); if (u) await sb.storage.from('avatars').remove([`${u.id}/avatar.webp`]); } catch {} // their picture goes too
   const { data, error } = await sb.rpc('delete_my_account');
   if (error) throw new Error(error.message);
   try { await sb.auth.signOut({ scope: 'local' }); } catch {}

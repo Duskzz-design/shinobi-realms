@@ -2,6 +2,7 @@
 import * as net from './net.js';
 import { fillTextPx, measurePx, crispBody } from './pixemoji.js';
 import { drawNameTag } from './numfont.js';
+import { openProfile } from './profile.js';
 import { gearIconHTML } from './itemicons.js';
 import { buildWorld, blocked, T, MW, MH, BUILDINGS, STATUES } from './world.js';
 import { openArena, statueSprite } from './arenaui.js';
@@ -72,6 +73,7 @@ export async function enterWorld(app, char, hooks) {
     <div class="menu scroll" id="menu" hidden>
       <button class="btn ghost" id="mProfile">My Ninja & training</button>
       <button class="btn ghost" id="mGear">${gearIconHTML('genin_head', 18)} Equipment</button>
+      <button class="btn ghost" id="mProfile">🥷 My profile</button>
       <button class="btn ghost" id="mHelp">📖 Ninja Handbook</button>
       <a class="btn ghost" id="mDiscord" href="https://discord.gg/t2K3uCGrJv" target="_blank" rel="noopener">💬 Join our Discord</a>
       <button class="btn ghost" id="mSleep">💤 Go to sleep</button>
@@ -218,8 +220,9 @@ export async function enterWorld(app, char, hooks) {
     const b = e.target.closest('.who'); if (!b) return;
     const m = msgs.find((x) => String(x.mid) === b.dataset.mid); if (!m || m.id === me.id) return;
     showModal(`<h3>${esc(m.name)}</h3><p class="q">"${esc(m.text)}"</p>
-      <div class="col"><button class="btn" data-mute>🔇 Mute ${esc(m.name)} (only you stop seeing them)</button>
+      <div class="col"><button class="btn" data-prof>🥷 View profile</button><button class="btn" data-mute>🔇 Mute ${esc(m.name)} (only you stop seeing them)</button>
       <button class="btn danger" data-report>🚩 Report this message</button></div>`, (el) => {
+      el.querySelector('[data-prof]').onclick = () => { closeModal(); openProfile(root, { userId: m.id }); };
       el.querySelector('[data-mute]').onclick = () => {
         muted.add(m.id); saveMuted();
         for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].id === m.id && !msgs[i].sys) msgs.splice(i, 1);
@@ -259,6 +262,9 @@ export async function enterWorld(app, char, hooks) {
   root.querySelector('#menuBtn').onclick = () => (menu.hidden = !menu.hidden);
   root.querySelector('#mClose').onclick = () => (menu.hidden = true);
   root.querySelector('#mOut').onclick = async () => { await leave(); net.signOut(); };
+  root.querySelector('#mProfile').onclick = () => { menu.hidden = true; openProfile(root); };
+  const plateEl = root.querySelector('.plate'); plateEl.style.cursor = 'pointer'; plateEl.title = 'My profile';
+  plateEl.addEventListener('click', () => openProfile(root));
   const unmuteBtn = root.querySelector('#mUnmute');
   root.querySelector('#menuBtn').addEventListener('click', () => { unmuteBtn.hidden = !muted.size; unmuteBtn.textContent = `🔊 Unmute ${muted.size} player${muted.size === 1 ? '' : 's'}`; });
   unmuteBtn.onclick = () => { muted.clear(); saveMuted(); menu.hidden = true; addMsg({ sys: true, text: 'Everyone is unmuted. New messages from them will show again.' }); };
@@ -390,7 +396,8 @@ export async function enterWorld(app, char, hooks) {
   }
   function playerCard(m) {
     const vv = VILLAGES[m.village] || v;
-    showModal(`<div class="pcard"><canvas width="64" height="80"></canvas><div><h3>${esc(m.name)}</h3>${m.title ? `<p class="ttl">🏆 ${esc(m.title)}</p>` : ''}<p style="color:${vv.dark}"><b>${vv.name}</b></p><p>${esc(m.rank || 'Academy Student')} · Level ${m.level || 1}</p>${m.asleep ? '<p>💤 <b>Asleep</b></p>' : ''}</div></div>${m.asleep ? '<p class="soon">This ninja is asleep and can\'t be challenged.</p>' : char.asleep_since ? '<p class="soon">You are asleep. Wake up to duel.</p>' : char.rank === 'Academy Student' ? '<p class="soon">Academy students can\'t duel. Practise in the sparring lessons at the Academy, then graduate.</p>' : (m.rank || 'Academy Student') === 'Academy Student' ? '<p class="soon">Academy students can\'t be challenged.</p>' : '<button class="btn primary" data-duel>⚔️ Challenge to a duel</button>'}`, (el) => {
+    showModal(`<div class="pcard"><canvas width="64" height="80"></canvas><div><h3>${esc(m.name)}</h3>${m.title ? `<p class="ttl">🏆 ${esc(m.title)}</p>` : ''}<p style="color:${vv.dark}"><b>${vv.name}</b></p><p>${esc(m.rank || 'Academy Student')} · Level ${m.level || 1}</p>${m.asleep ? '<p>💤 <b>Asleep</b></p>' : ''}</div></div>${m.asleep ? '<p class="soon">This ninja is asleep and can\'t be challenged.</p>' : char.asleep_since ? '<p class="soon">You are asleep. Wake up to duel.</p>' : char.rank === 'Academy Student' ? '<p class="soon">Academy students can\'t duel. Practise in the sparring lessons at the Academy, then graduate.</p>' : (m.rank || 'Academy Student') === 'Academy Student' ? '<p class="soon">Academy students can\'t be challenged.</p>' : '<button class="btn primary" data-duel>⚔️ Challenge to a duel</button>'}<button class="btn ghost" data-prof>🥷 View profile</button>`, (el) => {
+      el.querySelector('[data-prof]').onclick = () => { closeModal(); openProfile(root, { userId: m.id }); };
       const c = el.querySelector('canvas').getContext('2d'); c.imageSmoothingEnabled = false;
       drawNinjaFit(el.querySelector('canvas'), m.look || {});
       const db = el.querySelector('[data-duel]'); if (db) db.onclick = () => { closeModal(); duels.challenge(m); };
@@ -420,7 +427,7 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, chatRooms = [], lastTrack = 0, lastSave = performance.now(), savedAt = { x: 0, y: 0 };
-  const BUILD = '2026-11-13f';
+  const BUILD = '2026-11-13g';
   let newerSeen = false;
   const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   // Movement is sent as "I'm here, heading there" once per click; everyone replays the walk locally.

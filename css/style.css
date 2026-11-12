@@ -675,3 +675,52 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 /* numbers in the heading font (battle screen) */
 em.n { font-style: normal; font-family: var(--title); font-weight: 400; letter-spacing: 0; }
 .hx-allies .ally .alv { margin: 0 4px; color: var(--wood); }
+
+/* ---- player profile ---- */
+.board.pf { max-width: 620px; }
+.pf-loading { text-align: center; padding: 40px 0; }
+.pf-head { display: flex; gap: 18px; align-items: flex-start; margin: 6px 0 14px; }
+.pf-av-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 0 0 auto; }
+.pf-av { width: 128px; height: 128px; background: var(--vc, #3a8a4a); box-shadow: 0 0 0 4px var(--ink), 0 0 0 8px #e8c06a, 0 0 0 12px var(--ink); margin: 12px; overflow: hidden; }
+.pf-av img { display: block; width: 128px; height: 128px; object-fit: cover; }
+.pf-av canvas { display: block; width: 128px; height: 128px; image-rendering: pixelated; background: linear-gradient(#a8d8ef, #f2e2b8); }
+.pf-av-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.pf-note { display: block; max-width: 160px; text-align: center; color: #a8321f; }
+.pf-report { background: none; border: 0; color: #a8321f; font: inherit; font-size: 13px; cursor: pointer; text-decoration: underline; }
+.pf-id { min-width: 0; padding-top: 10px; }
+.pf-id h2 { margin: 0 0 6px; font-family: var(--title); font-size: 18px; line-height: 1.3; word-break: break-word; }
+.pf-id p { margin: 4px 0; }
+.pf-id .ttl { color: #9a6a10; }
+.pf-rank { font-size: 17px; }
+.pf-tags .tag { display: inline-block; margin: 4px 6px 0 0; padding: 2px 8px; background: #efe0bf; box-shadow: 0 0 0 2px var(--ink); font-size: 14px; }
+.pf-tags .tag.gold { background: #f2c14a; }
+.pf-info, .pf-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+.pf-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pf-info > div, .pf-stats > div { background: #fffaf0; box-shadow: 0 0 0 2px #c9a978; padding: 6px 8px; min-width: 0; }
+.pf-info small, .pf-stats small { display: block; color: var(--ink2); font-size: 13px; }
+.pf-info b, .pf-stats b { display: block; font-size: 16px; font-weight: 400; overflow-wrap: anywhere; }
+.pf-bh { margin: 16px 0 8px; font-family: var(--title); font-size: 13px; }
+.pf-bh small { font-family: var(--body); font-size: 15px; color: var(--ink2); margin-left: 6px; }
+.pf-badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.bdg { display: grid; grid-template-columns: 40px 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; padding: 8px; background: #fffaf0; box-shadow: 0 0 0 2px #c9a978; min-width: 0; }
+.bdg .bi { grid-row: span 2; font-size: 30px; line-height: 1; text-align: center; }
+.bdg .bi .pxe { width: 32px; height: 32px; }
+.bdg b { font-size: 14px; font-weight: 400; line-height: 1.2; }
+.bdg small { font-size: 12px; color: var(--ink2); line-height: 1.25; }
+.bdg.got { background: #fff3c4; box-shadow: 0 0 0 2px #c99a2c, 0 0 0 4px #fff3c4; }
+.bdg.got b { color: #6a4a10; }
+.bdg.locked { opacity: .72; }
+.bdg.locked .bi > .pxe, .bdg.locked .bi > img { filter: grayscale(1) brightness(1.1); opacity: .45; }
+.plate { transition: transform .1s; } .plate:hover { transform: translateY(-1px); }
+@media (max-width: 520px) {
+  .pf-head { flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+  .pf-info { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pf-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pf-badges { grid-template-columns: 1fr; }
+}
+.board.pf { width: min(640px, 100%); text-align: left; }
+.board.pf > h3 { text-align: center; }
+.board.pf > [data-x] { display: block; margin: 0 auto; }
+.bdg .bi { position: relative; }
+.bdg .bi .lk { position: absolute; right: -2px; bottom: -4px; font-style: normal; font-size: 14px; filter: none; }
+.bdg .bi .lk .pxe { width: 16px; height: 16px; }
