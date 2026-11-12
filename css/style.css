@@ -671,3 +671,7 @@ body.in-world { overflow: hidden; background: #2a3a1e; touch-action: none; }
 .hexb b, .hexb strong, .hx-info .good, .hx-info .bad, .pv .pvd, .hx-allies .ally small { font-weight: 400; }
 .pv { font-size: 15px; letter-spacing: .5px; }
 .hx-logbox, .hx-info { letter-spacing: .3px; }
+
+/* numbers in the heading font (battle screen) */
+em.n { font-style: normal; font-family: var(--title); font-weight: 400; letter-spacing: 0; }
+.hx-allies .ally .alv { margin: 0 4px; color: var(--wood); }

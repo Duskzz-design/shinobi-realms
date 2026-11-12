@@ -1,6 +1,7 @@
 // The live village: movement, camera, other players, chat, interactions.
 import * as net from './net.js';
 import { fillTextPx, measurePx, crispBody } from './pixemoji.js';
+import { drawNameTag } from './numfont.js';
 import { gearIconHTML } from './itemicons.js';
 import { buildWorld, blocked, T, MW, MH, BUILDINGS, STATUES } from './world.js';
 import { openArena, statueSprite } from './arenaui.js';
@@ -419,7 +420,7 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, chatRooms = [], lastTrack = 0, lastSave = performance.now(), savedAt = { x: 0, y: 0 };
-  const BUILD = '2026-11-13e';
+  const BUILD = '2026-11-13f';
   let newerSeen = false;
   const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   // Movement is sent as "I'm here, heading there" once per click; everyone replays the walk locally.
@@ -551,7 +552,7 @@ export async function enterWorld(app, char, hooks) {
       list.push({ y: n.y, draw: () => {
         ctx.fillStyle = 'rgba(30,20,10,.28)'; ctx.fillRect(Math.round((n.x - 6 - camX) * sc), Math.round((n.y - 1 - camY) * sc), 12 * sc, 2 * sc);
         ctx.drawImage(spr, Math.round((x - camX) * sc), Math.round((y - camY) * sc), spr.width * sc, spr.height * sc);
-      }, label: { x: n.x, y: n.y - 32, name: ((isMe ? !!char.asleep_since : n.meta?.asleep) ? '💤 ' : '') + (n.name || n.meta?.name), me: isMe, id: n.id || n.meta?.id } });
+      }, label: { x: n.x, y: n.y - 32, name: ((isMe ? !!char.asleep_since : n.meta?.asleep) ? '💤 ' : '') + (n.name || n.meta?.name), lv: isMe ? char.level : +n.meta?.level || 0, me: isMe, id: n.id || n.meta?.id } });
     };
     for (const o of others.values()) drawNinja(o, o.meta.look, false);
     drawNinja(me, me.look, true);
@@ -575,9 +576,8 @@ export async function enterWorld(app, char, hooks) {
     for (const d of list) {
       if (!d.label) continue;
       const L = d.label, sx = Math.round((L.x - camX) * sc), sy = Math.round((L.y - camY) * sc);
-      const w = measurePx(ctx, L.name) + 8;
-      ctx.fillStyle = 'rgba(36,22,14,.62)'; ctx.fillRect(sx - w / 2, sy - fsz - 2, w, fsz + 4);
-      ctx.fillStyle = L.me || L.statue ? '#ffe07a' : '#fff4dc'; fillTextPx(ctx, L.name, sx, sy + 1);
+      drawNameTag(ctx, sx, sy, L.name, L.statue ? 0 : L.lv, fsz, { color: L.me || L.statue ? '#ffe07a' : '#fff4dc' });
+      ctx.font = `${fsz}px 'Pixelify Sans', sans-serif`; ctx.textAlign = 'center';
       const b = bubbles.get(L.id);
       if (b && b.until > now) drawBubble(sx, sy - fsz - 6, b.text, fsz);
     }

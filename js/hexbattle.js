@@ -3,6 +3,7 @@ import * as net from './net.js';
 import { paintTerrain, obstacleSprite, LINE_BIOME, VILLAGE_BIOME } from './terrain.js';
 import { fillTextPx, EMOJI_RE, crispBody, crispTitle } from './pixemoji.js';
 import { gearIconHTML } from './itemicons.js';
+import { numbersInHeadingFont } from './numfont.js';
 import * as G from './engine.js';
 import { ninjaSprite, beastSprite, lookOf } from './sprites.js';
 import { enemyLook, beastVariant } from './enemylooks.js';
@@ -102,7 +103,7 @@ export function battleView(root, char, cfg) {
   const sideOf = (id) => (eng.units[id] && eng.units[id].team === team() ? 'me' : 'foe');
   function cards() {
     const p = me(), e = foe(), max = G.apMax(p) + 2, myTurn = eng.side === MY;
-    el.querySelector('.hx-card.p').innerHTML = `<div class="nm"><b>${esc(p.name)}</b>${p.elements.map(elChip).join('')}${p.bloodline ? `<span class="elc" style="--c:#c43c8a">${G.BLOODLINES[p.bloodline].icon}</span>` : ''}</div>
+    el.querySelector('.hx-card.p').innerHTML = `<div class="nm"><b>${esc(p.name)}</b><small>Lv ${p.level}</small>${p.elements.map(elChip).join('')}${p.bloodline ? `<span class="elc" style="--c:#c43c8a">${G.BLOODLINES[p.bloodline].icon}</span>` : ''}</div>
       <div class="gbar hp ${p.hp / p.hpmax < 0.3 ? 'low' : ''}"><i style="width:${100 * p.hp / p.hpmax}%"></i><span>❤️ ${p.hp}/${p.hpmax}</span></div>
       <div class="gbar sta"><i style="width:${100 * p.st / p.stmax}%"></i><span>💪 ${p.st}/${p.stmax}</span></div>
       <div class="gbar ch"><i style="width:${100 * p.ch / p.chmax}%"></i><span>💧 ${p.ch}/${p.chmax}</span></div>
@@ -115,7 +116,7 @@ export function battleView(root, char, cfg) {
       ${matchup(p, e)}<div class="sts">${stChips(e) || '<small class="none">No effects</small>'}</div>`;
     el.querySelector('.turn').textContent = `Turn ${eng.turn}`;
     const al = el.querySelector('.hx-allies');
-    if (al) al.innerHTML = allies().map((u) => `<div class="ally ${u.hp <= 0 ? 'down' : ''} ${eng.side === u.id ? 'now' : ''}"><b>${esc(u.name)}</b>${u.elements.map(elChip).join('')}
+    if (al) al.innerHTML = allies().map((u) => `<div class="ally ${u.hp <= 0 ? 'down' : ''} ${eng.side === u.id ? 'now' : ''}"><b>${esc(u.name)}</b><small class="alv">Lv ${u.level}</small>${u.elements.map(elChip).join('')}
       <div class="gbar hp ${u.hp / u.hpmax < 0.3 ? 'low' : ''}"><i style="width:${100 * u.hp / u.hpmax}%"></i><span>${u.hp <= 0 ? 'Down' : `❤️ ${u.hp}/${u.hpmax}`}</span></div>${eng.side === u.id ? '<small>Acting…</small>' : ''}</div>`).join('');
   }
   // the selected action: a technique, or a thrown item written as 'it:<id>'
@@ -461,7 +462,8 @@ export function battleView(root, char, cfg) {
     }, 500);
   }
 
-  function finish() { alive = false; ro?.disconnect(); el.remove(); }
+  const stopNums = numbersInHeadingFont(el); // every number on this screen in the clear heading font
+  function finish() { alive = false; ro?.disconnect(); stopNums(); el.remove(); }
   function showResult(res) { cfg.result(res, finish, el); }
 }
 
