@@ -65,6 +65,7 @@ function titleScreen() {
       <button class="btn discord" id="dc"><span class="dicon"></span>Sign in with Discord</button>
       <button type="button" class="linkbtn em-open" id="emOpen" aria-expanded="false" aria-controls="emailBox">or use email</button>
       <div class="em-box" id="emailBox" hidden></div>
+      <div class="ts" id="ts" data-need="One quick check: tick the box to show you're human"></div>
       <div class="safe-note">
         <b>🔒 Safe, secure sign-in</b>
         <span>You sign in on <b>Google's or Discord's own page</b>. We never see your password, and we can't read your emails, messages, contacts or files. They only share your <b>name, email address and profile picture</b> with us.</span>
@@ -72,7 +73,6 @@ function titleScreen() {
       </div>
       <p class="fine">Free to play. Your ninja is saved on our game server, linked to your sign-in.</p>
       ${net.isTester() ? '<button class="btn ghost small" id="guest">Tester: play as guest</button>' : ''}
-      <div class="ts" id="ts"></div>
     </div>
     <div class="credits">Season 1 · Early Access · <a href="../">About the game</a> · <a href="https://discord.gg/t2K3uCGrJv" target="_blank" rel="noopener">Discord</a> · <a href="../privacy.html">Privacy</a> · <a href="../terms.html">Terms</a></div>
   </div>`);

@@ -784,3 +784,6 @@ em.n { font-style: normal; font-family: var(--title); font-weight: 400; letter-s
 .em-newpw h3 { font-family: var(--title); font-size: 14px; margin: 0 0 10px; text-align: center; }
 .ts { display: flex; justify-content: center; margin-top: 8px; }
 .ts:empty { display: none; }
+
+.ts.need { flex-direction: column; align-items: center; gap: 6px; padding: 8px; background: #fff3c4; box-shadow: 0 0 0 3px var(--gold); }
+.ts.need::before { content: attr(data-need); font-size: 15px; font-weight: 700; color: var(--ink); }

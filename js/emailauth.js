@@ -24,14 +24,16 @@ export function humanCheck(box) {
   loadTurnstile().then((ts) => {
     id = ts.render(box, {
       sitekey: TURNSTILE_SITE_KEY, appearance: 'interaction-only', theme: 'light', action: 'signin',
-      callback: (t) => settle(t),
+      callback: (t) => { box.classList.remove('need'); settle(t); },
+      // Cloudflare is unsure and wants a tick: make the box impossible to miss
+      'before-interactive-callback': () => { box.classList.add('need'); box.scrollIntoView({ block: 'center', behavior: 'smooth' }); },
       'expired-callback': () => { token = null; },
       'error-callback': () => { failed = true; settle(null); },
     });
   }).catch(() => { failed = true; settle(null); });
   return {
     // resolves with a token, or null if the check could not run (sign-in is still attempted; the server decides)
-    token(timeoutMs = 20000) {
+    token(timeoutMs = 120000) {
       if (token) { const t = token; token = null; return Promise.resolve(t); }
       if (failed) return Promise.resolve(null);
       return new Promise((res) => {
