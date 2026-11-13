@@ -750,3 +750,7 @@ em.n { font-style: normal; font-family: var(--title); font-weight: 400; letter-s
 .safe-note { display: grid; gap: 4px; text-align: left; margin: 12px 0 0; padding: 10px 12px; background: #e9f5e3; box-shadow: 0 0 0 2px #3d7a35; color: var(--ink); font-size: 15px; line-height: 1.35; }
 .safe-note > b { color: #24521f; }
 .safe-note a { color: #24521f; font-weight: 700; }
+
+/* Google's own sign-in button */
+.gsi { display: flex; justify-content: center; min-height: 44px; margin: 4px auto 0; }
+.gsi.busy { opacity: .5; pointer-events: none; }

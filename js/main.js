@@ -59,6 +59,7 @@ function titleScreen() {
         <li><i>🏯</i><span><b>Fight for your village</b> in quests, boss raids and wars, and maybe become its Kage.</span></li>
       </ul>
       ${net.IS_TEST ? '<p class="fine test-note">🧪 This is the private <b>test server</b>. Ninjas here are for testing only. To play the real game, go to <a href="https://shinobirealms.com/play/">shinobirealms.com</a>.</p>' : ''}
+      <div class="gsi" id="gsi" hidden></div>
       <button class="btn google" id="g"><span class="gicon"></span>Sign in with Google</button>
       <div class="safe-note">
         <b>🔒 Safe, secure sign-in</b>
@@ -71,10 +72,10 @@ function titleScreen() {
     <div class="credits">Season 1 · Early Access · <a href="../">About the game</a> · <a href="https://discord.gg/t2K3uCGrJv" target="_blank" rel="noopener">Discord</a> · <a href="../privacy.html">Privacy</a> · <a href="../terms.html">Terms</a></div>
   </div>`);
   if (el.querySelector('#g')) el.querySelector('#g').onclick = async (e) => {
-    if (net.IS_TEST) { toast('Google sign-in is switched off on the test server. Use the tester guest button.'); return; }
     e.currentTarget.disabled = true; e.currentTarget.lastChild.textContent = 'Opening Google…';
     try { await net.signInGoogle(); } catch (err) { toast(friendly(err)); e.currentTarget.disabled = false; e.currentTarget.lastChild.textContent = 'Sign in with Google'; }
   };
+  if (!net.isOffline()) googleButton(el);
   const gb = el.querySelector('#guest');
   if (gb) gb.onclick = async () => { gb.disabled = true; try { await net.signInGuest(); location.reload(); } catch (err) { toast(friendly(err)); gb.disabled = false; } };
   show(el);
@@ -295,3 +296,29 @@ if (net.IS_TEST) document.body.insertAdjacentHTML('beforeend', '<div class="test
 startPixify();
 sharpenText();
 boot();
+
+// Google's own sign-in button: the pop-up comes from our page, so Google shows shinobirealms.com.
+// If Google's script can't load (blocked, offline), our own button stays and uses the older redirect sign-in.
+function googleButton(el) {
+  const box = el.querySelector('#gsi'), mine = el.querySelector('#g');
+  if (!box || !mine) return;
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
+  s.onload = async () => {
+    try {
+      const { raw, hashed } = await net.googleNonce();
+      google.accounts.id.initialize({
+        client_id: net.GOOGLE_CLIENT_ID, nonce: hashed, ux_mode: 'popup', itp_support: true, use_fedcm_for_button: true,
+        callback: async (r) => {
+          box.classList.add('busy');
+          try { await net.signInGoogleToken(r.credential, raw); location.reload(); }
+          catch (err) { box.classList.remove('busy'); toast(friendly(err)); }
+        },
+      });
+      const w = Math.max(220, Math.min(320, Math.floor(mine.getBoundingClientRect().width) || 300));
+      google.accounts.id.renderButton(box, { type: 'standard', theme: 'outline', size: 'large', text: 'signin_with', shape: 'rectangular', logo_alignment: 'left', width: w });
+      box.hidden = false; mine.hidden = true;
+    } catch (e) { console.warn('Google button unavailable, using redirect sign-in', e); }
+  };
+  document.head.appendChild(s);
+}

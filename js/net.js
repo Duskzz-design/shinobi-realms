@@ -59,6 +59,19 @@ export async function signInGoogle() {
   const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname + (TESTER ? location.search : '') } });
   if (error) throw error;
 }
+// Google's own "Sign in with Google" button (shown on our page, so Google names shinobirealms.com,
+// not the login server's address). It hands us an ID token, which Supabase checks against this public client ID.
+export const GOOGLE_CLIENT_ID = '118519828774-9nbn7ldieftre5sdeg633sfntim1tlr0.apps.googleusercontent.com';
+export async function googleNonce() {
+  const raw = [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  return { raw, hashed: [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('') };
+}
+export async function signInGoogleToken(token, nonce) {
+  const { data, error } = await sb.auth.signInWithIdToken({ provider: 'google', token, nonce });
+  if (error) throw error;
+  return data.user;
+}
 export async function signOut() {
   if (OFFLINE) { sessionStorage.clear(); location.reload(); return; }
   await sb.auth.signOut(); location.reload();
