@@ -72,6 +72,12 @@ export async function signInGoogleToken(token, nonce) {
   if (error) throw error;
   return data.user;
 }
+// Discord sign-in: the player logs in on Discord's own page; we only ask for their username, avatar and email.
+export async function signInDiscord() {
+  if (OFFLINE) return signInGoogle();
+  const { error } = await sb.auth.signInWithOAuth({ provider: 'discord', options: { scopes: 'identify email', redirectTo: location.origin + location.pathname + (TESTER ? location.search : '') } });
+  if (error) throw error;
+}
 export async function signOut() {
   if (OFFLINE) { sessionStorage.clear(); location.reload(); return; }
   await sb.auth.signOut(); location.reload();

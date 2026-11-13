@@ -61,9 +61,10 @@ function titleScreen() {
       ${net.IS_TEST ? '<p class="fine test-note">🧪 This is the private <b>test server</b>. Ninjas here are for testing only. To play the real game, go to <a href="https://shinobirealms.com/play/">shinobirealms.com</a>.</p>' : ''}
       <div class="gsi" id="gsi" hidden></div>
       <button class="btn google" id="g"><span class="gicon"></span>Sign in with Google</button>
+      <button class="btn discord" id="dc"><span class="dicon"></span>Sign in with Discord</button>
       <div class="safe-note">
         <b>🔒 Safe, secure sign-in</b>
-        <span>You sign in on <b>Google's own page</b>. We never see your Google password, and we can't read your emails, contacts or files. Google only shares your <b>name, email address and profile picture</b> with us.</span>
+        <span>You sign in on <b>Google's or Discord's own page</b>. We never see your password, and we can't read your emails, messages, contacts or files. They only share your <b>name, email address and profile picture</b> with us.</span>
         <a href="../privacy.html" target="_blank" rel="noopener">How we protect your data</a>
       </div>
       <p class="fine">Free to play. Your ninja is saved on our game server, linked to your sign-in.</p>
@@ -76,6 +77,11 @@ function titleScreen() {
     try { await net.signInGoogle(); } catch (err) { toast(friendly(err)); e.currentTarget.disabled = false; e.currentTarget.lastChild.textContent = 'Sign in with Google'; }
   };
   if (!net.isOffline()) googleButton(el);
+  const dc = el.querySelector('#dc');
+  if (dc) dc.onclick = async () => {
+    dc.disabled = true; dc.lastChild.textContent = 'Opening Discord…';
+    try { await net.signInDiscord(); } catch (err) { toast(friendly(err)); dc.disabled = false; dc.lastChild.textContent = 'Sign in with Discord'; }
+  };
   const gb = el.querySelector('#guest');
   if (gb) gb.onclick = async () => { gb.disabled = true; try { await net.signInGuest(); location.reload(); } catch (err) { toast(friendly(err)); gb.disabled = false; } };
   show(el);
