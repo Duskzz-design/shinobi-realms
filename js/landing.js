@@ -1,7 +1,7 @@
 // Landing page: the animated title scene, pixel icons, and "Continue" for returning players.
-  import { startTitleScene } from './scene.js';
-  import { startPixify } from './pixemoji.js';
-  import { sharpenText } from './crisp.js';
+  import { startTitleScene } from './scene.js?v=b56c444';
+  import { startPixify } from './pixemoji.js?v=b56c444';
+  import { sharpenText } from './crisp.js?v=b56c444';
   startPixify();
   sharpenText();
   const cv = document.getElementById('scene');
