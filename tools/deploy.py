@@ -88,7 +88,7 @@ try:
         for f in ('sitemap.xml',):
             if os.path.exists(os.path.join(site, f)): os.remove(os.path.join(site, f))
     run('git', 'add', '-A', cwd=site)
-    run('git', '-c', 'user.name=Duskzz-design', '-c', 'user.email=chinkstanator@gmail.com', 'commit', '-q', '-m', f'Publish {ver}', cwd=site)
+    run('git', '-c', 'user.name=Duskzz-design', '-c', 'user.email=shinobirealms.game@gmail.com', 'commit', '-q', '-m', f'Publish {ver}', cwd=site)
     run('git', 'push', '-q', '-f', cfg['remote'], 'HEAD:refs/heads/gh-pages', cwd=site)
     print(f'published {ver} to {target.upper()} (https://{cfg["domain"]})')
 finally:

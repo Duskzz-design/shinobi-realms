@@ -63,7 +63,7 @@ function titleScreen() {
       <button class="btn google" id="g"><span class="gicon"></span>Sign in with Google</button>
       <div class="safe-note">
         <b>🔒 Safe, secure sign-in</b>
-        <span>You sign in on <b>Google's own page</b>. We never see your Google password, and we can't read your emails, contacts or files. Google only shares your <b>name and email address</b> with us.</span>
+        <span>You sign in on <b>Google's own page</b>. We never see your Google password, and we can't read your emails, contacts or files. Google only shares your <b>name, email address and profile picture</b> with us.</span>
         <a href="../privacy.html" target="_blank" rel="noopener">How we protect your data</a>
       </div>
       <p class="fine">Free to play. Your ninja is saved on our game server, linked to your sign-in.</p>
