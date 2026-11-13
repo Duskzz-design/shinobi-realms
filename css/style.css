@@ -745,3 +745,8 @@ em.n { font-style: normal; font-family: var(--title); font-weight: 400; letter-s
   .plate .face { width: 30px; height: 30px; }
   .plate { padding: 5px 7px 5px 5px; }
 }
+
+/* reassurance under the Google button */
+.safe-note { display: grid; gap: 4px; text-align: left; margin: 12px 0 0; padding: 10px 12px; background: #e9f5e3; box-shadow: 0 0 0 2px #3d7a35; color: var(--ink); font-size: 15px; line-height: 1.35; }
+.safe-note > b { color: #24521f; }
+.safe-note a { color: #24521f; font-weight: 700; }
