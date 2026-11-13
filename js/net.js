@@ -49,8 +49,8 @@ export function onAuth(cb) {
   sb.auth.onAuthStateChange((_e, s) => cb(s ? s.user : null));
 }
 // hidden tester entrance (see TESTER_HASH): a guest account with no password
-export async function signInGuest() {
-  const { data, error } = await sb.auth.signInAnonymously();
+export async function signInGuest(captchaToken) {
+  const { data, error } = await sb.auth.signInAnonymously({ options: { captchaToken: captchaToken || undefined } });
   if (error) throw error;
   return data.user;
 }
@@ -67,8 +67,8 @@ export async function googleNonce() {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
   return { raw, hashed: [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('') };
 }
-export async function signInGoogleToken(token, nonce) {
-  const { data, error } = await sb.auth.signInWithIdToken({ provider: 'google', token, nonce });
+export async function signInGoogleToken(token, nonce, captchaToken) {
+  const { data, error } = await sb.auth.signInWithIdToken({ provider: 'google', token, nonce, options: { captchaToken: captchaToken || undefined } });
   if (error) throw error;
   return data.user;
 }
@@ -76,6 +76,35 @@ export async function signInGoogleToken(token, nonce) {
 export async function signInDiscord() {
   if (OFFLINE) return signInGoogle();
   const { error } = await sb.auth.signInWithOAuth({ provider: 'discord', options: { scopes: 'identify email', redirectTo: location.origin + location.pathname + (TESTER ? location.search : '') } });
+  if (error) throw error;
+}
+// ---------- email + password accounts ----------
+const backHere = () => location.origin + location.pathname + (TESTER ? location.search : '');
+export async function signUpEmail(email, password, news, captchaToken) {
+  const { error } = await sb.auth.signUp({ email, password, options: {
+    captchaToken: captchaToken || undefined, emailRedirectTo: backHere(),
+    data: { news_opt_in: !!news, news_opt_in_at: news ? new Date().toISOString() : null } } });
+  if (error) throw error;
+}
+export async function signInEmail(email, password, captchaToken) {
+  const { error } = await sb.auth.signInWithPassword({ email, password, options: { captchaToken: captchaToken || undefined } });
+  if (error) throw error;
+}
+export async function resendSignupEmail(email, captchaToken) {
+  const { error } = await sb.auth.resend({ type: 'signup', email, options: { captchaToken: captchaToken || undefined, emailRedirectTo: backHere() } });
+  if (error) throw error;
+}
+export async function sendPasswordReset(email, captchaToken) {
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: backHere(), captchaToken: captchaToken || undefined });
+  if (error) throw error;
+}
+// the links in our emails carry a one-time token; this signs the player in on whatever device they open it
+export async function verifyEmailLink(token_hash, type) {
+  const { error } = await sb.auth.verifyOtp({ token_hash, type });
+  if (error) throw error;
+}
+export async function setNewPassword(password) {
+  const { error } = await sb.auth.updateUser({ password });
   if (error) throw error;
 }
 export async function signOut() {

@@ -3,6 +3,7 @@ import { sharpenText } from './crisp.js';
 import { startPixify } from './pixemoji.js';
 import { startTitleScene } from './scene.js';
 import { enterWorld } from './game.js';
+import { humanCheck, mountEmail, authMessage, linkParams, cleanLinkParams, newPasswordCard } from './emailauth.js';
 import { ELEMENT_INFO, BLOODLINES, ELEMENTS } from './engine.js';
 import { ninjaSprite, emblem, PALETTES, HAIR_STYLES, BAND_SPOTS, VILLAGES, DEFAULT_LOOK, lookOf } from './sprites.js';
 
@@ -62,6 +63,8 @@ function titleScreen() {
       <div class="gsi" id="gsi" hidden></div>
       <button class="btn google" id="g"><span class="gicon"></span>Sign in with Google</button>
       <button class="btn discord" id="dc"><span class="dicon"></span>Sign in with Discord</button>
+      <button type="button" class="linkbtn em-open" id="emOpen" aria-expanded="false" aria-controls="emailBox">or use email</button>
+      <div class="em-box" id="emailBox" hidden></div>
       <div class="safe-note">
         <b>🔒 Safe, secure sign-in</b>
         <span>You sign in on <b>Google's or Discord's own page</b>. We never see your password, and we can't read your emails, messages, contacts or files. They only share your <b>name, email address and profile picture</b> with us.</span>
@@ -69,6 +72,7 @@ function titleScreen() {
       </div>
       <p class="fine">Free to play. Your ninja is saved on our game server, linked to your sign-in.</p>
       ${net.isTester() ? '<button class="btn ghost small" id="guest">Tester: play as guest</button>' : ''}
+      <div class="ts" id="ts"></div>
     </div>
     <div class="credits">Season 1 · Early Access · <a href="../">About the game</a> · <a href="https://discord.gg/t2K3uCGrJv" target="_blank" rel="noopener">Discord</a> · <a href="../privacy.html">Privacy</a> · <a href="../terms.html">Terms</a></div>
   </div>`);
@@ -76,14 +80,16 @@ function titleScreen() {
     e.currentTarget.disabled = true; e.currentTarget.lastChild.textContent = 'Opening Google…';
     try { await net.signInGoogle(); } catch (err) { toast(friendly(err)); e.currentTarget.disabled = false; e.currentTarget.lastChild.textContent = 'Sign in with Google'; }
   };
-  if (!net.isOffline()) googleButton(el);
+  const check = net.isOffline() ? { token: async () => null, reset() {} } : humanCheck(el.querySelector('#ts'));
+  if (!net.isOffline()) googleButton(el, check);
+  mountEmail(el, check, toast);
   const dc = el.querySelector('#dc');
   if (dc) dc.onclick = async () => {
     dc.disabled = true; dc.lastChild.textContent = 'Opening Discord…';
     try { await net.signInDiscord(); } catch (err) { toast(friendly(err)); dc.disabled = false; dc.lastChild.textContent = 'Sign in with Discord'; }
   };
   const gb = el.querySelector('#guest');
-  if (gb) gb.onclick = async () => { gb.disabled = true; try { await net.signInGuest(); location.reload(); } catch (err) { toast(friendly(err)); gb.disabled = false; } };
+  if (gb) gb.onclick = async () => { gb.disabled = true; try { await net.signInGuest(await check.token()); location.reload(); } catch (err) { toast(authMessage(err)); gb.disabled = false; check.reset(); } };
   show(el);
 }
 
@@ -291,6 +297,15 @@ async function boot() {
   };
   const params = new URLSearchParams(location.search);
   if (params.get('error_description')) toast(params.get('error_description'));
+  // a confirmation or password-reset email link brings the player back here with a one-time token
+  const link = linkParams();
+  if (link) {
+    cleanLinkParams();
+    try { await net.verifyEmailLink(link.token, link.type); }
+    catch (e) { titleScreen(); toast(authMessage(e)); return; }
+    if (link.type === 'recovery') { show(newPasswordCard(h, toast, async () => route(await net.getUser()))); return; }
+    toast('Email confirmed. Welcome to Shinobi Realms!', 'ok');
+  }
   let routed = false;
   net.onAuth((u) => { if (routed && u) return; });
   const u = await net.getUser(); routed = true;
@@ -305,7 +320,7 @@ boot();
 
 // Google's own sign-in button: the pop-up comes from our page, so Google shows shinobirealms.com.
 // If Google's script can't load (blocked, offline), our own button stays and uses the older redirect sign-in.
-function googleButton(el) {
+function googleButton(el, check) {
   const box = el.querySelector('#gsi'), mine = el.querySelector('#g');
   if (!box || !mine) return;
   const s = document.createElement('script');
@@ -317,8 +332,8 @@ function googleButton(el) {
         client_id: net.GOOGLE_CLIENT_ID, nonce: hashed, ux_mode: 'popup', itp_support: true, use_fedcm_for_button: true,
         callback: async (r) => {
           box.classList.add('busy');
-          try { await net.signInGoogleToken(r.credential, raw); location.reload(); }
-          catch (err) { box.classList.remove('busy'); toast(friendly(err)); }
+          try { await net.signInGoogleToken(r.credential, raw, await check.token()); location.reload(); }
+          catch (err) { box.classList.remove('busy'); check.reset(); toast(authMessage(err)); }
         },
       });
       const w = Math.max(220, Math.min(320, Math.floor(mine.getBoundingClientRect().width) || 300));
