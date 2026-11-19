@@ -29,6 +29,17 @@ The game picks the server from the address it is opened on (`js/net.js`, `IS_TES
 Exceptions: none by default. If live is broken for players and an urgent fix is needed, still ask first, but say it is
 urgent and why. A fix can go to test and live straight after each other once the CEO says yes.
 
+### Versions (CEO, 19 Nov 2026)
+- The version number lives in `js/version.js` (`VERSION`, plus the `CHANGES` changelog, newest first). Format `0.MINOR.PATCH`
+  while in alpha (`1.0.0` at public launch): MINOR for a feature or balance change, PATCH for a small fix or tweak.
+- **Bundling (CEO's choice):** collect changes on test under the next version number, and keep a running list of them.
+  When the CEO says ship, the whole bundle goes live as one version. Before asking, list everything in the bundle.
+- Every bundle gets a changelog entry in plain English. Set `notice: true` only for MINOR releases: players then see a
+  one-time "What's new" note. Small fixes stay quiet.
+- `tools/deploy.py live --approved` refuses a version number that already went live with different code, and tags each live
+  release in GitHub (`v0.13.0`). To roll back: publish the tagged commit again (to test first, then live with approval).
+- After each live release, update the changelog in the claude.ai project notes (`claude/changelog.md`).
+
 ### Notes
 - The test server is on Supabase's free plan and goes to sleep after 7 days without use. Wake it from the Supabase
   dashboard (Restore project) before testing.

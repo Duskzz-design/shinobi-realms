@@ -1,0 +1,27 @@
+// Shinobi Realms version and changelog (CEO, 19 Nov 2026).
+// Numbering: 0.MINOR.PATCH while in alpha (1.0.0 at public launch).
+//   MINOR goes up for a feature or balance change, PATCH for a small fix or tweak.
+// Every live release has its own number; tools/deploy.py tags it in GitHub (v0.13.0, ...).
+// notice: true shows a one-time "What's new" note to players (bigger updates only).
+
+export const VERSION = '0.13.0';
+
+export const CHANGES = [
+  { v: '0.13.0', date: '19 Nov 2026', notice: true, title: 'Faster ranks', items: [
+    'Genin, Chunin and Jonin now take about <b>half as long</b>.',
+    'Training gives <b>twice the XP</b> from Genin up.',
+    'Missions pay much more XP and more ryo. The first <b>10 missions each day</b> pay in full, then 20%.',
+    'Quest fights and raid bosses pay <b>50% more</b> XP and ryo.',
+    'Easier first Academy lessons, and the guide now starts with training.',
+    'Better battle screen on tablets held sideways and on wide PC screens.',
+  ] },
+];
+
+// a > b ? Old builds used date labels (e.g. "2026-11-19g"): they count as older than any version number.
+const parts = (s) => (/^\d+\.\d+\.\d+$/.test(String(s)) ? String(s).split('.').map(Number) : null);
+export function isNewer(a, b) {
+  const x = parts(a), y = parts(b);
+  if (!x) return false; if (!y) return true;
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i];
+  return false;
+}

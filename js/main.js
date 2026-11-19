@@ -3,6 +3,7 @@ import { sharpenText } from './crisp.js';
 import { startPixify } from './pixemoji.js';
 import { startTitleScene } from './scene.js';
 import { enterWorld } from './game.js';
+import { VERSION } from './version.js';
 import { humanCheck, mountEmail, authMessage, linkParams, cleanLinkParams, newPasswordCard } from './emailauth.js';
 import { ELEMENT_INFO, BLOODLINES, ELEMENTS } from './engine.js';
 import { ninjaSprite, emblem, PALETTES, HAIR_STYLES, BAND_SPOTS, VILLAGES, DEFAULT_LOOK, lookOf } from './sprites.js';
@@ -74,7 +75,7 @@ function titleScreen() {
       <p class="fine">Free to play. Your ninja is saved on our game server, linked to your sign-in.</p>
       ${net.isTester() ? '<button class="btn ghost small" id="guest">Tester: play as guest</button>' : ''}
     </div>
-    <div class="credits">Season 1 · Early Access · <a href="../">About the game</a> · <a href="https://discord.gg/t2K3uCGrJv" target="_blank" rel="noopener">Discord</a> · <a href="../privacy.html">Privacy</a> · <a href="../terms.html">Terms</a></div>
+    <div class="credits">Season 1 · Early Access · v${VERSION} · <a href="../">About the game</a> · <a href="https://discord.gg/t2K3uCGrJv" target="_blank" rel="noopener">Discord</a> · <a href="../privacy.html">Privacy</a> · <a href="../terms.html">Terms</a></div>
   </div>`);
   if (el.querySelector('#g')) el.querySelector('#g').onclick = async (e) => {
     e.currentTarget.disabled = true; e.currentTarget.lastChild.textContent = 'Opening Google…';

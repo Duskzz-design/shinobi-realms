@@ -21,6 +21,7 @@ import { openMissionBoard, openTraining, runBattle, openExamHall } from './battl
 import { setupDuels } from './duelui.js';
 import { setupGuide } from './guide.js';
 import { openHandbook } from './handbook.js';
+import { VERSION, CHANGES, isNewer } from './version.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -81,6 +82,7 @@ export async function enterWorld(app, char, hooks) {
       <button class="btn ghost" id="mOut">Sign out</button>
       <button class="btn ghost danger-text" id="mDelete">Delete my account</button>
       <button class="btn ghost" id="mClose">Close</button>
+      <p class="ver">Shinobi Realms v${VERSION}${net.IS_TEST ? ' · test server' : ''}</p>
     </div>
     <div class="modal-wrap" id="modal" hidden><div class="scroll modal"></div></div>
   </div>`);
@@ -309,6 +311,15 @@ export async function enterWorld(app, char, hooks) {
   const handbook = (pg) => { menu.hidden = true; openHandbook(root, pg); };
   root.querySelector('#hbBtn').onclick = () => handbook();
   root.querySelector('#mHelp').onclick = () => handbook();
+  // one-time "What's new" note after a bigger update (CHANGES entries with notice: true)
+  (() => {
+    const key = 'sr_seen_version'; let seen = null;
+    try { seen = localStorage.getItem(key); localStorage.setItem(key, VERSION); } catch { return; }
+    if (seen === VERSION || (!seen && char.level < 5)) return; // brand-new ninjas don't need a list of changes
+    const news = CHANGES.filter((c) => c.notice && (!seen || isNewer(c.v, seen)) && !isNewer(c.v, VERSION));
+    if (!news.length) return;
+    setTimeout(() => showModal(`<div class="dp-ico">📜</div><h3>What's new</h3>${news.map((c) => `<div class="wn"><h4>v${c.v} · ${c.title}</h4><ul>${c.items.map((i) => `<li>${i}</li>`).join('')}</ul></div>`).join('')}`), 1200);
+  })();
   const guide = setupGuide(root, char, { openHandbook: () => handbook(), goToSpot: (id) => { const sp = world.spots.find((s) => s.id === id); if (!sp) return; if (Math.hypot(sp.x - me.x, sp.y - me.y) < 22) interact(sp); else goTo(sp.x, sp.y, sp); } });
   function train(tab = 'stats') { openTraining(root, () => char, (c) => { Object.assign(char, c); guide.mark('trained'); refreshPlate(); }, tab); }
   function refreshPlate() {
@@ -430,7 +441,7 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, chatRooms = [], lastTrack = 0, lastSave = performance.now(), savedAt = { x: 0, y: 0 };
-  const BUILD = '2026-11-19g';
+  const BUILD = VERSION;
   let newerSeen = false;
   const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   // Movement is sent as "I'm here, heading there" once per click; everyone replays the walk locally.
@@ -456,7 +467,7 @@ export async function enterWorld(app, char, hooks) {
       // other players' data comes from their browsers: keep it to sane sizes before we use it
       const m = { ...raw, name: String(raw.name || '?').replace(/[^A-Za-z0-9_ ]/g, '').slice(0, 16) || '?', title: raw.title ? String(raw.title).slice(0, 32) : null, x: +raw.x || 0, y: +raw.y || 0 };
       seen.add(m.id);
-      if (!newerSeen && m.v && m.v > BUILD) { newerSeen = true; addMsg({ sys: true, text: 'A newer version of the game is out. Refresh the page to update.' }); }
+      if (!newerSeen && m.v && isNewer(m.v, BUILD)) { newerSeen = true; addMsg({ sys: true, text: 'A newer version of the game is out. Refresh the page to update.' }); }
       if (!others.has(m.id)) { sayHello(); others.set(m.id, { meta: m, x: m.x, y: m.y, tx: m.x, ty: m.y, dir: m.dir || 0, moving: false, anim: 0, last: performance.now() }); addMsg({ sys: true, text: `${m.name} arrived.`, ch: 'village' }); }
       else others.get(m.id).meta = m;
     }

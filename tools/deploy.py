@@ -33,6 +33,9 @@ root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if run('git', 'status', '--porcelain', cwd=root):
     sys.exit('Commit your changes first.')
 ver = run('git', 'rev-parse', '--short', 'HEAD', cwd=root)
+m = re.search(r"VERSION = '(\d+\.\d+\.\d+)'", open(os.path.join(root, 'js', 'version.js'), encoding='utf-8').read())
+if not m: sys.exit('js/version.js has no VERSION.')
+version = m.group(1)
 
 def on_test():
     """The version currently published to TEST (from its last 'Publish <ver>' commit)."""
@@ -49,6 +52,14 @@ if target == 'live':
     t = on_test()
     if t != ver:
         sys.exit(f'LIVE refused: this version ({ver}) is not what is on TEST ({t}). Publish it to test and get it approved first.')
+    # every live release has its own number: refuse to reuse one that already went live with different code
+    try:
+        run('git', 'fetch', '-q', 'origin', 'tag', f'v{version}', cwd=root)
+        tagged = run('git', 'rev-parse', '--short', f'v{version}^{{commit}}', cwd=root)
+    except subprocess.CalledProcessError:
+        tagged = None
+    if tagged and tagged != ver:
+        sys.exit(f'LIVE refused: v{version} already went live (code {tagged}). Raise VERSION in js/version.js and add a changelog entry.')
 
 tmp = tempfile.mkdtemp()
 run('git', 'worktree', 'add', '-f', os.path.join(tmp, 'site'), 'HEAD', '--detach', cwd=root)
@@ -88,9 +99,12 @@ try:
         for f in ('sitemap.xml',):
             if os.path.exists(os.path.join(site, f)): os.remove(os.path.join(site, f))
     run('git', 'add', '-A', cwd=site)
-    run('git', '-c', 'user.name=Duskzz-design', '-c', 'user.email=shinobirealms.game@gmail.com', 'commit', '-q', '-m', f'Publish {ver}', cwd=site)
+    run('git', '-c', 'user.name=Duskzz-design', '-c', 'user.email=shinobirealms.game@gmail.com', 'commit', '-q', '-m', f'Publish v{version} {ver}', cwd=site)
     run('git', 'push', '-q', '-f', cfg['remote'], 'HEAD:refs/heads/gh-pages', cwd=site)
-    print(f'published {ver} to {target.upper()} (https://{cfg["domain"]})')
+    if target == 'live':
+        run('git', 'tag', '-f', '-a', f'v{version}', '-m', f'Shinobi Realms v{version} (live)', cwd=root)
+        run('git', 'push', '-q', '-f', 'origin', f'v{version}', cwd=root)
+    print(f'published v{version} ({ver}) to {target.upper()} (https://{cfg["domain"]})')
 finally:
     run('git', 'worktree', 'remove', '--force', site, cwd=root)
     shutil.rmtree(tmp, ignore_errors=True)
