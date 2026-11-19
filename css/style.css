@@ -797,3 +797,5 @@ em.n { font-style: normal; font-family: var(--title); font-weight: 400; letter-s
   .hexb > :not(.b-top):not(.hx-arena) { grid-column: 2; }
   .hexb .hx-arena canvas { max-width: none; max-height: calc(100dvh - 60px); }
 }
+/* while a menu is open, stop the glowing guide highlight blinking behind it */
+.world:has(.ov) .guide-glow, .world:has(.ov) .train-btn i { animation: none; }

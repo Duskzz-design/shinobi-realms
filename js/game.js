@@ -97,10 +97,13 @@ export async function enterWorld(app, char, hooks) {
   const view = root.querySelector('#view');
   const ctx = view.getContext('2d');
   let scale = 3, vw = 0, vh = 0;
+  let stillDrawn = false; // menu open: the village is drawn once, then left still (iPad Safari flickered behind scrolling menus)
   function resize() {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.round(innerWidth * dpr), h = Math.round(innerHeight * dpr);
+    if (w === view.width && h === view.height && vw) return; // nothing changed: don't wipe the picture
     vw = innerWidth; vh = innerHeight;
-    view.width = Math.round(vw * dpr); view.height = Math.round(vh * dpr);
+    view.width = w; view.height = h; stillDrawn = false;
     view.style.width = vw + 'px'; view.style.height = vh + 'px';
     scale = Math.max(2, Math.floor(Math.min(vw, vh) / (T * 12))) * dpr;
   }
@@ -427,7 +430,7 @@ export async function enterWorld(app, char, hooks) {
 
   // ---------- network ----------
   let room = null, chatRooms = [], lastTrack = 0, lastSave = performance.now(), savedAt = { x: 0, y: 0 };
-  const BUILD = '2026-11-19c';
+  const BUILD = '2026-11-19d';
   let newerSeen = false;
   const meta = () => ({ v: BUILD, id: me.id, asleep: !!char.asleep_since, title: char.title || null, name: me.name, village: me.village, rank: me.rank, level: me.level, look: me.look, x: Math.round(me.x), y: Math.round(me.y), dir: me.dir });
   // Movement is sent as "I'm here, heading there" once per click; everyone replays the walk locally.
@@ -519,7 +522,7 @@ export async function enterWorld(app, char, hooks) {
     // prompt
     const s = nearSpot();
     if (s && !path.length) { promptEl.hidden = false; const tx = 'Enter ' + s.name; if (promptEl.textContent !== tx) promptEl.textContent = tx; promptEl.onclick = () => interact(s); } else promptEl.hidden = true;
-    draw();
+    if (!frozen) { stillDrawn = false; draw(); } else if (!stillDrawn) { stillDrawn = true; draw(); }
     requestAnimationFrame(step);
   }
 
