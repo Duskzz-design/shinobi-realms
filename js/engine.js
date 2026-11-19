@@ -628,6 +628,7 @@ export function trainingXp(lv) { return Math.ceil(xpNeed(lv) / (lv < 5 ? 80 : lv
 // mission, quest and boss XP grow with level (same as the database's reward_mult)
 export function rewardMult(lv) { return lv < 5 ? 3 : lv < 15 ? 3.96 : lv < 30 ? 4.5 : 5.9; }
 // missions only (same as the database's mission_xp_mult): about 3.4x, so each rank takes half as long (19 Nov 2026)
+export function missionRyoMult(lv) { return lv < 5 ? 1 : lv < 15 ? 3.45 : lv < 30 ? 3.4 : 3.35; }
 export function missionXpMult(lv) { return lv < 5 ? 3 : lv < 15 ? 13.66 : lv < 30 ? 15.3 : 19.77; }
 
 // boss for a team of n players (1-3): smaller teams face a weaker boss

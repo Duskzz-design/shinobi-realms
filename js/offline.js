@@ -157,7 +157,8 @@ function finish(c, b, win) {
     while (c.level < cap && c.xp >= G.xpNeed(c.level)) { c.xp -= G.xpNeed(c.level); c.level++; }
     if (c.level >= cap) c.xp = Math.min(c.xp, G.xpNeed(c.level));
     if (c.level > before) { c.energy = 100; c.energy_at = Date.now(); }
-    r = { xp: gx, ryo: m.ryo, level: c.level, leveled: c.level - before, capped: c.level >= cap };
+    const gr = Math.round(m.ryo * G.missionRyoMult(c.level)); c.ryo += gr - m.ryo;
+    r = { xp: gx, ryo: gr, level: c.level, leveled: c.level - before, capped: c.level >= cap };
     if (st.quest) r.quest = questAdvance(c, st.quest);
   } else if (st.exam) { lastExamFail = Date.now(); r = { ryo_lost: 0 }; }
   else { const lost = Math.min(c.ryo, Math.round(m.ryo * 0.2)); c.ryo -= lost; if (m.kind === 'mission' || m.kind === 'quest' || !m.kind) c.injured_until = Date.now() + 15 * 60e3; r = { ryo_lost: lost }; }

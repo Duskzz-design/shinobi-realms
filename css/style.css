@@ -796,6 +796,8 @@ em.n { font-style: normal; font-family: var(--title); font-weight: 400; letter-s
   .hexb > .hx-arena { grid-column: 1; grid-row: 2 / span 20; align-self: stretch; align-items: center; }
   .hexb > :not(.b-top):not(.hx-arena) { grid-column: 2; }
   .hexb .hx-arena canvas { max-width: none; max-height: calc(100dvh - 60px); }
+  /* result popups cover the whole battle, not just the right-hand column */
+  .hexb > .b-result { position: fixed; inset: 0; grid-column: auto; grid-row: auto; z-index: 30; }
 }
 /* while a menu is open, stop the glowing guide highlight blinking behind it */
 .world:has(.ov) .guide-glow, .world:has(.ov) .train-btn i { animation: none; }
