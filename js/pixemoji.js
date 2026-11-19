@@ -1,3 +1,4 @@
+import { BODY_UNIT, TITLE_UNIT } from './fonts.js';
 // Pixel-art replacements for every emoji in the game. Each icon is drawn on a 16x16 grid with a shared
 // palette and auto-outlined. startPixify() swaps emoji in page text for <img> icons as screens appear;
 // fillTextPx() does the same for text drawn on canvases.
@@ -215,8 +216,8 @@ export function startPixify() {
 // ---------- crisp pixel-font sizes ----------
 // Pixel fonts are only sharp when each font pixel covers a whole number of screen pixels.
 // Pixelify Sans draws a pixel every 1/10.886 em; Press Start 2P every 1/8 em.
-export function crispBody(devicePx) { const u = 10.886; return Math.max(1, Math.round(devicePx / u)) * u; }
-export function crispTitle(devicePx) { return Math.max(1, Math.round(devicePx / 8)) * 8; }
+export function crispBody(devicePx) { const u = BODY_UNIT; return Math.max(1, Math.round(devicePx / u)) * u; }
+export function crispTitle(devicePx) { const u = TITLE_UNIT; return Math.max(1, Math.round(devicePx / u)) * u; }
 
 // ---------- canvas text ----------
 const imgs = new Map();

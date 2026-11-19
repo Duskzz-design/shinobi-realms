@@ -2,6 +2,7 @@
 // Used on the battle screen: every number in its text is wrapped in <em class="n">, sized to match the
 // surrounding text and snapped so its pixels land on whole screen pixels.
 import { crispTitle, measurePx, fillTextPx } from './pixemoji.js';
+import { TITLE_FAMILY, BODY_FAMILY, isTitleFamily } from './fonts.js';
 
 const NUM = /\d[\d,.]*%?/g;
 const SKIP = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'CANVAS', 'SVG']);
@@ -9,7 +10,7 @@ const SKIP = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'CANVAS', 'SVG']);
 function sizeFor(parent) {
   if (!parent.isConnected) return null;
   const cs = getComputedStyle(parent), dpr = window.devicePixelRatio || 1;
-  if (/Press Start/.test(cs.fontFamily)) return null; // already in the heading font
+  if (isTitleFamily(cs.fontFamily) || /DotGothic/.test(cs.fontFamily)) return null; // heading font, or a body font with clear numbers
   const px = parseFloat(cs.fontSize) * 0.72;            // match the height of the surrounding letters
   if (!(px > 0)) return null;
   if (dpr < 2) return Math.max(8, Math.round(px / 4) * 4); // ordinary screens: steps of 4px (8px steps would be too coarse)
@@ -47,7 +48,7 @@ export function numbersInHeadingFont(root) {
 // A name tag drawn on a canvas: the name in the text font, the level beside it in the heading font.
 // fsz is the text size in canvas pixels; returns nothing. Expects ctx.textBaseline = 'bottom'.
 export function drawNameTag(ctx, x, y, name, level, fsz, { plate = 'rgba(36,22,14,.62)', color = '#fff4dc', lvColor = '#f2c14a' } = {}) {
-  const textFont = `${fsz}px 'Pixelify Sans', sans-serif`, lvSize = crispTitle(fsz * 0.66), lvFont = `${lvSize}px 'Press Start 2P', monospace`;
+  const textFont = `${fsz}px ${BODY_FAMILY}`, lvSize = crispTitle(fsz * 0.66), lvFont = `${lvSize}px ${TITLE_FAMILY}`;
   ctx.font = textFont; const nw = measurePx(ctx, name);
   const lv = level ? String(level) : '', gap = lv ? Math.round(fsz * 0.35) : 0, pre = lv ? 'Lv' : '', pw = pre ? ctx.measureText(pre).width + Math.round(fsz * 0.15) : 0;
   ctx.font = lvFont; const lw = lv ? ctx.measureText(lv).width : 0;

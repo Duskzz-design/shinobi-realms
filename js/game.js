@@ -1,3 +1,4 @@
+import { BODY_FAMILY } from './fonts.js';
 // The live village: movement, camera, other players, chat, interactions.
 import * as net from './net.js';
 import { fillTextPx, measurePx, crispBody } from './pixemoji.js';
@@ -595,13 +596,13 @@ export async function enterWorld(app, char, hooks) {
     // labels + bubbles (screen space, crisp text)
     const dprNow = view.width / Math.max(1, vw);
     const fsz = crispBody(Math.min(18, Math.max(14, (sc / dprNow) * 4.5)) * dprNow); // name labels and speech bubbles: ~14–18 screen px, snapped sharp
-    ctx.font = `${fsz}px 'Pixelify Sans', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.font = `${fsz}px ${BODY_FAMILY}`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     const now = performance.now();
     for (const d of list) {
       if (!d.label) continue;
       const L = d.label, sx = Math.round((L.x - camX) * sc), sy = Math.round((L.y - camY) * sc);
       drawNameTag(ctx, sx, sy, L.name, L.statue ? 0 : L.lv, fsz, { color: L.me || L.statue ? '#ffe07a' : '#fff4dc' });
-      ctx.font = `${fsz}px 'Pixelify Sans', sans-serif`; ctx.textAlign = 'center';
+      ctx.font = `${fsz}px ${BODY_FAMILY}`; ctx.textAlign = 'center';
       const b = bubbles.get(L.id);
       if (b && b.until > now) drawBubble(sx, sy - fsz - 6, b.text, fsz);
     }

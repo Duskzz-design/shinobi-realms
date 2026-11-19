@@ -1,3 +1,4 @@
+import { TITLE_FAMILY, BODY_FAMILY, isTitleFamily } from './fonts.js';
 // Hex tactical battle screen (missions and exams). The battle server decides every roll; this file draws and animates.
 import * as net from './net.js';
 import { paintTerrain, obstacleSprite, LINE_BIOME, VILLAGE_BIOME } from './terrain.js';
@@ -348,9 +349,9 @@ export function battleView(root, char, cfg) {
   const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(fitCanvas) : null; ro?.observe(cv);
   // text size in arena units that lands at a readable size on screen (px = wanted CSS pixels)
   const tsz = (px, lo, hi) => Math.max(lo, Math.min(hi, px / sizing.disp));
-  function outlined(text, x, y, fill, size, family = "'Press Start 2P', monospace") {
+  function outlined(text, x, y, fill, size, family = TITLE_FAMILY) {
     // snap to a size where every font pixel lands on whole screen pixels, and to whole-pixel positions
-    const dev = size * sizing.k, snapped = family.includes('Press') ? crispTitle(dev) : crispBody(dev);
+    const dev = size * sizing.k, snapped = isTitleFamily(family) ? crispTitle(dev) : crispBody(dev);
     size = snapped / sizing.k; x = Math.round(x * sizing.k) / sizing.k; y = Math.round(y * sizing.k) / sizing.k;
     ctx.font = `${size}px ${family}`; ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(1.5, size / 4); ctx.strokeStyle = '#1a0f08';
     ctx.strokeText(text.replace(EMOJI_RE, '   '), x, y); ctx.fillStyle = fill; fillTextPx(ctx, text, x, y);
@@ -416,7 +417,7 @@ export function battleView(root, char, cfg) {
       ctx.fillStyle = th.id === MY ? '#5ccf5c' : u.team === team() ? '#9fd88a' : '#e8542c'; ctx.fillRect(x - bw / 2, by + 1, Math.max(0, bw * u.hp / u.hpmax), 2);
       const nameUp = eng.raid && u.team === team() && th.id !== MY;
       const nsz = tsz(13, 6, 10);
-      if (nameUp) { ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; outlined(u.name.slice(0, 10), x, by - 2, '#fff4dc', nsz, "'Pixelify Sans', sans-serif"); }
+      if (nameUp) { ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; outlined(u.name.slice(0, 10), x, by - 2, '#fff4dc', nsz, BODY_FAMILY); }
       const sts = (u.effects || []).filter((e2) => e2.turns > 0 && G.STATUS[e2.k]).slice(0, 4).map((e2) => G.STATUS[e2.k].icon).join('');
       if (sts) { ctx.font = `${tsz(15, 7, 10)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; fillTextPx(ctx, sts, x, by - 1 - (nameUp ? nsz + 1 : 0)); ctx.textBaseline = 'alphabetic'; }
       if (G.hasStatus(u, 'stun')) { ctx.fillStyle = '#ffe07a'; for (let i = 0; i < 3; i++) { const a = t / 8 + i * 2.1; ctx.fillRect(x + Math.cos(a) * 7 - 1, y - spr.height - 3 + Math.sin(a) * 2, 2, 2); } }
@@ -438,7 +439,7 @@ export function battleView(root, char, cfg) {
     for (const f of fx.floats) {
       const max = f.max, size = fsz * (f.big ? 1.25 : 1), pop = f.life > max - 6 ? 1 + (f.life - (max - 6)) * 0.06 : 1; // a quick pop when it appears
       const y = f.y - (max - f.life) * 0.4 - f.slot * fsz * 1.35;
-      ctx.font = `${size}px 'Press Start 2P', monospace`;
+      ctx.font = `${size}px ${TITLE_FAMILY}`;
       const half = ctx.measureText(f.text).width / 2 + 3, x = Math.max(half, Math.min(W - half, f.x)); // keep it on screen
       ctx.globalAlpha = f.life < 10 ? f.life / 10 : 1;
       outlined(f.text, x, Math.max(size + 2, y), f.color, size * pop);

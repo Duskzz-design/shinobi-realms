@@ -3,8 +3,9 @@
   --ink: #3a2414; --ink2: #6a4a2e; --paper: #f7e8c8; --paper2: #ecd5a6; --wood: #7a4a24; --woodD: #4e2c12;
   --red: #c43c32; --redD: #8a2a22; --orange: #e8742c; --orangeD: #a8481a; --gold: #f2c14a; --green: #3a8a4a;
   --px: 4px;
-  --title: 'Press Start 2P', 'Courier New', monospace;
-  --body: 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
+  --title: 'Jersey 10', 'Press Start 2P', 'Courier New', monospace;
+  --body: 'DotGothic16', 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
+  --logo: 'Press Start 2P', 'Courier New', monospace;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
@@ -63,7 +64,7 @@ button { font-family: inherit; }
 .logo { margin-top: 6vh; }
 .logo-kanji { font-size: 44px; width: 76px; height: 76px; line-height: 76px; margin: 0 auto 14px; background: var(--red); color: #fff; font-weight: 700;
   box-shadow: 0 -4px 0 0 var(--ink), 0 4px 0 0 var(--ink), -4px 0 0 0 var(--ink), 4px 0 0 0 var(--ink), inset 0 -6px 0 0 var(--redD); }
-.logo h1 { font-family: var(--title); font-size: clamp(26px, 7vw, 56px); margin: 0; color: #fff4dc; letter-spacing: 2px;
+.logo h1 { font-family: var(--logo); font-size: clamp(26px, 7vw, 56px); margin: 0; color: #fff4dc; letter-spacing: 2px;
   text-shadow: 4px 4px 0 var(--red), 8px 8px 0 var(--ink), -2px -2px 0 var(--ink), 2px -2px 0 var(--ink), -2px 2px 0 var(--ink); line-height: 1.25; }
 .logo h1 span { display: block; font-size: .62em; color: var(--gold); letter-spacing: 8px; margin-top: 10px; text-shadow: 3px 3px 0 var(--ink), -2px -2px 0 var(--ink), 2px -2px 0 var(--ink), -2px 2px 0 var(--ink); }
 .tag { font-size: 18px; color: #fff; text-shadow: 2px 2px 0 var(--ink); margin: 16px 0 0; }
