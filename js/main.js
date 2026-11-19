@@ -206,7 +206,7 @@ function creatorScreen(existing) {
 function elementNote(el) {
   const i = ELEMENTS.indexOf(el); if (i < 0) return '';
   const E = (k) => `${ELEMENT_INFO[k].icon} <b>${ELEMENT_INFO[k].label}</b>`;
-  return `<p class="born">You were born with ${E(el)}. Your ${ELEMENT_INFO[el].label} jutsu deal <b>+25%</b> damage to ${E(ELEMENTS[(i + 1) % 5])} ninja, but ${E(ELEMENTS[(i + 4) % 5])} deals +25% to you. Your first steps: head to the <b>Academy</b>. A guide will show you the way.</p>`;
+  return `<p class="born">You were born with ${E(el)}. Your ${ELEMENT_INFO[el].label} jutsu deal <b>+25%</b> damage to ${E(ELEMENTS[(i + 1) % 5])} ninja, but ${E(ELEMENTS[(i + 4) % 5])} deals +25% to you. Your first step: <b>train</b> to grow stronger, then head to the <b>Academy</b>. A guide will show you the way.</p>`;
 }
 
 function profileScreen(c, fresh = false) {
