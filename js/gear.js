@@ -1,9 +1,9 @@
 // Equipment: what your ninja wears. A paper doll with a weapon and four armour slots.
-import * as net from './net.js';
-import { gearIconHTML, emptySlotHTML } from './itemicons.js';
-import * as G from './engine.js';
-import { ninjaSprite, lookOf, drawNinjaFit } from './sprites.js';
-import { SLOT_LABEL, gearLine } from './shop.js';
+import * as net from './net.js?v=887b3a3';
+import { gearIconHTML, emptySlotHTML } from './itemicons.js?v=887b3a3';
+import * as G from './engine.js?v=887b3a3';
+import { ninjaSprite, lookOf, drawNinjaFit } from './sprites.js?v=887b3a3';
+import { SLOT_LABEL, gearLine } from './shop.js?v=887b3a3';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };

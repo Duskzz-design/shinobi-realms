@@ -1,6 +1,6 @@
 // Kage Tower: village wars leaderboard, the Kage seat, village upgrades and the war room.
-import * as net from './net.js';
-import { ninjaSprite, VILLAGES, emblem, drawNinjaFit } from './sprites.js';
+import * as net from './net.js?v=887b3a3';
+import { ninjaSprite, VILLAGES, emblem, drawNinjaFit } from './sprites.js?v=887b3a3';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
