@@ -3,11 +3,11 @@
 //
 // Pixel fonts are sharpest when each font pixel covers a whole number of screen pixels.
 // UNIT = declared CSS px per font pixel (at 1x). The @font-face size-adjust values below scale both fonts up
-// without changing the font files: Jersey 10 draws on a 10-per-em grid (×1.6), DotGothic16 on 16 per em (×1.25).
+// without changing the font files: Jersey 10 draws on a 10-per-em grid (×2), DotGothic16 on 16 per em (×1.25).
 export const TRIAL = true;
 
 export const TITLE_FAMILY = TRIAL ? "'Jersey 10', 'Press Start 2P', monospace" : "'Press Start 2P', monospace";
 export const BODY_FAMILY = TRIAL ? "'DotGothic16', 'Pixelify Sans', sans-serif" : "'Pixelify Sans', sans-serif";
-export const TITLE_UNIT = TRIAL ? 10 / 1.6 : 8;
+export const TITLE_UNIT = TRIAL ? 10 / 2 : 8;
 export const BODY_UNIT = TRIAL ? 16 / 1.25 : 10.886;
 export const isTitleFamily = (fam) => /Jersey|Press Start|--title/.test(fam || '');
