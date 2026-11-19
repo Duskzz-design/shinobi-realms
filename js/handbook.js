@@ -8,7 +8,7 @@ export const PAGES = [
     <p>Your first goals:</p>
     <ol><li>Win the sparring lessons at the <b>Academy</b>.</li><li>Spend your energy on <b>⭐ Train</b>.</li><li>Do missions at the <b>Mission Hall</b>.</li><li>Reach level 5 and pass the <b>Genin Exam</b>.</li></ol>
     <p>The 🧭 <b>Next step</b> card guides you through all of this. Tap <b>–</b> to tuck it away.</p>
-    <p class="hb-tip">💡 A daily rhythm that works: train whenever your energy is full, and do up to 20 missions a day.</p>` },
+    <p class="hb-tip">💡 A daily rhythm that works: train whenever your energy is full, and do your 10 full-reward missions each day.</p>` },
   { id: 'train', icon: '⭐', title: 'Training & energy', body: `
     <p><b>Training is the main way to level up.</b> Each training costs <b>10 energy</b>. It raises a stat or a jutsu, and gives a big chunk of <b>XP</b>.</p>
     <p>Energy refills by itself: <b>+1 every 9 seconds</b>, so it fills from empty in about <b>15 minutes</b>. A gold dot on ⭐ Train means your energy is full. Spend it, or the refill is wasted.</p>
@@ -16,7 +16,7 @@ export const PAGES = [
     <p>Each rank has a stat limit: 20 for Academy, then 50, 100 and 200.</p>` },
   { id: 'missions', icon: '📜', title: 'Missions', body: `
     <p>The <b>Mission Hall</b> has D, C, B, A and S-rank missions. Harder missions need a higher level or rank.</p>
-    <p>Missions pay <b>ryo</b> (money) and XP. Your first <b>20 missions each day</b> give full rewards. After that you only get 10% ryo, so missions are best as a short daily session.</p>
+    <p>Missions pay <b>ryo</b> (money) and XP. Your first <b>10 missions each day</b> give full rewards. After that they pay 20% XP and ryo, so missions are best as a short daily session.</p>
     <p>The board shows how many full-reward missions you have left today.</p>` },
   { id: 'ranks', icon: '🎓', title: 'Ranks & exams', body: `
     <table class="hb-t"><tr><th>Rank</th><th>Exam at level</th><th>Unlocks</th></tr>

@@ -153,7 +153,7 @@ function finish(c, b, win) {
     }
   } else if (win) {
     const before = c.level, cap = LCAP[RANKS.indexOf(c.rank)];
-    const gx = Math.round(m.xp * G.rewardMult(c.level)); c.xp += gx; c.ryo += m.ryo;
+    const gx = Math.round(m.xp * G.missionXpMult(c.level)); c.xp += gx; c.ryo += m.ryo;
     while (c.level < cap && c.xp >= G.xpNeed(c.level)) { c.xp -= G.xpNeed(c.level); c.level++; }
     if (c.level >= cap) c.xp = Math.min(c.xp, G.xpNeed(c.level));
     if (c.level > before) { c.energy = 100; c.energy_at = Date.now(); }

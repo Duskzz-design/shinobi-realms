@@ -622,11 +622,13 @@ export function newDuel(seed, ca, jla, cb, jlb) {
 export const DUEL_TURN_SEC = 60;
 // XP to go from level lv to lv+1 (same formula as the database's xp_need)
 export function xpNeed(lv) { return 100 * lv * (lv < 5 ? 3 : lv < 15 ? 22 : lv < 30 ? 85 : 190); }
-export const MISSION_DAILY_LIMIT = 20;
+export const MISSION_DAILY_LIMIT = 10, MISSION_AFTER_LIMIT = 0.2;
 // XP for one training session (10 energy), same as the database's training_xp
-export function trainingXp(lv) { return Math.ceil(xpNeed(lv) / (lv < 5 ? 80 : lv < 15 ? 450 : lv < 30 ? 900 : 1300)); }
+export function trainingXp(lv) { return Math.ceil(xpNeed(lv) / (lv < 5 ? 80 : lv < 15 ? 225 : lv < 30 ? 450 : 650)); }
 // mission, quest and boss XP grow with level (same as the database's reward_mult)
 export function rewardMult(lv) { return lv < 5 ? 3 : lv < 15 ? 3.96 : lv < 30 ? 4.5 : 5.9; }
+// missions only (same as the database's mission_xp_mult): about 3.4x, so each rank takes half as long (19 Nov 2026)
+export function missionXpMult(lv) { return lv < 5 ? 3 : lv < 15 ? 13.66 : lv < 30 ? 15.3 : 19.77; }
 
 // boss for a team of n players (1-3): smaller teams face a weaker boss
 export const BOSSES = {

@@ -13,7 +13,7 @@ const STEPS = [
     text: 'Walk to the <b>Academy</b> and win <b>Sparring Lesson 1</b>. Lessons teach you how battles work, and you can\'t lose ryo there.',
     done: (c, f) => (c.lessons_done || []).length >= 1 },
   { id: 'mission', icon: '📜', title: 'Take a mission', spot: 'missions',
-    text: 'Go to the <b>Mission Hall</b> and win a D-rank mission. Missions pay <b>ryo</b> and XP. Full rewards for your first <b>20 missions each day</b>.',
+    text: 'Go to the <b>Mission Hall</b> and win a D-rank mission. Missions pay <b>ryo</b> and XP. Full rewards for your first <b>10 missions each day</b>.',
     done: (c, f) => f.mission || (c.mission_wins || 0) > 0 },
   { id: 'lessons', icon: '🥋', title: 'Finish all 5 lessons', spot: 'academy',
     text: (c) => `You've cleared <b>${Math.min(5, (c.lessons_done || []).length)}/5</b> sparring lessons. New lessons unlock as you level up, so keep training and doing missions.`,

@@ -33,7 +33,7 @@ function overlay(root, cls, html) {
 // ---------- mission board ----------
 function dailyLine(c) {
   const n = c.missions_today || 0, lim = c.mission_limit || G.MISSION_DAILY_LIMIT;
-  return n >= lim ? `<p class="daily over">📋 Full rewards used today (${lim}/${lim}). Missions now pay 10% until tomorrow (London time).</p>`
+  return n >= lim ? `<p class="daily over">📋 Full rewards used today (${lim}/${lim}). Missions now pay 20% until tomorrow (London time).</p>`
     : `<p class="daily">📋 Full-reward missions today: <b>${n} / ${lim}</b></p>`;
 }
 export async function openMissionBoard(root, char, onPick) {
@@ -49,7 +49,7 @@ export async function openMissionBoard(root, char, onPick) {
     return `<button class="mcard ${locked ? 'locked' : ''}" data-id="${m.id}" ${locked ? 'disabled' : ''}>
       <span class="grade" style="background:${GRADE_COL[m.grade]}">${m.grade}</span>
       <span class="mtxt"><b>${esc(m.name)}</b><small>${esc(m.description)}</small>
-      <em>${locked ? '🔒 ' + why : `Foe: ${esc(m.enemy_name)} (Lv ${m.enemy_level}) · +${Math.round(m.xp * (char.reward_mult || G.rewardMult(char.level))).toLocaleString('en-GB')} XP · +${m.ryo} ryo`}</em></span></button>`;
+      <em>${locked ? '🔒 ' + why : `Foe: ${esc(m.enemy_name)} (Lv ${m.enemy_level}) · +${Math.round(m.xp * (char.mission_xp_mult || G.missionXpMult(char.level))).toLocaleString('en-GB')} XP · +${m.ryo} ryo`}</em></span></button>`;
   }).join('');
   el.querySelectorAll('.mcard:not(.locked)').forEach((b) => (b.onclick = () => { el.remove(); onPick(b.dataset.id); }));
 }
