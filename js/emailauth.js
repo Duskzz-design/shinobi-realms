@@ -19,6 +19,8 @@ function loadTurnstile() {
   return tsScript;
 }
 export function humanCheck(box) {
+  // The test server has the human check switched off (CEO, 19 Nov 2026): no widget, no waiting.
+  if (net.IS_TEST) { if (box) box.hidden = true; return { token: async () => null, reset() {} }; }
   let id = null, token = null, waiters = [], failed = false;
   const settle = (t) => { token = t; const w = waiters; waiters = []; w.forEach((f) => f(t)); };
   loadTurnstile().then((ts) => {
