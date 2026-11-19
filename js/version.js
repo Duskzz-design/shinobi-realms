@@ -4,9 +4,13 @@
 // Every live release has its own number; tools/deploy.py tags it in GitHub (v0.13.0, ...).
 // notice: true shows a one-time "What's new" note to players (bigger updates only).
 
-export const VERSION = '0.13.0';
+export const VERSION = '0.14.0';
 
 export const CHANGES = [
+  { v: '0.14.0', date: '19 Nov 2026', notice: true, title: 'Fair play', items: [
+    'New <b>🚩 Report player</b> button on every ninja\'s profile, for cheating, bots, second accounts or bad behaviour. Reports are private.',
+    'Clear <b>fair-play rules</b> in the Terms: one account per person, no bots, report bugs instead of using them.',
+  ] },
   { v: '0.13.0', date: '19 Nov 2026', notice: true, title: 'Faster ranks', items: [
     'Genin, Chunin and Jonin now take about <b>half as long</b>.',
     'Training gives <b>twice the XP</b> from Genin up.',

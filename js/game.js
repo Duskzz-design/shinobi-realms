@@ -311,6 +311,9 @@ export async function enterWorld(app, char, hooks) {
   const handbook = (pg) => { menu.hidden = true; openHandbook(root, pg); };
   root.querySelector('#hbBtn').onclick = () => handbook();
   root.querySelector('#mHelp').onclick = () => handbook();
+  // fair-play stats: one ping a minute while the game is open and visible
+  net.heartbeat();
+  setInterval(() => { if (document.visibilityState === 'visible') net.heartbeat(); }, 60000);
   // one-time "What's new" note after a bigger update (CHANGES entries with notice: true)
   (() => {
     const key = 'sr_seen_version'; let seen = null;

@@ -98,8 +98,30 @@ export async function openProfile(root, { userId = null, name = null, onChange =
         const at = have.get(b.id);
         return `<div class="bdg ${at ? 'got' : 'locked'}" title="${esc(b.how)}"><span class="bi">${b.icon}${at ? '' : '<i class="lk">🔒</i>'}</span><b>${esc(b.name)}</b><small>${at ? `Earned ${day(at)}` : esc(b.how)}</small></div>`;
       }).join('')}</div>
+      ${p.me ? '' : `<div class="pf-rp"><button class="pf-report" data-rp>🚩 Report player</button>
+        <form class="rp-form" hidden>
+          <b>Report ${esc(p.name)}</b>
+          <label><input type="radio" name="rr" value="cheating" required> Cheating, bots or using a bug</label>
+          <label><input type="radio" name="rr" value="alt"> Using second accounts</label>
+          <label><input type="radio" name="rr" value="harassment"> Harassment or bullying</label>
+          <label><input type="radio" name="rr" value="name"> Offensive name</label>
+          <label><input type="radio" name="rr" value="other"> Something else</label>
+          <textarea maxlength="300" rows="2" placeholder="What happened? (optional)"></textarea>
+          <div class="row"><button class="btn small primary" type="submit">Send report</button><button class="btn small ghost" type="button" data-rpx>Cancel</button></div>
+          <small>Reports are private. The player is not told who reported them.</small>
+        </form></div>`}
       <button class="btn ghost" data-x>Close</button>`;
     el.querySelector('[data-x]').onclick = close;
+    const rpf = el.querySelector('.rp-form');
+    el.querySelector('[data-rp]')?.addEventListener('click', (e) => { rpf.hidden = false; e.currentTarget.hidden = true; });
+    el.querySelector('[data-rpx]')?.addEventListener('click', () => { rpf.hidden = true; el.querySelector('[data-rp]').hidden = false; });
+    rpf?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const reason = rpf.querySelector('input[name=rr]:checked')?.value; if (!reason) return;
+      const b = rpf.querySelector('[type=submit]'); b.disabled = true;
+      try { await net.reportPlayer(p.user_id, reason, rpf.querySelector('textarea').value); rpf.innerHTML = '<p class="rp-done">✅ Thanks, your report was sent. We check every report.</p>'; }
+      catch (err) { b.disabled = false; note(err.message); }
+    });
     const cv = el.querySelector('.pf-av canvas');
     if (cv) drawNinjaFit(cv, lookOf(p.look || {}, p.gear || {}), 0);
     const file = el.querySelector('[data-file]');

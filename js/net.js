@@ -174,6 +174,17 @@ export async function removeAvatar() {
   if (error) throw new Error(error.message);
   return data;
 }
+export async function reportPlayer(userId, reason, note) {
+  if (OFFLINE) return { ok: true };
+  const { data, error } = await sb.rpc('report_player', { p_user: userId, p_reason: reason, p_note: note || null });
+  if (error) throw new Error(error.message);
+  return data;
+}
+// once a minute while playing: minutes played and active hours, for the weekly fair-play report
+export async function heartbeat() {
+  if (OFFLINE) return;
+  try { await sb.rpc('heartbeat'); } catch {}
+}
 export async function reportAvatar(userId) {
   if (OFFLINE) return { ok: true };
   const { data, error } = await sb.rpc('report_avatar', { p_user: userId });
