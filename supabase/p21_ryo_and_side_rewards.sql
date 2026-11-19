@@ -1,9 +1,9 @@
--- 19 Nov 2026 (CEO): mission ryo rises by the same factor as mission XP did (Academy unchanged);
+-- 19 Nov 2026 (CEO): mission ryo x1.7 from Genin up (makes up for the 10-a-day limit; Academy unchanged);
 -- quest fights and raid bosses pay 50% more XP and ryo so they keep up with missions.
 
 create or replace function public.mission_ryo_mult(lv integer) returns numeric
  language sql immutable set search_path to 'public', 'pg_catalog'
-as $f$ select case when lv < 5 then 1 when lv < 15 then 3.45 when lv < 30 then 3.4 else 3.35 end::numeric $f$;
+as $f$ select case when lv < 5 then 1 else 1.7 end::numeric $f$;
 
 do $$
 declare d text := pg_get_functiondef('public.battle_finish'::regproc); o text;
