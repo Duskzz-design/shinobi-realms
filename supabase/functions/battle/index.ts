@@ -3,6 +3,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import * as G from './engine.js';
 import { duelOp } from './duel.ts';
 import { raidOp } from './raid.ts';
+import { saveHp } from './hp.ts';
 
 const URL = Deno.env.get('SUPABASE_URL')!, SR = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const admin = createClient(URL, SR, { auth: { persistSession: false } });
@@ -63,6 +64,7 @@ Deno.serve(async (req) => {
         status = action.t === 'flee' && events.length && !win ? 'fled' : win ? 'won' : 'lost';
         Object.assign(b.state, { php: p.hp, pst: p.st, pch: p.ch });
         await useUp(p);
+        await saveHp(admin, [p]); // health lasts (before battle_finish, so a level-up can still refill it)
         await admin.from('battles').update({ state: b.state }).eq('id', b.id);
         if (status !== 'fled') {
           const { data, error } = await admin.rpc('battle_finish', { p_battle: b.id, p_win: win, p_used: b.state.used });

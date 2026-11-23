@@ -1,5 +1,6 @@
 // Live player duels. Both players call this; the row in "duels" is the shared truth and is pushed to both by realtime.
 import * as G from './engine.js';
+import { poolsNow, saveHp } from './hp.ts';
 const TURN_MS = G.DUEL_TURN_SEC * 1000, INVITE_MS = 60000, PREP_MS = 60000;
 const now = () => new Date();
 const iso = (d: Date) => d.toISOString();
@@ -111,7 +112,7 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
       admin.from('character_jutsu').select('move_id,level').eq('user_id', d.a), admin.from('character_jutsu').select('move_id,level').eq('user_id', d.b)]);
     const jl = (rows: any[]) => Object.fromEntries((rows || []).map((r) => [r.move_id, r.level]));
     // war ambush: the attacker (a) acts first; other duels: the faster ninja acts first
-    const s = G.newBattle({ seed: seed(), a: G.playerSpec(ca, jl(ja), G.poolsOf(ca)), b: G.playerSpec(cb, jl(jb), G.poolsOf(cb)), aStarts: d.kind === 'war' ? true : ca.agility >= cb.agility });
+    const s = G.newBattle({ seed: seed(), a: G.playerSpec(ca, jl(ja), poolsNow(ca)), b: G.playerSpec(cb, jl(jb), poolsNow(cb)), aStarts: d.kind === 'war' ? true : ca.agility >= cb.agility });
     delete (s as any).seed; (s as any).pvp = true;
     return save(d, { status: 'active', ready, state: { engine: s, events: d.kind === 'war' ? [{ t: 'ambush', who: 'a' }] : [], arena: { a: ca.arena_points, b: cb.arena_points } }, seq: 1, deadline: iso(new Date(Date.now() + TURN_MS)) });
   }
@@ -146,6 +147,7 @@ export async function duelOp(admin: any, uid: string, body: any, seed: () => num
     let out = await save(d, patch);
     if (s.status === 'over') {
       for (const u of Object.values(s.units)) if ((u as any).uid && Object.keys((u as any).usedItems || {}).length) await admin.rpc('consume_items', { p_user: (u as any).uid, p_used: (u as any).usedItems });
+      await saveHp(admin, Object.values(s.units));
       const winner = s.winner === 'a' ? d.a : d.b;
       const { data: pts, error } = await admin.rpc('duel_finish', { p_duel: d.id, p_winner: winner, p_reason: reason || 'ko' });
       if (error) throw new Error(error.message);

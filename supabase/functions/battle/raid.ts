@@ -1,5 +1,6 @@
 // Team boss fights: lobby at a lair, then up to 3 players take turns (60s each) before the boss acts.
 import * as G from './engine.js';
+import { poolsNow, saveHp } from './hp.ts';
 const TURN_MS = 60000;
 const iso = (d: Date) => d.toISOString();
 
@@ -85,7 +86,7 @@ export async function raidOp(admin: any, uid: string, body: any, seed: () => num
     const players = ids.map((id: string) => {
       const c = cs.find((x: any) => x.user_id === id), jl: Record<string, number> = {};
       for (const j of js || []) if (j.user_id === id) jl[j.move_id] = j.level;
-      return G.playerSpec(c, jl, G.poolsOf(c));
+      return G.playerSpec(c, jl, poolsNow(c));
     });
     const s = G.newRaid({ seed: seed(), players, boss: G.bossSpec(r.line, players.length) });
     delete (s as any).seed;
@@ -109,6 +110,7 @@ export async function raidOp(admin: any, uid: string, body: any, seed: () => num
     const s = r.state.engine; s.seed = seed();
     if (s.status === 'over') {
       // Fight already decided but rewards were never handed out: settle it now.
+      await saveHp(admin, Object.values(s.units));
       const { data, error } = await admin.rpc('raid_finish', { p_raid: r.id, p_win: s.winner === 'A' });
       if (error) throw new Error(error.message);
       return { ...r, status: 'over', winner: s.winner, rewards: data };
@@ -146,6 +148,7 @@ export async function raidOp(admin: any, uid: string, body: any, seed: () => num
     let out = await save(r, patch);
     if (s.status === 'over') {
       for (const u of Object.values(s.units)) if ((u as any).uid && Object.keys((u as any).usedItems || {}).length) await admin.rpc('consume_items', { p_user: (u as any).uid, p_used: (u as any).usedItems });
+      await saveHp(admin, Object.values(s.units));
       const { data, error } = await admin.rpc('raid_finish', { p_raid: r.id, p_win: s.winner === 'A' });
       if (error) throw new Error(error.message);
       out = { ...out, status: 'over', winner: s.winner, rewards: data };
